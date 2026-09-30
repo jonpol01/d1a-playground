@@ -1,3 +1,5 @@
+// Modified from Kev (https://github.com/jaredpalmer/kev), Copyright 2026 Jared Palmer, Apache-2.0.
+// Changes for the D1A playground by John Soliva, 2026.
 // Types mirror the TypeSafe /v1/systemone contract that kev.serve implements.
 export type JSONContent = string | number | boolean | null | JSONContent[] | { [k: string]: JSONContent };
 
@@ -55,7 +57,7 @@ export function describeError(e: unknown): string {
   const status = m ? Number(m[1]) : 0;
   const body = m ? m[2] : "";
   if (e instanceof TypeError || (status >= 500 && !body.trimStart().startsWith("{")) || status === 404) {
-    return `The Kev server is not answering (${m ? `HTTP ${status}` : msg}). ${START_HINT}`;
+    return `The model server is not answering (${m ? `HTTP ${status}` : msg}). ${START_HINT}`;
   }
   return msg;
 }

@@ -1,3 +1,5 @@
+// Modified from Kev (https://github.com/jaredpalmer/kev), Copyright 2026 Jared Palmer, Apache-2.0.
+// Changes for the D1A playground by John Soliva, 2026.
 import type { Answer, Question } from "@/lib/kev";
 
 // One shared lane layout for every bar on the page: label | track | value.

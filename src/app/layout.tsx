@@ -1,3 +1,5 @@
+// Modified from Kev (https://github.com/jaredpalmer/kev), Copyright 2026 Jared Palmer, Apache-2.0.
+// Changes for the D1A playground by John Soliva, 2026.
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
@@ -13,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Kev use cases",
-  description: "Live demos of nine use cases for Kev, a small decision model (Gemma 4 E2B): one document and typed questions in, a probability per option out.",
+  title: "D1A playground — nine use cases",
+  description: "Live demos of nine use cases for a small decision model: one document and typed questions in, a probability per option out.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

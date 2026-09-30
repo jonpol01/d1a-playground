@@ -1,0 +1,21 @@
+D1A playground
+Copyright 2026 John Soliva
+
+This product includes software from Kev (https://github.com/jaredpalmer/kev),
+Copyright 2026 Jared Palmer, licensed under the Apache License, Version 2.0.
+
+Files carried over from Kev's playground and modified by John Soliva for the D1A
+playground carry a "Modified from Kev" header: src/lib/kev.ts,
+src/components/answer-card.tsx and src/app/layout.tsx. Carried over unchanged:
+src/app/globals.css, src/app/favicon.ico, src/components/ui/button.tsx,
+src/lib/utils.ts and the Next.js, TypeScript, ESLint, PostCSS and shadcn config
+files. server/kev/api.py is Kev's kev/api.py, vendored unchanged apart from a
+header comment. server/lmstudio_systemone.py comes from John Soliva's Kev fork
+(https://github.com/jonpol01/kev, branch lmstudio-demo).
+
+The model server the setup scripts install is Kev's kev.serve from the fork
+https://github.com/jonpol01/kev (Gemma 4 support by John Soliva), and the
+checkpoint it serves, JohnP1/kev-gemma4-e2b, is built on Google's Gemma 4 E2B
+(google/gemma-4-E2B, Apache-2.0).
+
+D1A is not affiliated with or endorsed by Jared Palmer or the Kev project.

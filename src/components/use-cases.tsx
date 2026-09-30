@@ -9,15 +9,15 @@ import { EvalsDemo, GateDemo, GuardrailsDemo, RoutingDemo, ToolGateDemo } from "
 type Demo = { id: string; title: string; line: string; Component: ComponentType };
 
 const DEMOS: Demo[] = [
-  { id: "routing", title: "Model routing", line: "Kev reads the user's prompt and rates how hard it is, which picks the model tier; the probabilities show when a call is close enough to send up a tier.", Component: RoutingDemo },
-  { id: "guardrails", title: "Guardrails", line: "Kev labels an incoming message and says whether it should reach the LLM at all; a probability lets you block only when the model is sure and log the rest.", Component: GuardrailsDemo },
-  { id: "tools", title: "Tool-call gating", line: "Kev reads an agent's proposed tool call and decides allow, ask or deny against a written policy; p(deny) is the number to alert on.", Component: ToolGateDemo },
-  { id: "inbox", title: "Inbox triage", line: "Kev reads each email and decides reply now, later or archive; the probability orders the inbox so the most certain urgent mail is on top.", Component: InboxDemo },
-  { id: "rerank", title: "Reranking", line: "Kev reads each retrieved passage and answers whether it answers the query; p(yes) is a relevance score you can sort by and cut off.", Component: RerankDemo },
-  { id: "evals", title: "LLM evals", line: "Kev grades an LLM answer from 1 to 5; the expected grade and its spread tell a confident 3 from a coin toss between 1 and 5.", Component: EvalsDemo },
-  { id: "labeling", title: "Bulk labeling", line: "Kev labels every row of a table; the confidence column tells you which rows a human should look at.", Component: BulkDemo },
-  { id: "control", title: "Real-time control", line: "Kev reads a text description of the world every tick and picks the next move; each decision is one short forward pass.", Component: ControlDemo },
-  { id: "gate", title: "Confidence gate", line: "Kev answers one question with a calibrated probability, and your thresholds decide whether to act, act and confirm, or ask a human.", Component: GateDemo },
+  { id: "routing", title: "Model routing", line: "The model reads the user's prompt and rates how hard it is, which picks the model tier; the probabilities show when a call is close enough to send up a tier.", Component: RoutingDemo },
+  { id: "guardrails", title: "Guardrails", line: "The model labels an incoming message and says whether it should reach the LLM at all; a probability lets you block only when the model is sure and log the rest.", Component: GuardrailsDemo },
+  { id: "tools", title: "Tool-call gating", line: "The model reads an agent's proposed tool call and decides allow, ask or deny against a written policy; p(deny) is the number to alert on.", Component: ToolGateDemo },
+  { id: "inbox", title: "Inbox triage", line: "The model reads each email and decides reply now, later or archive; the probability orders the inbox so the most certain urgent mail is on top.", Component: InboxDemo },
+  { id: "rerank", title: "Reranking", line: "The model reads each retrieved passage and answers whether it answers the query; p(yes) is a relevance score you can sort by and cut off.", Component: RerankDemo },
+  { id: "evals", title: "LLM evals", line: "The model grades an LLM answer from 1 to 5; the expected grade and its spread tell a confident 3 from a coin toss between 1 and 5.", Component: EvalsDemo },
+  { id: "labeling", title: "Bulk labeling", line: "The model labels every row of a table; the confidence column tells you which rows a human should look at.", Component: BulkDemo },
+  { id: "control", title: "Real-time control", line: "The model reads a text description of the world every tick and picks the next move; each decision is one short forward pass.", Component: ControlDemo },
+  { id: "gate", title: "Confidence gate", line: "The model answers one question with a calibrated probability, and your thresholds decide whether to act, act and confirm, or ask a human.", Component: GateDemo },
 ];
 
 // The selected demo lives in the URL hash (#routing, #guardrails, ...) so a demo can be linked to directly.
@@ -46,27 +46,27 @@ export function UseCases() {
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col px-6 pt-8 pb-16 md:px-10">
       <header className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
-        <h1 className="text-[15px] font-medium tracking-tight">kev · use cases</h1>
+        <h1 className="text-[15px] font-medium tracking-tight">D1A playground</h1>
         <p className="text-[13px] text-muted-foreground">
-          {model === null ? "connecting" : "error" in model ? "Kev server not reachable" : <><span className="font-mono">{model.run}</span> · <span className="font-mono">{model.base}</span>{model.device ? <> · {model.device}</> : null}</>}
+          {model === null ? "connecting" : "error" in model ? "model server not reachable" : <><span className="font-mono">{model.run}</span> · <span className="font-mono">{model.base}</span>{model.device ? <> · {model.device}</> : null}</>}
         </p>
       </header>
 
       {down && (
         <p role="alert" className="mt-6 rounded-md border border-destructive/40 bg-destructive/5 px-4 py-3 text-[13px] leading-5 text-destructive">
-          The Kev server is not answering on port 8009, so the demos cannot run. {START_HINT}
+          The model server is not answering on port 8009, so the demos cannot run. {START_HINT}
         </p>
       )}
       {lmstudio && (
         <p className="mt-6 rounded-md border border-amber-500/50 bg-amber-500/10 px-4 py-3 text-[13px] leading-5">
-          LM Studio mode: answers come from a prompted chat model, not the trained Kev checkpoint. Probabilities are the chat model&apos;s letter probabilities, uncalibrated.
+          LM Studio mode: answers come from a prompted chat model, not the trained checkpoint. Probabilities are the chat model&apos;s letter probabilities, uncalibrated.
         </p>
       )}
 
       <div className="mt-10 max-w-3xl">
         <h2 className="text-2xl font-medium tracking-tight">Nine jobs for a small decision model.</h2>
         <p className="mt-2 text-[15px] leading-6 text-muted-foreground">
-          Each demo sends one document and a few typed questions to a live Kev server and gets back a probability for every option, usually in well under a second.
+          Each demo sends one document and a few typed questions to a live model server and gets back a probability for every option, usually in well under a second.
           Every example is editable. What the app does with the probabilities (route, block, sort, grade, move) is ordinary code on top.
         </p>
       </div>
@@ -87,15 +87,16 @@ export function UseCases() {
       </section>
 
       <section aria-labelledby="about" className="mt-16 max-w-3xl border-t border-border pt-8">
-        <h2 id="about" className="text-base font-medium tracking-tight">About Kev</h2>
+        <h2 id="about" className="text-base font-medium tracking-tight">About the model</h2>
         <div className="mt-2 flex flex-col gap-3 text-[14px] leading-6 text-muted-foreground">
           <p>
-            The answers come from a trained Kev checkpoint, <a className="text-foreground underline underline-offset-2" href="https://huggingface.co/JohnP1/kev-gemma4-e2b">JohnP1/kev-gemma4-e2b</a>: a LoRA adapter and a pointer head on Google&apos;s Gemma 4 E2B.
+            D1A is a family of small decision models built on Kev. Until the D1A models ship, the answers here come from the Gemma 4 E2B prototype <a className="text-foreground underline underline-offset-2" href="https://huggingface.co/JohnP1/kev-gemma4-e2b">JohnP1/kev-gemma4-e2b</a>: a LoRA adapter and a pointer head on Google&apos;s Gemma 4 E2B.
             It is not a chat model. It reads the document once, answers every question in parallel without letting the questions see each other, and returns a calibrated probability for each option you offer. There is no generated text to parse.
           </p>
           <p>
-            Kev is by Jared Palmer (<a className="text-foreground underline underline-offset-2" href="https://github.com/jaredpalmer/kev">jaredpalmer/kev</a>, Apache-2.0). This checkpoint and the Gemma 4 support come from the fork <a className="text-foreground underline underline-offset-2" href="https://github.com/jonpol01/kev">jonpol01/kev</a>.
-            It is a one-epoch prototype, trained on English data: expect mistakes, and read the probabilities as its confidence, not as ground truth.
+            Built on Kev by Jared Palmer (<a className="text-foreground underline underline-offset-2" href="https://github.com/jaredpalmer/kev">jaredpalmer/kev</a>, Apache-2.0). The Gemma 4 support and the checkpoint come from the fork <a className="text-foreground underline underline-offset-2" href="https://github.com/jonpol01/kev">jonpol01/kev</a>.
+            D1A is not affiliated with or endorsed by Jared Palmer or the Kev project.
+            The checkpoint is a one-epoch prototype trained on English data: expect mistakes, and read the probabilities as its confidence, not as ground truth.
           </p>
         </div>
       </section>

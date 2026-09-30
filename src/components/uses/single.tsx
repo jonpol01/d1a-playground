@@ -66,7 +66,7 @@ export function RoutingDemo() {
           </p>
           {closeCall && <p className="mt-2 text-[12px] leading-5">Close call: p({closeCall.tier}) = {closeCall.p.toFixed(2)}. A cautious router would send this one to <span className="font-mono">{closeCall.tier}</span>.</p>}
         </ResultCard>
-      </> : <Empty>Route the prompt to see which model size Kev picks and what that costs.</Empty>}
+      </> : <Empty>Route the prompt to see which model tier the prompt is routed to and what that costs.</Empty>}
     />
   );
 }
@@ -189,7 +189,7 @@ export function ToolGateDemo() {
           {a.choice === "allow" ? "run it without asking" : a.choice === "ask" ? "pause and ask the user" : "refuse the call"} · p {a.probabilities[a.choice].toFixed(2)}
         </Verdict>
         <ResultCard title={<>decision · choice · <Latency r={req.result} /></>}><AnswerBars answer={a} /></ResultCard>
-        <ResultCard title="The policy Kev reads (the option descriptions)">
+        <ResultCard title="The policy the model reads (the option descriptions)">
           <dl className="grid grid-cols-[3.5rem_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-[12px] leading-5">
             {Object.entries((TOOL_Q.decision as { criteria: Record<string, string> }).criteria).map(([k, d]) => (
               <div key={k} className="contents"><dt className="font-mono">{k}</dt><dd className="text-muted-foreground">{d}</dd></div>
@@ -348,7 +348,7 @@ export function GateDemo() {
           ))}
         </div>
         <ResultCard title={<>action · choice · <Latency r={req.result} /></>}><AnswerBars answer={a} /></ResultCard>
-        <p className="text-[12px] leading-5 text-muted-foreground">The thresholds are your policy, not the model&apos;s: Kev returns a calibrated probability for the top option, and you decide how sure is sure enough to act. Move the sliders; the lane updates without a new request.</p>
+        <p className="text-[12px] leading-5 text-muted-foreground">The thresholds are your policy, not the model&apos;s: it returns a calibrated probability for the top option, and you decide how sure is sure enough to act. Move the sliders; the lane updates without a new request.</p>
       </> : <Empty>Decide to see the top option, its probability, and which lane your thresholds put it in.</Empty>}
     />
   );

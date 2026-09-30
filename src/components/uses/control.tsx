@@ -140,7 +140,7 @@ export function ControlDemo() {
         </div>
       )}
       <p className="text-[12px] leading-5 text-muted-foreground">
-        The loop ticks at {1000 / TICK_MS} Hz, but a new state is sent only when the previous answer has come back, so the decision rate is set by Kev&apos;s latency and ticks in between are skipped rather than queued.
+        The loop ticks at {1000 / TICK_MS} Hz, but a new state is sent only when the previous answer has come back, so the decision rate is set by the model&apos;s latency and ticks in between are skipped rather than queued.
         With the direction spelled out the prototype checkpoint follows well; with positions only it has to compare two numbers itself and often drifts left.
       </p>
     </div>
