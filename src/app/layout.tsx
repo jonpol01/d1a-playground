@@ -20,14 +20,14 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "D1A playground — nine use cases",
-  description: "Live demos of nine use cases for a small decision model: one document and typed questions in, a probability per option out.",
+  title: "D1A playground",
+  description: "小さな判断モデルの9つのユースケースのライブデモ / Live demos of nine use cases for a small decision model: one document and typed questions in, a probability per option out.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
-      lang="en"
+      lang="ja"
       className={`${geistSans.variable} ${geistMono.variable} ${bricolage.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">{children}</body>

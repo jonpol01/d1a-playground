@@ -1,6 +1,8 @@
 // Modified from Kev (https://github.com/jaredpalmer/kev), Copyright 2026 Jared Palmer, Apache-2.0.
 // Changes for the D1A playground by John Soliva, 2026.
 // Types mirror the TypeSafe /v1/systemone contract that kev.serve implements.
+import { recordRequest } from "@/lib/metrics";
+
 export type JSONContent = string | number | boolean | null | JSONContent[] | { [k: string]: JSONContent };
 
 export type Question =
@@ -28,36 +30,51 @@ export type PermuteResponse = {
   spread: Record<string, number>;
 };
 
+// The app can be served under a sub-path (D1A_BASE_PATH at build time); fetch URLs are not prefixed by Next itself.
+export const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+const KEV = `${BASE_PATH}/kev`;
+
 async function post<T>(path: string, body: unknown): Promise<T> {
-  const r = await fetch(`/kev${path}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+  const r = await fetch(`${KEV}${path}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
   if (!r.ok) throw new Error(`${r.status}: ${await r.text()}`);
   return r.json();
 }
 
 export const api = {
-  systemOne: (req: SystemOneRequest) => post<SystemOneResponse>("/v1/systemone", req),
+  systemOne: async (req: SystemOneRequest) => {
+    const t0 = performance.now();
+    const r = await post<SystemOneResponse>("/v1/systemone", req);
+    recordRequest({ at: Date.now(), latencyMs: r.latency_ms, rttMs: performance.now() - t0, questions: Object.keys(req.questions).length, tokens: r.usage.input_tokens });
+    return r;
+  },
   separate: (req: SystemOneRequest) => post<SystemOneResponse>("/v1/systemone/separate", req),
   permute: (request: SystemOneRequest, question: string, n_perm = 6) => post<PermuteResponse>("/v1/systemone/permute", { request, question, n_perm }),
   models: async () => {
-    const r = await fetch("/kev/v1/models");
+    const r = await fetch(`${KEV}/v1/models`);
     if (!r.ok) throw new Error(`${r.status}: ${await r.text()}`);
-    return r.json() as Promise<{ models: { name: string; run: string; base: string }[] }>;
+    return r.json() as Promise<{ models: { name: string; run: string; base: string; device?: string; backend?: string; dtype?: string }[] }>;
   },
 };
 
 export const MODEL = "kev-latest";
 
-export const START_HINT = "Start it with ./demo.sh (Windows: .\\demo.ps1). The first start downloads the model and can take several minutes.";
+export const START_HINT = {
+  en: "Start it with ./demo.sh (Windows: .\\demo.ps1). The first start downloads the model and can take several minutes.",
+  ja: "./demo.sh（Windows では .\\demo.ps1）で起動してください。初回はモデルのダウンロードがあるため、数分かかることがあります。",
+};
 
 // A proxy failure (server not started, still loading, or crashed) reaches the browser as a 5xx without a JSON
 // body, or as a network error; kev.serve's own validation errors carry {"detail": ...} and are shown as they are.
-export function describeError(e: unknown): string {
+export function describeError(e: unknown, lang: "en" | "ja" = "en"): string {
   const msg = e instanceof Error ? e.message : String(e);
   const m = /^(\d{3}): ([\s\S]*)$/.exec(msg);
   const status = m ? Number(m[1]) : 0;
   const body = m ? m[2] : "";
   if (e instanceof TypeError || (status >= 500 && !body.trimStart().startsWith("{")) || status === 404) {
-    return `The model server is not answering (${m ? `HTTP ${status}` : msg}). ${START_HINT}`;
+    const what = m ? `HTTP ${status}` : msg;
+    return lang === "ja"
+      ? `モデルサーバーが応答していません（${what}）。${START_HINT.ja}`
+      : `The model server is not answering (${what}). ${START_HINT.en}`;
   }
   return msg;
 }

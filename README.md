@@ -1,8 +1,10 @@
 # D1A playground — nine use cases
 
+[日本語](README.ja.md)
+
 A small decision model reads one document, answers a few typed questions about it, and returns a probability for every option. This playground runs nine real jobs on that idea, live, on your own machine: routing prompts to a model tier, blocking prompt injections, gating an agent's tool calls, triaging an inbox, reranking search results, grading LLM answers, labelling a table, steering a robot in real time, and deciding when to act and when to ask a human. Every example is editable, and every answer shows the full probability distribution behind it.
 
-D1A is built on [Kev](https://github.com/jaredpalmer/kev) by Jared Palmer (Apache-2.0). D1A is not affiliated with or endorsed by Jared Palmer or the Kev project. Until the D1A models ship, the playground serves the Gemma 4 E2B prototype [JohnP1/kev-gemma4-e2b](https://huggingface.co/JohnP1/kev-gemma4-e2b), trained with the Gemma 4 support in the fork [jonpol01/kev](https://github.com/jonpol01/kev).
+D1A is built on [Kev](https://github.com/jaredpalmer/kev) by Jared Palmer (Apache-2.0). D1A is not affiliated with or endorsed by Jared Palmer or the Kev project. The playground serves D1A-E2B v0.1, a one-epoch model on Gemma 4 E2B ([JohnP1/d1a-e2b](https://huggingface.co/JohnP1/d1a-e2b), tag `v0.1-1epoch`; formerly JohnP1/kev-gemma4-e2b), trained with the Gemma 4 support in the fork [jonpol01/kev](https://github.com/jonpol01/kev).
 
 ![The nine demos, one after another, each with the live model's answer](docs/demos.gif)
 
@@ -74,7 +76,7 @@ This runs [server/lmstudio_systemone.py](server/lmstudio_systemone.py), which as
 
 ## Limitations
 
-- The checkpoint is a **one-epoch prototype**. On the development partitions of Kev's suites it scores 0.794 on trained sources and 0.569 on new sources, against 0.817 and 0.622 for Kev's two-epoch Qwen3.5-0.8B base recipe (one epoch against two, so not like for like). The [model card](https://huggingface.co/JohnP1/kev-gemma4-e2b) has the details.
+- The checkpoint is a **one-epoch prototype**. On the development partitions of Kev's suites it scores 0.794 on trained sources and 0.569 on new sources, against 0.817 and 0.622 for Kev's two-epoch Qwen3.5-0.8B base recipe (one epoch against two, so not like for like). The [model card](https://huggingface.co/JohnP1/d1a-e2b) has the details.
 - It was trained on English data. Other languages are untested in these demos.
 - Question wording matters. Some demos use the wording that worked best with this prototype, and the files say so: the inbox adds a yes/no urgency question because the three-way choice alone under-calls urgent mail; the control loop's state spells out which way the target is, because with positions alone the prototype drifts left (tick the box off in the demo to see it).
 - Several answers are close calls (0.4–0.6). That is the point of showing probabilities: the demos route, flag or hand those to a human instead of pretending to be sure.
@@ -88,6 +90,26 @@ This runs [server/lmstudio_systemone.py](server/lmstudio_systemone.py), which as
 - **Windows says scripts are disabled**: run it as `powershell -ExecutionPolicy Bypass -File .\demo.ps1`.
 - **Slow on a PC with an NVIDIA GPU**: check the `serving ... on <device>` line in `.demo/kev-server.log`. If it says `cpu`, delete `.demo/venv` and run the script again after updating the NVIDIA driver, so uv picks the CUDA build of PyTorch.
 
+## The Page
+
+The UI is in Japanese by default, with an EN / JA switch in the header; the choice is remembered in the browser, and `?lang=en` or `?lang=ja` in the URL overrides it. In Japanese mode the examples are Japanese. The prototype model was trained on English data, so some demos keep their questions and option descriptions in English while the text they read is Japanese: with Japanese wording those demos gave weaker or less stable answers (the file of each demo says which). A hardware monitor under the header shows the backend, the latency of each request with a sparkline, throughput, and the model server machine's GPU use, memory and load (from `GET /api/hw`, which runs a few unprivileged commands such as `ioreg`, `footprint`, `memory_pressure` or `nvidia-smi`). `/architecture` explains how the model works.
+
+## Self-hosting on a Mac
+
+`mini.sh` runs the playground as an always-on service: the model server and a production build of the web app as two user LaunchAgents (`io.github.jonpol01.d1a-model` and `io.github.jonpol01.d1a-web`) that start at login and restart after a crash. It needs [Homebrew](https://brew.sh) `node` and `uv`.
+
+```bash
+git clone https://github.com/jonpol01/d1a-playground.git ~/d1a-playground && cd ~/d1a-playground
+./mini.sh install    # model server into .demo/venv, npm ci + build, write and load the LaunchAgents
+./mini.sh status     # what is loaded and whether both ports answer
+./mini.sh stop       # unload both;  ./mini.sh start loads them again
+./mini.sh update     # git pull, reinstall, rebuild, restart
+```
+
+Logs go to `~/Library/Logs/d1a-model.log` and `~/Library/Logs/d1a-web.log`. Settings are read by `install` and `update` and kept in `.demo/mini.env`: `KEV_PORT` (8009), `PORT` (3031), `HOST` (127.0.0.1; use 0.0.0.0 to serve the LAN directly), `D1A_BASE_PATH` (empty), and the MPS memory cap `PYTORCH_MPS_HIGH_WATERMARK_RATIO` / `PYTORCH_MPS_LOW_WATERMARK_RATIO` (0.7 / 0.6, sized for a 32 GB Mac that runs other things; lower them to fail early instead of swapping). The model server always listens on 127.0.0.1 only. LaunchAgents run while the user is logged in, so turn on automatic login if the Mac must come back by itself after a reboot. uv's own settings apply to the install, for example `UV_SYSTEM_CERTS=1` on a network that inspects TLS, or `UV_CACHE_DIR` when the default cache is not writable.
+
+**Behind a reverse proxy, under a sub-path.** Build with `D1A_BASE_PATH=/d1a` (for example `D1A_BASE_PATH=/d1a ./mini.sh install`) and the app serves everything under `/d1a`: pages, assets, the model API proxy (`/d1a/kev/...`) and `/d1a/api/hw`. Point the proxy's `/d1a` prefix at `http://127.0.0.1:3031` with the path unchanged, e.g. `http://<your-mac-ip>/d1a`. The base path is compiled into the build, so change it with `./mini.sh update` after editing `.demo/mini.env`.
+
 ## Development
 
 ```bash
@@ -100,6 +122,6 @@ npm run lint && npx next typegen && npx tsc --noEmit -p .
 
 - [Kev](https://github.com/jaredpalmer/kev) by Jared Palmer, Apache-2.0: the model architecture, training and serving code, the System One API client and the playground this app started from. Files carried over and changed say so in a header; [NOTICE](NOTICE) lists them.
 - [Gemma 4](https://huggingface.co/google/gemma-4-E2B) by Google, Apache-2.0: the base model under the checkpoint.
-- This playground, the Gemma 4 support in Kev and the [JohnP1/kev-gemma4-e2b](https://huggingface.co/JohnP1/kev-gemma4-e2b) checkpoint: John Soliva ([jonpol01](https://github.com/jonpol01)).
+- This playground, the Gemma 4 support in Kev and the [JohnP1/d1a-e2b](https://huggingface.co/JohnP1/d1a-e2b) checkpoint: John Soliva ([jonpol01](https://github.com/jonpol01)).
 
 Licensed under the Apache License 2.0; see [LICENSE](LICENSE) and [NOTICE](NOTICE).

@@ -1,4 +1,4 @@
-# Start the D1A playground on Windows: a model server (kev.serve with the trained JohnP1/kev-gemma4-e2b checkpoint) and the web app.
+# Start the D1A playground on Windows: a model server (kev.serve with the trained JohnP1/d1a-e2b checkpoint) and the web app.
 # macOS, Linux and WSL: demo.sh.
 #
 #   .\demo.ps1                      install what is missing, start both, open the browser; Ctrl+C stops both
@@ -17,7 +17,7 @@ $ErrorActionPreference = 'Stop'
 # The Kev fork (the D1A model server) this demo runs, pinned to a commit so every friend gets the same server.
 $KevRepo = 'https://github.com/jonpol01/kev'
 $KevSha = '13374b311cde06d09017c7ca61ff884e2fd90df6'
-$KevRun = 'JohnP1/kev-gemma4-e2b'
+$KevRun = 'JohnP1/d1a-e2b'
 $PythonVersion = '3.13'       # torch has no wheels for 3.14 yet; uv downloads 3.13 if it is missing
 
 $Root = Split-Path -Parent $MyInvocation.MyCommand.Path

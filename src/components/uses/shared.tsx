@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { Bar } from "@/components/answer-card";
 import { Button } from "@/components/ui/button";
 import { api, describeError, MODEL, type Answer, type JSONContent, type Question, type SystemOneResponse } from "@/lib/kev";
+import { useLang, useText } from "@/lib/i18n";
 
 export const pretty = (v: unknown) => JSON.stringify(v, null, 2);
 
@@ -53,9 +54,10 @@ export const textareaCls = "w-full rounded-md border border-input bg-transparent
 export const inputCls = "h-8 w-full rounded-md border border-input bg-transparent px-2.5 text-[13px] outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50";
 
 export function Presets<T extends { name: string }>({ presets, current, onPick }: { presets: T[]; current: number; onPick: (i: number) => void }) {
+  const label = useText({ en: "Examples", ja: "例" });
   return (
-    <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-[13px]" role="group" aria-label="Examples">
-      <span className="text-muted-foreground">Examples:</span>
+    <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-[13px]" role="group" aria-label={label}>
+      <span className="text-muted-foreground">{label}:</span>
       {presets.map((p, i) => (
         <button key={p.name} type="button" onClick={() => onPick(i)} aria-pressed={i === current}
           className={`rounded-full border px-3 py-1 transition-colors ${i === current ? "border-(--demo) bg-(--demo-soft) text-foreground" : "border-border text-muted-foreground hover:border-(--demo-line) hover:text-foreground"}`}>
@@ -68,8 +70,8 @@ export function Presets<T extends { name: string }>({ presets, current, onPick }
 
 export const accentButton = "h-9 rounded-lg bg-(--demo) px-4 text-white shadow-sm transition-transform hover:-translate-y-px hover:bg-(--demo) hover:opacity-90 active:translate-y-0";
 
-export function RunBar({ onRun, busy, label = "Run", busyLabel = "Running", disabled, children }: {
-  onRun: () => void; busy: boolean; label?: string; busyLabel?: string; disabled?: boolean; children?: ReactNode;
+export function RunBar({ onRun, busy, label, busyLabel, disabled, children }: {
+  onRun: () => void; busy: boolean; label: string; busyLabel: string; disabled?: boolean; children?: ReactNode;
 }) {
   return (
     <div className="flex flex-wrap items-center gap-3">
@@ -80,8 +82,9 @@ export function RunBar({ onRun, busy, label = "Run", busyLabel = "Running", disa
 }
 
 export function ErrorNote({ error }: { error: unknown }) {
+  const lang = useLang();
   if (!error) return null;
-  return <p role="alert" className="whitespace-pre-wrap rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-[13px] leading-5 text-destructive">{describeError(error)}</p>;
+  return <p role="alert" className="whitespace-pre-wrap rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-[13px] leading-5 text-destructive">{describeError(error, lang)}</p>;
 }
 
 export function Empty({ children }: { children: ReactNode }) {
@@ -105,7 +108,8 @@ export function Verdict({ label, tone, children }: { label: string; tone: "go" |
 }
 
 export function Latency({ r }: { r: SystemOneResponse }) {
-  return <span className="text-[12px] tabular-nums text-muted-foreground">{r.latency_ms.toFixed(0)} ms · {r.usage.input_tokens} input tokens</span>;
+  const tokens = useText({ en: "input tokens", ja: "入力トークン" });
+  return <span className="text-[12px] tabular-nums text-muted-foreground">{r.latency_ms.toFixed(0)} ms · {r.usage.input_tokens} {tokens}</span>;
 }
 
 /** Two-column demo body: inputs left, result right. */

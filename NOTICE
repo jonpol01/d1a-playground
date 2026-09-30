@@ -6,10 +6,10 @@ Copyright 2026 Jared Palmer, licensed under the Apache License, Version 2.0.
 
 Files carried over from Kev's playground and modified by John Soliva for the D1A
 playground carry a "Modified from Kev" header: src/lib/kev.ts,
-src/components/answer-card.tsx and src/app/layout.tsx. Carried over unchanged:
-src/app/globals.css, src/app/favicon.ico, src/components/ui/button.tsx,
-src/lib/utils.ts and the Next.js, TypeScript, ESLint, PostCSS and shadcn config
-files. server/kev/api.py is Kev's kev/api.py, vendored unchanged apart from a
+src/components/answer-card.tsx, src/app/layout.tsx and next.config.ts. Carried
+over unchanged: src/app/globals.css, src/app/favicon.ico,
+src/components/ui/button.tsx, src/lib/utils.ts and the TypeScript, ESLint,
+PostCSS and shadcn config files. server/kev/api.py is Kev's kev/api.py, vendored unchanged apart from a
 header comment. server/lmstudio_systemone.py comes from John Soliva's Kev fork
 (https://github.com/jonpol01/kev, branch lmstudio-demo).
 

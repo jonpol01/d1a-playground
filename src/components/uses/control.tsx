@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Answer, Question } from "@/lib/kev";
 import { Button } from "@/components/ui/button";
 import { accentButton, AnswerBars, ask, ErrorNote, ResultCard } from "@/components/uses/shared";
+import { useText, type Lang } from "@/lib/i18n";
 
 const CELLS = 21;          // cells 0..20
 const TICK_MS = 100;       // the control loop runs at 10 Hz; a tick with a request still in flight is skipped, never queued
@@ -17,6 +18,8 @@ const MOVE_Q: Record<string, Question> = {
   },
 };
 
+// The state is machine-generated and stays English in both languages: the prototype follows it with p 0.75-0.96,
+// against 0.64-0.92 for the same sentences in Japanese.
 function describe(robot: number, target: number, hint: boolean) {
   const base = `Robot at cell ${robot}. Target at cell ${target}.`;
   if (!hint) return `1-D track with cells 0 to ${CELLS - 1}. ${base}`;
@@ -25,16 +28,39 @@ function describe(robot: number, target: number, hint: boolean) {
   return `${base} The target is ${d} ${d === 1 ? "cell" : "cells"} to the ${target < robot ? "left" : "right"} of the robot.`;
 }
 
+const CONTROL_EN = {
+  start: "Start", stop: "Stop", pressStart: "press Start", thinking: "thinking…", perSec: "decisions/s",
+  hint: "spell out the direction in the state (off: positions only)",
+  canvas: "Robot (square) chasing the target (star) on a 1-D track",
+  stats: { last: "last decision", avg: "avg latency (last 20)", rate: "decisions / s", skipped: "ticks skipped", on: "on target" },
+  skippedOf: (a: number, b: number) => `${a} of ${b}`, onPct: (n: number) => `${n}% of ticks`,
+  stateTitle: "state sent on the last decision",
+  note: (hz: number) => `The loop ticks at ${hz} Hz, but a new state is sent only when the previous answer has come back, so the decision rate is set by the model's latency and ticks in between are skipped rather than queued. With the direction spelled out the prototype checkpoint follows well; with positions only it has to compare two numbers itself and often drifts left.`,
+};
+const CONTROL_TEXT: Record<Lang, typeof CONTROL_EN> = {
+  en: CONTROL_EN,
+  ja: {
+    start: "スタート", stop: "停止", pressStart: "スタートを押してください", thinking: "考え中…", perSec: "回/秒",
+    hint: "state に方向を書き添える（オフ: 位置だけ）",
+    canvas: "1次元のトラック上でターゲット（星）を追いかけるロボット（四角）",
+    stats: { last: "直近の判断", avg: "平均レイテンシ（直近20回）", rate: "判断 / 秒", skipped: "スキップしたティック", on: "ターゲット上" },
+    skippedOf: (a: number, b: number) => `${b} 中 ${a}`, onPct: (n: number) => `ティックの ${n}%`,
+    stateTitle: "直近の判断で送った state（英語のまま送っています）",
+    note: (hz: number) => `ループは ${hz} Hz で回りますが、新しい state を送るのは前の答えが返ってきてからです。そのため判断の頻度はモデルのレイテンシで決まり、その間のティックはキューに積まずにスキップします。方向を書き添えるとプロトタイプはよく追従します。位置だけだと2つの数を自分で比べる必要があり、左に流れがちです。`,
+  },
+};
+
 type Stats = { decisions: number; skipped: number; onTarget: number; ticks: number; lastMs: number; avgMs: number; rate: number; last: Answer | null; lastState: string };
 const ZERO: Stats = { decisions: 0, skipped: 0, onTarget: 0, ticks: 0, lastMs: 0, avgMs: 0, rate: 0, last: null, lastState: "" };
 
 export function ControlDemo() {
+  const t = useText(CONTROL_TEXT);
   const [running, setRunning] = useState(false);
   const [hint, setHint] = useState(true);
   const [stats, setStats] = useState<Stats>(ZERO);
   const [error, setError] = useState<unknown>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
-  const world = useRef({ robot: 3, target: 15, vel: 1, inFlight: false, trail: [] as number[], hud: "press Start", hudRight: "", lat: [] as number[], t0: 0, tick: 0, s: ZERO, timer: 0 as number | ReturnType<typeof setInterval>, alive: true });
+  const world = useRef({ robot: 3, target: 15, vel: 1, inFlight: false, trail: [] as number[], hud: t.pressStart, hudRight: "", lat: [] as number[], t0: 0, tick: 0, s: ZERO, timer: 0 as number | ReturnType<typeof setInterval>, alive: true });
 
   function draw() {
     const c = canvas.current;
@@ -101,7 +127,7 @@ export function ControlDemo() {
       if (a.type === "choice") w.hud = `${a.choice.toUpperCase()}  p ${a.probabilities[a.choice].toFixed(2)}  ·  ${r.latency_ms.toFixed(0)} ms`;
       w.lat.push(r.latency_ms); if (w.lat.length > 20) w.lat.shift();
       const elapsed = (performance.now() - w.t0) / 1000;
-      w.hudRight = `${((w.s.decisions + 1) / ((performance.now() - w.t0) / 1000)).toFixed(1)} decisions/s`;
+      w.hudRight = `${((w.s.decisions + 1) / ((performance.now() - w.t0) / 1000)).toFixed(1)} ${t.perSec}`;
       w.s = { ...w.s, decisions: w.s.decisions + 1, lastMs: r.latency_ms, avgMs: w.lat.reduce((x, y) => x + y, 0) / w.lat.length, rate: (w.s.decisions + 1) / elapsed, last: a, lastState: state };
       setStats(w.s);
       draw();
@@ -112,7 +138,7 @@ export function ControlDemo() {
   function start() {
     const w = world.current;
     setError(null);
-    w.s = ZERO; w.lat = []; w.trail = []; w.t0 = performance.now(); w.tick = 0; w.hud = "thinking…"; w.hudRight = "";
+    w.s = ZERO; w.lat = []; w.trail = []; w.t0 = performance.now(); w.tick = 0; w.hud = t.thinking; w.hudRight = "";
     setStats(ZERO); setRunning(true);
     const useHint = hint;
     w.timer = setInterval(() => {
@@ -140,20 +166,20 @@ export function ControlDemo() {
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center gap-4">
-        <Button onClick={running ? stop : start} className={accentButton}>{running ? "Stop" : "Start"}</Button>
+        <Button onClick={running ? stop : start} className={accentButton}>{running ? t.stop : t.start}</Button>
         <label className="flex items-center gap-2 text-[13px] text-muted-foreground">
           <input type="checkbox" checked={hint} disabled={running} onChange={(e) => setHint(e.target.checked)} className="accent-foreground" />
-          spell out the direction in the state (off: positions only)
+          {t.hint}
         </label>
       </div>
-      <canvas ref={canvas} width={840} height={170} className="h-auto w-full rounded-2xl shadow-lg" aria-label="Robot (square) chasing the target (green dot) on a 1-D track" />
+      <canvas ref={canvas} width={840} height={170} className="h-auto w-full rounded-2xl shadow-lg" aria-label={t.canvas} />
       <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-[13px] sm:grid-cols-5">
         {[
-          ["last decision", stats.decisions ? `${stats.lastMs.toFixed(0)} ms` : "–"],
-          ["avg latency (last 20)", stats.decisions ? `${stats.avgMs.toFixed(0)} ms` : "–"],
-          ["decisions / s", stats.decisions ? stats.rate.toFixed(1) : "–"],
-          ["ticks skipped", `${stats.skipped} of ${stats.ticks}`],
-          ["on target", stats.ticks ? `${Math.round((stats.onTarget / stats.ticks) * 100)}% of ticks` : "–"],
+          [t.stats.last, stats.decisions ? `${stats.lastMs.toFixed(0)} ms` : "–"],
+          [t.stats.avg, stats.decisions ? `${stats.avgMs.toFixed(0)} ms` : "–"],
+          [t.stats.rate, stats.decisions ? stats.rate.toFixed(1) : "–"],
+          [t.stats.skipped, t.skippedOf(stats.skipped, stats.ticks)],
+          [t.stats.on, stats.ticks ? t.onPct(Math.round((stats.onTarget / stats.ticks) * 100)) : "–"],
         ].map(([k, v]) => (
           <div key={k}><dt className="text-[12px] text-muted-foreground">{k}</dt><dd className="font-medium tabular-nums">{v}</dd></div>
         ))}
@@ -161,13 +187,12 @@ export function ControlDemo() {
       <ErrorNote error={error} />
       {stats.last && (
         <div className="grid gap-4 lg:grid-cols-2">
-          <ResultCard title="state sent on the last decision"><pre className="whitespace-pre-wrap font-mono text-[12px] leading-5">{stats.lastState}</pre></ResultCard>
+          <ResultCard title={t.stateTitle}><pre className="whitespace-pre-wrap font-mono text-[12px] leading-5">{stats.lastState}</pre></ResultCard>
           <ResultCard title="move · choice"><AnswerBars answer={stats.last} /></ResultCard>
         </div>
       )}
       <p className="text-[12px] leading-5 text-muted-foreground">
-        The loop ticks at {1000 / TICK_MS} Hz, but a new state is sent only when the previous answer has come back, so the decision rate is set by the model&apos;s latency and ticks in between are skipped rather than queued.
-        With the direction spelled out the prototype checkpoint follows well; with positions only it has to compare two numbers itself and often drifts left.
+        {t.note(1000 / TICK_MS)}
       </p>
     </div>
   );

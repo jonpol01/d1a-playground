@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Start the D1A playground: a model server (kev.serve with the trained JohnP1/kev-gemma4-e2b checkpoint) and the web app.
+# Start the D1A playground: a model server (kev.serve with the trained JohnP1/d1a-e2b checkpoint) and the web app.
 # macOS, Linux and WSL. Windows PowerShell: demo.ps1.
 #
 #   ./demo.sh                      install what is missing, start both, open the browser; Ctrl+C stops both
@@ -15,7 +15,7 @@ set -euo pipefail
 # The Kev fork (the D1A model server) this demo runs, pinned to a commit so every friend gets the same server.
 KEV_REPO="https://github.com/jonpol01/kev"
 KEV_SHA="13374b311cde06d09017c7ca61ff884e2fd90df6"
-KEV_RUN="JohnP1/kev-gemma4-e2b"
+KEV_RUN="JohnP1/d1a-e2b"
 PYTHON_VERSION="3.13"          # torch has no wheels for 3.14 yet; uv downloads 3.13 if it is missing
 LMSTUDIO_MODEL_DEFAULT="gemma-4-e4b-it-mlx"
 
