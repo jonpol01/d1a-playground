@@ -24,6 +24,46 @@ D1A is built on [Kev](https://github.com/jaredpalmer/kev) by Jared Palmer (Apach
 
 The numbers are from runs on an M1 Max; yours will differ a little. Each demo has its own picture of the answer (a lit route, a shield, a traffic light, inbox trays, sliding search results, stars, a progress ring, a little arcade robot, a slider track), and the probability bars stay underneath it. Screenshots of every demo, in light mode plus one on a phone in dark mode, are in [docs/screenshots](docs/screenshots).
 
+### Each Demo Running
+
+Short recordings of the live prototype in dark mode, with the page in English: each one picks an example, presses the button and shows the answer with its probabilities. The recordings are from one run; yours will differ a little.
+
+**1. Model routing**
+
+![Model routing demo: a hard Postgres debugging prompt is routed to the large model, with the probability of small, medium and large and the cost per 1,000 requests](docs/gifs/en/routing.gif)
+
+**2. Guardrails**
+
+![Guardrails demo: a prompt-injection message is labelled prompt_injection and blocked, with the probability of every category](docs/gifs/en/guardrails.gif)
+
+**3. Tool-call gating**
+
+![Tool-call gating demo: the call rm -rf ~/ is denied, shown as a red traffic light with the allow, ask and deny probabilities](docs/gifs/en/tools.gif)
+
+**4. Inbox triage**
+
+![Inbox triage demo: eight emails are sorted into Reply now, Later and Archive trays, each card showing its probability](docs/gifs/en/inbox.gif)
+
+**5. Reranking**
+
+![Reranking demo: six passages are scored against a query and re-sorted, the one that answers it moving to the top](docs/gifs/en/rerank.gif)
+
+**6. LLM evals**
+
+![LLM evals demo: a wrong answer about the Apollo 11 landing is graded from 1 to 5, with a stacked bar showing how the probability spreads across the levels](docs/gifs/en/evals.gif)
+
+**7. Bulk labeling**
+
+![Bulk labeling demo: 30 product reviews are labelled positive, neutral or negative in a few seconds, each row with a p(label) bar and the low-confidence rows flagged](docs/gifs/en/labeling.gif)
+
+**8. Real-time control**
+
+![Real-time control demo: a little robot chases a star along a track, one model decision per tick, with latency and decisions-per-second counters](docs/gifs/en/control.gif)
+
+**9. Confidence gate**
+
+![Confidence gate demo: an ambiguous support case gets a low top probability and lands in the send-to-a-human lane](docs/gifs/en/gate.gif)
+
 ## Quick Start
 
 You need [git](https://git-scm.com/downloads), [Node.js](https://nodejs.org) 20.9 or newer and [uv](https://docs.astral.sh/uv/). You don't need Python: uv fetches Python 3.13 if it is missing. The scripts check all of this and say what to install.
