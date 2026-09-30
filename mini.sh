@@ -7,6 +7,7 @@
 #   ./mini.sh stop      unload both
 #   ./mini.sh status    what is running, and whether the two ports answer
 #   ./mini.sh update    git pull, reinstall and rebuild, restart
+#   ./mini.sh reinstall reinstall and rebuild, restart (no pull)
 #
 # Settings (read by install and update, then kept in .demo/mini.env):
 #   KEV_PORT=8009  PORT=3031  HOST=127.0.0.1 (0.0.0.0 to serve the LAN directly)  D1A_BASE_PATH= (e.g. /d1a behind a proxy)
@@ -144,7 +145,7 @@ case "${1:-status}" in
   status) status ;;
   update)
     git -C "$ROOT" pull --ff-only
-    D1A_SHA="$(sed -n 's/^D1A_SHA="\([0-9a-f]*\)".*/\1/p' "$ROOT/mini.sh")"   # the pin the pull brought
-    stop; install_code; write_agents; start ;;
-  *) die "usage: ./mini.sh {install|start|stop|status|update}" ;;
+    exec "$ROOT/mini.sh" reinstall ;;   # the pulled script, not the functions this process read before the pull
+  reinstall) stop; install_code; write_agents; start ;;
+  *) die "usage: ./mini.sh {install|start|stop|status|update|reinstall}" ;;
 esac
