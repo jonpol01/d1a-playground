@@ -97,7 +97,8 @@ write_agents() {
   ENV_XML="    <key>PATH</key><string>$path</string>
     <key>NODE_ENV</key><string>production</string>
     <key>KEV_API</key><string>http://127.0.0.1:$KEV_PORT</string>
-"
+    <key>D1A_BASE_PATH</key><string>$D1A_BASE_PATH</string>
+"   # next start reads next.config.ts again, so the base path must match the build's
   plist "$WEB_LABEL" "$(command -v node)" "$ROOT/node_modules/next/dist/bin/next" start -p "$PORT" -H "$HOST" >"$AGENTS/$WEB_LABEL.plist"
   plutil -lint "$AGENTS/$MODEL_LABEL.plist" "$AGENTS/$WEB_LABEL.plist" >/dev/null
 }

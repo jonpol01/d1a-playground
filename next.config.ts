@@ -4,7 +4,8 @@ import type { NextConfig } from "next";
 
 // FastAPI (kev.serve) is proxied under /kev so the browser never deals with CORS or ports.
 const KEV_API = process.env.KEV_API ?? "http://127.0.0.1:8009";
-// Optional sub-path, e.g. D1A_BASE_PATH=/d1a behind a reverse proxy. Build-time only: the client bundle inlines it.
+// Optional sub-path, e.g. D1A_BASE_PATH=/d1a behind a reverse proxy. Set it for both `next build` (the client bundle
+// inlines it) and `next start` (which reads this file again).
 const basePath = process.env.D1A_BASE_PATH ?? "";
 
 const nextConfig: NextConfig = {
