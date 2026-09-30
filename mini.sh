@@ -11,6 +11,7 @@
 # Settings (read by install and update, then kept in .demo/mini.env):
 #   KEV_PORT=8009  PORT=3031  HOST=127.0.0.1 (0.0.0.0 to serve the LAN directly)  D1A_BASE_PATH= (e.g. /d1a behind a proxy)
 #   PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.7  PYTORCH_MPS_LOW_WATERMARK_RATIO=0.6  (cap on PyTorch's share of unified memory)
+#   KEV_PREFIX_CACHE=4  KEV_PREFIX_MAX_TOKENS=65536  (the model server's cache of long states; lower them to save memory)
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
@@ -34,6 +35,7 @@ load_env() {
   KEV_PORT="${KEV_PORT:-8009}"; PORT="${PORT:-3031}"; HOST="${HOST:-127.0.0.1}"; D1A_BASE_PATH="${D1A_BASE_PATH:-}"
   PYTORCH_MPS_HIGH_WATERMARK_RATIO="${PYTORCH_MPS_HIGH_WATERMARK_RATIO:-0.7}"
   PYTORCH_MPS_LOW_WATERMARK_RATIO="${PYTORCH_MPS_LOW_WATERMARK_RATIO:-0.6}"
+  KEV_PREFIX_CACHE="${KEV_PREFIX_CACHE:-4}"; KEV_PREFIX_MAX_TOKENS="${KEV_PREFIX_MAX_TOKENS:-65536}"
 }
 
 save_env() {
@@ -45,6 +47,8 @@ HOST=$HOST
 D1A_BASE_PATH=$D1A_BASE_PATH
 PYTORCH_MPS_HIGH_WATERMARK_RATIO=$PYTORCH_MPS_HIGH_WATERMARK_RATIO
 PYTORCH_MPS_LOW_WATERMARK_RATIO=$PYTORCH_MPS_LOW_WATERMARK_RATIO
+KEV_PREFIX_CACHE=$KEV_PREFIX_CACHE
+KEV_PREFIX_MAX_TOKENS=$KEV_PREFIX_MAX_TOKENS
 EOF
 }
 
@@ -92,6 +96,8 @@ write_agents() {
   ENV_XML="    <key>PATH</key><string>$path</string>
     <key>PYTORCH_MPS_HIGH_WATERMARK_RATIO</key><string>$PYTORCH_MPS_HIGH_WATERMARK_RATIO</string>
     <key>PYTORCH_MPS_LOW_WATERMARK_RATIO</key><string>$PYTORCH_MPS_LOW_WATERMARK_RATIO</string>
+    <key>KEV_PREFIX_CACHE</key><string>$KEV_PREFIX_CACHE</string>
+    <key>KEV_PREFIX_MAX_TOKENS</key><string>$KEV_PREFIX_MAX_TOKENS</string>
 "
   plist "$MODEL_LABEL" "$STATE/venv/bin/python" -m kev.serve --run "$KEV_RUN" --port "$KEV_PORT" --host 127.0.0.1 >"$AGENTS/$MODEL_LABEL.plist"
   ENV_XML="    <key>PATH</key><string>$path</string>
