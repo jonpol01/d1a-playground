@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { Question } from "@/lib/kev";
 import { AnswerBars, DemoGrid, Empty, ErrorNote, Field, inputCls, Latency, pretty, Presets, ResultCard, RunBar, textareaCls, Verdict } from "@/components/uses/shared";
 import { useKevRequest } from "@/components/uses/use-request";
+import { CountUp, GateTrack, RouteViz, Shimmer, ShieldViz, StarsViz, TrafficLight, VizFrame } from "@/components/uses/visuals";
 
 /* ---------------------------------------------------------------- 1. Model routing */
 
@@ -47,7 +48,8 @@ export function RoutingDemo() {
         <ErrorNote error={req.error} />
       </>}
       right={a && routed && req.result ? <>
-        <Verdict label={`→ ${routed.toUpperCase()} MODEL`} tone="plain">p = {a.type === "choice" ? a.probabilities[a.choice].toFixed(2) : ""}</Verdict>
+        <VizFrame><RouteViz probs={a.type === "choice" ? a.probabilities : {}} chosen={routed} costs={COST} /></VizFrame>
+        <Verdict label={`→ ${routed.toUpperCase()} MODEL`} tone="plain">p = {a.type === "choice" ? a.probabilities[a.choice].toFixed(2) : ""} · <CountUp value={COST[routed]} format={(v) => `$${v.toFixed(2)}`} /> per 1,000 requests</Verdict>
         <ResultCard title={<>route · choice · <Latency r={req.result} /></>}><AnswerBars answer={a} /></ResultCard>
         <ResultCard title="What the route costs (illustrative prices per 1,000 requests)">
           <table className="w-full text-[13px] tabular-nums">
@@ -66,7 +68,7 @@ export function RoutingDemo() {
           </p>
           {closeCall && <p className="mt-2 text-[12px] leading-5">Close call: p({closeCall.tier}) = {closeCall.p.toFixed(2)}. A cautious router would send this one to <span className="font-mono">{closeCall.tier}</span>.</p>}
         </ResultCard>
-      </> : <Empty>Route the prompt to see which model tier the prompt is routed to and what that costs.</Empty>}
+      </> : req.busy ? <Shimmer tall /> : <Empty>Route the prompt to see which model tier the prompt is routed to and what that costs.</Empty>}
     />
   );
 }
@@ -119,12 +121,13 @@ export function GuardrailsDemo() {
         <ErrorNote error={req.error} />
       </>}
       right={verdict && req.result && cat && reach ? <>
+        <VizFrame><ShieldViz allow={verdict.allow} probs={cat.type === "choice" ? cat.probabilities : {}} chosen={verdict.cat} /></VizFrame>
         <Verdict label={verdict.allow ? "ALLOW" : "BLOCK"} tone={verdict.allow ? "go" : "stop"}>
           {verdict.allow ? "reaches the LLM" : `category ${verdict.cat} (p ${verdict.pCat.toFixed(2)}), p(pass on) ${verdict.pReach.toFixed(2)}`}
         </Verdict>
         <ResultCard title={<>category · choice · <Latency r={req.result} /></>}><AnswerBars answer={cat} /></ResultCard>
         <ResultCard title="reach_llm · noul · should this reach the LLM?"><AnswerBars answer={reach} /></ResultCard>
-      </> : <Empty>Check a message to see its category, whether it should reach the LLM, and the verdict.</Empty>}
+      </> : req.busy ? <Shimmer tall /> : <Empty>Check a message to see its category, whether it should reach the LLM, and the verdict.</Empty>}
     />
   );
 }
@@ -185,6 +188,7 @@ export function ToolGateDemo() {
         <ErrorNote error={req.error} />
       </>}
       right={a && a.type === "choice" && req.result ? <>
+        <VizFrame><TrafficLight probs={a.probabilities} chosen={a.choice} /></VizFrame>
         <Verdict label={a.choice.toUpperCase()} tone={tone}>
           {a.choice === "allow" ? "run it without asking" : a.choice === "ask" ? "pause and ask the user" : "refuse the call"} · p {a.probabilities[a.choice].toFixed(2)}
         </Verdict>
@@ -196,7 +200,7 @@ export function ToolGateDemo() {
             ))}
           </dl>
         </ResultCard>
-      </> : <Empty>Gate the proposed call to see allow / ask / deny before the agent runs it.</Empty>}
+      </> : req.busy ? <Shimmer tall /> : <Empty>Gate the proposed call to see allow / ask / deny before the agent runs it.</Empty>}
     />
   );
 }
@@ -255,15 +259,14 @@ export function EvalsDemo() {
         <ErrorNote error={req.error} />
       </>}
       right={q?.type === "score" && err?.type === "noul" && req.result ? <>
-        <div className="flex flex-wrap items-baseline gap-x-3">
-          <span className="text-4xl font-medium tabular-nums tracking-tight">{(q.score + 1).toFixed(1)}</span>
-          <span className="text-lg text-muted-foreground">/ 5</span>
-          <span className="text-[13px] text-muted-foreground">expected grade over the distribution below</span>
-        </div>
+        <VizFrame>
+          <StarsViz score={q.score + 1} probs={q.probabilities} />
+          <p className="mt-3 text-[12px] text-muted-foreground">Expected grade over the distribution; the stacked bar shows how the probability splits across the five levels.</p>
+        </VizFrame>
         <ResultCard title={<>quality · score · <Latency r={req.result} /></>}><AnswerBars answer={q} labels={labels} /></ResultCard>
         <ResultCard title={`error · noul · ${gradedWithReference ? "does the answer contradict the reference?" : "does the answer state something wrong?"}`}><AnswerBars answer={err} /></ResultCard>
         <p className="text-[12px] leading-5 text-muted-foreground">A single grade hides how sure the grader was. The distribution shows it: a 3.0 with all mass on 3 is not the same as a 3.0 split between 1 and 5.</p>
-      </> : <Empty>Grade the answer to see an expected score out of 5 and the full distribution.</Empty>}
+      </> : req.busy ? <Shimmer tall /> : <Empty>Grade the answer to see an expected score out of 5 and the full distribution.</Empty>}
     />
   );
 }
@@ -327,10 +330,10 @@ export function GateDemo() {
         <Field label="Options" hint="one per line, name: description" htmlFor="gate-o"><textarea id="gate-o" className={`${textareaCls} min-h-24`} value={options} onChange={(e) => setOptions(e.target.value)} /></Field>
         <div className="grid gap-3 sm:grid-cols-2">
           <Field label={`Act above ${act.toFixed(2)}`} htmlFor="gate-act">
-            <input id="gate-act" type="range" min={0.5} max={0.99} step={0.01} value={act} onChange={(e) => { const v = Number(e.target.value); setAct(v); if (human > v) setHuman(v); }} className="accent-foreground" />
+            <input id="gate-act" type="range" min={0.5} max={0.99} step={0.01} value={act} onChange={(e) => { const v = Number(e.target.value); setAct(v); if (human > v) setHuman(v); }} className="accent-emerald-500" />
           </Field>
           <Field label={`Human below ${human.toFixed(2)}`} htmlFor="gate-human">
-            <input id="gate-human" type="range" min={0} max={0.99} step={0.01} value={human} onChange={(e) => setHuman(Math.min(Number(e.target.value), act))} className="accent-foreground" />
+            <input id="gate-human" type="range" min={0} max={0.99} step={0.01} value={human} onChange={(e) => setHuman(Math.min(Number(e.target.value), act))} className="accent-rose-500" />
           </Field>
         </div>
         <RunBar onRun={run} busy={req.busy} disabled={!text.trim()} label="Decide" busyLabel="Deciding" />
@@ -340,6 +343,7 @@ export function GateDemo() {
         <Verdict label={`${a.choice.toUpperCase()} · p ${p.toFixed(2)}`} tone={lane === "act" ? "go" : lane === "confirm" ? "wait" : "stop"}>
           {LANES.find((l) => l.id === lane)?.label.toLowerCase()}
         </Verdict>
+        <VizFrame><GateTrack p={p} act={act} human={human} /></VizFrame>
         <div className="flex flex-col gap-2" role="list" aria-label="Lanes">
           {LANES.map((l) => (
             <div key={l.id} role="listitem" className={`flex items-baseline justify-between rounded-md border px-3 py-2 text-[13px] transition-opacity ${l.id === lane ? `${l.tone} font-medium` : "border-border opacity-50"}`}>
@@ -349,7 +353,7 @@ export function GateDemo() {
         </div>
         <ResultCard title={<>action · choice · <Latency r={req.result} /></>}><AnswerBars answer={a} /></ResultCard>
         <p className="text-[12px] leading-5 text-muted-foreground">The thresholds are your policy, not the model&apos;s: it returns a calibrated probability for the top option, and you decide how sure is sure enough to act. Move the sliders; the lane updates without a new request.</p>
-      </> : <Empty>Decide to see the top option, its probability, and which lane your thresholds put it in.</Empty>}
+      </> : req.busy ? <Shimmer tall /> : <Empty>Decide to see the top option, its probability, and which lane your thresholds put it in.</Empty>}
     />
   );
 }

@@ -58,7 +58,7 @@ export function Presets<T extends { name: string }>({ presets, current, onPick }
       <span className="text-muted-foreground">Examples:</span>
       {presets.map((p, i) => (
         <button key={p.name} type="button" onClick={() => onPick(i)} aria-pressed={i === current}
-          className={`border-b pb-0.5 transition-colors ${i === current ? "border-foreground text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}>
+          className={`rounded-full border px-3 py-1 transition-colors ${i === current ? "border-(--demo) bg-(--demo-soft) text-foreground" : "border-border text-muted-foreground hover:border-(--demo-line) hover:text-foreground"}`}>
           {p.name}
         </button>
       ))}
@@ -66,12 +66,14 @@ export function Presets<T extends { name: string }>({ presets, current, onPick }
   );
 }
 
+export const accentButton = "h-9 rounded-lg bg-(--demo) px-4 text-white shadow-sm transition-transform hover:-translate-y-px hover:bg-(--demo) hover:opacity-90 active:translate-y-0";
+
 export function RunBar({ onRun, busy, label = "Run", busyLabel = "Running", disabled, children }: {
   onRun: () => void; busy: boolean; label?: string; busyLabel?: string; disabled?: boolean; children?: ReactNode;
 }) {
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <Button onClick={onRun} disabled={busy || disabled} className="rounded-md">{busy ? busyLabel : label}</Button>
+      <Button onClick={onRun} disabled={busy || disabled} className={accentButton}>{busy ? busyLabel : label}</Button>
       {children}
     </div>
   );
@@ -83,7 +85,7 @@ export function ErrorNote({ error }: { error: unknown }) {
 }
 
 export function Empty({ children }: { children: ReactNode }) {
-  return <p className="rounded-lg border border-dashed border-border p-6 text-center text-[13px] text-muted-foreground">{children}</p>;
+  return <p className="rounded-2xl border border-dashed border-(--demo-line) bg-(--demo-soft) p-8 text-center text-[13px] text-muted-foreground">{children}</p>;
 }
 
 /** The big outcome line: a verdict plus a short reason. */
@@ -118,7 +120,7 @@ export function DemoGrid({ left, right }: { left: ReactNode; right: ReactNode })
 
 export function ResultCard({ title, children }: { title: ReactNode; children: ReactNode }) {
   return (
-    <section className="rounded-md border border-border bg-card px-4 py-3">
+    <section className="rounded-xl border border-border bg-card px-4 py-3 shadow-xs">
       <h4 className="mb-2 text-[12px] text-muted-foreground">{title}</h4>
       {children}
     </section>

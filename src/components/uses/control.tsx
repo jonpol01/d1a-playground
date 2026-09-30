@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Answer, Question } from "@/lib/kev";
 import { Button } from "@/components/ui/button";
-import { AnswerBars, ask, ErrorNote, ResultCard } from "@/components/uses/shared";
+import { accentButton, AnswerBars, ask, ErrorNote, ResultCard } from "@/components/uses/shared";
 
 const CELLS = 21;          // cells 0..20
 const TICK_MS = 100;       // the control loop runs at 10 Hz; a tick with a request still in flight is skipped, never queued
@@ -34,7 +34,7 @@ export function ControlDemo() {
   const [stats, setStats] = useState<Stats>(ZERO);
   const [error, setError] = useState<unknown>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
-  const world = useRef({ robot: 3, target: 15, vel: 1, inFlight: false, lat: [] as number[], t0: 0, tick: 0, s: ZERO, timer: 0 as number | ReturnType<typeof setInterval>, alive: true });
+  const world = useRef({ robot: 3, target: 15, vel: 1, inFlight: false, trail: [] as number[], hud: "press Start", hudRight: "", lat: [] as number[], t0: 0, tick: 0, s: ZERO, timer: 0 as number | ReturnType<typeof setInterval>, alive: true });
 
   function draw() {
     const c = canvas.current;
@@ -42,21 +42,44 @@ export function ControlDemo() {
     const ctx = c.getContext("2d");
     if (!ctx) return;
     const w = world.current;
-    const fg = getComputedStyle(c).color;
-    const W = c.width, H = c.height, cw = W / CELLS;
-    ctx.clearRect(0, 0, W, H);
-    ctx.globalAlpha = 0.25; ctx.fillStyle = fg;
-    for (let i = 0; i < CELLS; i++) ctx.fillRect(i * cw + cw / 2 - 1, H - 22, 2, 8);
-    ctx.fillRect(0, H - 15, W, 1);
-    ctx.globalAlpha = 1;
-    ctx.fillStyle = "#10b981";
-    ctx.beginPath(); ctx.arc(w.target * cw + cw / 2, H / 2 - 12, cw * 0.32, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = fg;
-    const s = cw * 0.55;
-    ctx.fillRect(w.robot * cw + cw / 2 - s / 2, H / 2 - 12 - s / 2, s, s);
-    ctx.font = "11px ui-monospace, monospace"; ctx.globalAlpha = 0.6;
-    ctx.fillText("0", 4, H - 2); ctx.fillText(String(CELLS - 1), W - 16, H - 2);
-    ctx.globalAlpha = 1;
+    const W = c.width, H = c.height, cw = W / CELLS, ty = H - 46, y = ty - 34;
+    const bg = ctx.createLinearGradient(0, 0, W, H);
+    bg.addColorStop(0, "#1e1b4b"); bg.addColorStop(0.6, "#3b0764"); bg.addColorStop(1, "#831843");
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+    for (let i = 0; i < 40; i++) {   // fixed starfield
+      ctx.fillStyle = `rgba(255,255,255,${0.15 + ((i * 53) % 10) / 25})`;
+      ctx.fillRect((i * 197) % W, (i * 71) % (ty - 50), 2, 2);
+    }
+    ctx.fillStyle = "rgba(255,255,255,0.10)";
+    ctx.beginPath(); ctx.roundRect(8, ty, W - 16, 14, 7); ctx.fill();
+    for (let i = 0; i < CELLS; i++) {
+      ctx.fillStyle = i === w.target ? "#fbbf24" : "rgba(255,255,255,0.35)";
+      ctx.beginPath(); ctx.arc(i * cw + cw / 2, ty + 7, 2.5, 0, Math.PI * 2); ctx.fill();
+    }
+    w.trail.forEach((x, k) => {   // fading trail of the robot's last cells
+      ctx.fillStyle = `rgba(244,114,182,${((k + 1) / w.trail.length) * 0.35})`;
+      ctx.beginPath(); ctx.arc(x * cw + cw / 2, y, cw * 0.18 + k, 0, Math.PI * 2); ctx.fill();
+    });
+    ctx.save();
+    ctx.shadowColor = "#fbbf24"; ctx.shadowBlur = 24; ctx.fillStyle = "#fbbf24";
+    const tx = w.target * cw + cw / 2;
+    ctx.beginPath();
+    for (let k = 0; k < 10; k++) {   // a star for the target
+      const r = k % 2 ? cw * 0.18 : cw * 0.42, a = -Math.PI / 2 + (k * Math.PI) / 5;
+      ctx.lineTo(tx + Math.cos(a) * r, y - 26 + Math.sin(a) * r);
+    }
+    ctx.closePath(); ctx.fill(); ctx.restore();
+    const rx = w.robot * cw + cw / 2, s = cw * 0.62;
+    ctx.save(); ctx.shadowColor = "#f472b6"; ctx.shadowBlur = 18; ctx.fillStyle = "#f472b6";
+    ctx.beginPath(); ctx.roundRect(rx - s / 2, y - s / 2, s, s, 8); ctx.fill(); ctx.restore();
+    ctx.fillStyle = "#1e1b4b";
+    const look = w.target === w.robot ? 0 : w.target > w.robot ? 3 : -3;
+    ctx.beginPath(); ctx.arc(rx - 6 + look, y - 3, 3, 0, Math.PI * 2); ctx.arc(rx + 6 + look, y - 3, 3, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,0.9)"; ctx.font = "600 13px ui-monospace, monospace";
+    ctx.fillText(w.hud, 14, 22);
+    ctx.textAlign = "right"; ctx.fillText(w.hudRight, W - 14, 22); ctx.textAlign = "left";
+    ctx.fillStyle = "rgba(255,255,255,0.5)"; ctx.font = "11px ui-monospace, monospace";
+    ctx.fillText("0", 12, H - 10); ctx.textAlign = "right"; ctx.fillText(String(CELLS - 1), W - 12, H - 10); ctx.textAlign = "left";
   }
 
   useEffect(() => {
@@ -73,9 +96,12 @@ export function ControlDemo() {
     ask(state, MOVE_Q).then((r) => {
       if (!w.alive || !w.timer) return;
       const a = r.answers.move;
+      w.trail.push(w.robot); if (w.trail.length > 6) w.trail.shift();
       if (a.type === "choice") w.robot = Math.max(0, Math.min(CELLS - 1, w.robot + (a.choice === "left" ? -1 : a.choice === "right" ? 1 : 0)));
+      if (a.type === "choice") w.hud = `${a.choice.toUpperCase()}  p ${a.probabilities[a.choice].toFixed(2)}  ·  ${r.latency_ms.toFixed(0)} ms`;
       w.lat.push(r.latency_ms); if (w.lat.length > 20) w.lat.shift();
       const elapsed = (performance.now() - w.t0) / 1000;
+      w.hudRight = `${((w.s.decisions + 1) / ((performance.now() - w.t0) / 1000)).toFixed(1)} decisions/s`;
       w.s = { ...w.s, decisions: w.s.decisions + 1, lastMs: r.latency_ms, avgMs: w.lat.reduce((x, y) => x + y, 0) / w.lat.length, rate: (w.s.decisions + 1) / elapsed, last: a, lastState: state };
       setStats(w.s);
       draw();
@@ -86,7 +112,7 @@ export function ControlDemo() {
   function start() {
     const w = world.current;
     setError(null);
-    w.s = ZERO; w.lat = []; w.t0 = performance.now(); w.tick = 0;
+    w.s = ZERO; w.lat = []; w.trail = []; w.t0 = performance.now(); w.tick = 0; w.hud = "thinking…"; w.hudRight = "";
     setStats(ZERO); setRunning(true);
     const useHint = hint;
     w.timer = setInterval(() => {
@@ -114,13 +140,13 @@ export function ControlDemo() {
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center gap-4">
-        <Button onClick={running ? stop : start} className="rounded-md">{running ? "Stop" : "Start"}</Button>
+        <Button onClick={running ? stop : start} className={accentButton}>{running ? "Stop" : "Start"}</Button>
         <label className="flex items-center gap-2 text-[13px] text-muted-foreground">
           <input type="checkbox" checked={hint} disabled={running} onChange={(e) => setHint(e.target.checked)} className="accent-foreground" />
           spell out the direction in the state (off: positions only)
         </label>
       </div>
-      <canvas ref={canvas} width={840} height={110} className="h-auto w-full rounded-md border border-border bg-card text-foreground" aria-label="Robot (square) chasing the target (green dot) on a 1-D track" />
+      <canvas ref={canvas} width={840} height={170} className="h-auto w-full rounded-2xl shadow-lg" aria-label="Robot (square) chasing the target (green dot) on a 1-D track" />
       <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-[13px] sm:grid-cols-5">
         {[
           ["last decision", stats.decisions ? `${stats.lastMs.toFixed(0)} ms` : "–"],

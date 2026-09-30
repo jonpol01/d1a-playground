@@ -16,11 +16,11 @@ D1A is built on [Kev](https://github.com/jaredpalmer/kev) by Jared Palmer (Apach
 | 4 | Inbox triage | `reply_now`, `later` or `archive` for each of eight emails, sorted | the production outage and the manager's deadline on top; the receipt and the flight sale archived |
 | 5 | Reranking | p(this passage answers the query) for six passages, re-sorted | the "recover with phone" passage moves from #3 to #1 (0.77) |
 | 6 | LLM evals | A 1–5 grade for an LLM answer, with the whole distribution | correct answer 4.7 / 5; wrong answer 3.0 / 5, spread across levels |
-| 7 | Bulk labeling | `positive`, `neutral` or `negative` for 30 product reviews, with a p(label) column | 30 rows in about 7 s at 3 requests in flight; the two rows below 0.60 are flagged for a human |
-| 8 | Real-time control | `left`, `right` or `stay` for a robot chasing a target, every tick | about 3 decisions per second at 250–300 ms each; ticks in between are skipped, never queued |
+| 7 | Bulk labeling | `positive`, `neutral` or `negative` for 30 product reviews, with a p(label) column | 30 rows in 7–13 s at 3 requests in flight; the two rows below 0.60 are flagged for a human |
+| 8 | Real-time control | `left`, `right` or `stay` for a robot chasing a target, every tick | 2–3 decisions per second at 250–450 ms each; ticks in between are skipped, never queued |
 | 9 | Confidence gate | One question; your two thresholds put the answer in *act*, *act and confirm* or *send to a human* | a clear refund → refund (0.75), confirm lane; an ambiguous one → replace (0.41), human lane |
 
-The numbers are from one run on an M1 Max; yours will differ a little. Screenshots of every demo are in [docs/screenshots](docs/screenshots).
+The numbers are from runs on an M1 Max; yours will differ a little. Each demo has its own picture of the answer (a lit route, a shield, a traffic light, inbox trays, sliding search results, stars, a progress ring, a little arcade robot, a slider track), and the probability bars stay underneath it. Screenshots of every demo, in light mode plus one on a phone in dark mode, are in [docs/screenshots](docs/screenshots).
 
 ## Quick Start
 
