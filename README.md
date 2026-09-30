@@ -136,11 +136,11 @@ The UI is in Japanese by default, with an EN / JA switch in the header; the choi
 
 ## Self-hosting on a Mac
 
-`mini.sh` runs the playground as an always-on service: the model server and a production build of the web app as two user LaunchAgents (`io.github.jonpol01.d1a-model` and `io.github.jonpol01.d1a-web`) that start at login and restart after a crash. It needs [Homebrew](https://brew.sh) `node` and `uv`.
+`mini.sh` runs the playground as an always-on service: the model server and a production build of the web app as two user LaunchAgents (`io.github.jonpol01.d1a-model` and `io.github.jonpol01.d1a-web`) that start at login and restart after a crash. On Apple Silicon the model server runs [JohnP1/d1a-e2b-mlx-q8](https://huggingface.co/JohnP1/d1a-e2b-mlx-q8) on MLX (about 4 GB of memory); elsewhere the PyTorch checkpoint JohnP1/d1a-e2b. It needs [Homebrew](https://brew.sh) `node` and `uv`.
 
 ```bash
 git clone https://github.com/jonpol01/d1a-playground.git ~/d1a-playground && cd ~/d1a-playground
-./mini.sh install    # model server into .demo/venv, npm ci + build, write and load the LaunchAgents
+./mini.sh install    # D1A model server into .demo/d1a-venv, npm ci + build, write and load the LaunchAgents
 ./mini.sh status     # what is loaded and whether both ports answer
 ./mini.sh stop       # unload both;  ./mini.sh start loads them again
 ./mini.sh update     # git pull, reinstall, rebuild, restart

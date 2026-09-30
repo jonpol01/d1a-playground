@@ -10,7 +10,7 @@
 #
 # Settings (read by install and update, then kept in .demo/mini.env):
 #   KEV_PORT=8009  PORT=3031  HOST=127.0.0.1 (0.0.0.0 to serve the LAN directly)  D1A_BASE_PATH= (e.g. /d1a behind a proxy)
-#   PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.7  PYTORCH_MPS_LOW_WATERMARK_RATIO=0.6  (cap on PyTorch's share of unified memory)
+#   PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.7  PYTORCH_MPS_LOW_WATERMARK_RATIO=0.6  (cap on PyTorch's share of unified memory; unused on MLX)
 #   KEV_PREFIX_CACHE=4  KEV_PREFIX_MAX_TOKENS=65536  (the model server's cache of long states; lower them to save memory)
 set -euo pipefail
 
@@ -21,9 +21,10 @@ AGENTS="$HOME/Library/LaunchAgents"
 LOGS="$HOME/Library/Logs"
 MODEL_LABEL="io.github.jonpol01.d1a-model"
 WEB_LABEL="io.github.jonpol01.d1a-web"
-KEV_RUN="JohnP1/d1a-e2b"
-KEV_REPO="https://github.com/jonpol01/kev"
-KEV_SHA="$(sed -n 's/^KEV_SHA="\([0-9a-f]*\)".*/\1/p' "$ROOT/demo.sh")"   # the same pinned model server as demo.sh
+# the model: the MLX 8-bit build on Apple Silicon (4.2 GB, parity-checked), the PyTorch checkpoint elsewhere
+if [ "$(uname -sm)" = "Darwin arm64" ]; then MODEL_RUN="JohnP1/d1a-e2b-mlx-q8"; else MODEL_RUN="JohnP1/d1a-e2b"; fi
+D1A_REPO="https://github.com/jonpol01/d1a"
+D1A_SHA="67bc69ad6cc641bf450c43896e485d86fb2f0a3a"   # the D1A model server this playground is tested against
 PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 
 say() { printf '\033[1m[mini]\033[0m %s\n' "$*"; }
@@ -57,9 +58,9 @@ domain() { if launchctl print "gui/$(id -u)" >/dev/null 2>&1; then echo "gui/$(i
 install_code() {
   command -v uv >/dev/null || die "uv is missing (brew install uv)"
   command -v node >/dev/null || die "node is missing (brew install node)"
-  say "model server: kev[serve] from $KEV_REPO@${KEV_SHA:0:7} into .demo/venv"
-  uv venv --quiet --allow-existing --python 3.13 "$STATE/venv"
-  uv pip install --quiet --python "$STATE/venv/bin/python" --torch-backend auto "kev[serve] @ git+$KEV_REPO@$KEV_SHA"
+  say "model server: d1a[serve] from $D1A_REPO@${D1A_SHA:0:7} into .demo/d1a-venv ($MODEL_RUN)"
+  uv venv --quiet --allow-existing --python 3.12 "$STATE/d1a-venv"
+  uv pip install --quiet --python "$STATE/d1a-venv/bin/python" --torch-backend auto "d1a[serve] @ git+$D1A_REPO@$D1A_SHA"
   say "web app: npm ci and a production build${D1A_BASE_PATH:+ under $D1A_BASE_PATH}"
   (cd "$ROOT" && npm ci --no-audit --no-fund --loglevel=error && D1A_BASE_PATH="$D1A_BASE_PATH" npm run build >/dev/null)
 }
@@ -96,10 +97,10 @@ write_agents() {
   ENV_XML="    <key>PATH</key><string>$path</string>
     <key>PYTORCH_MPS_HIGH_WATERMARK_RATIO</key><string>$PYTORCH_MPS_HIGH_WATERMARK_RATIO</string>
     <key>PYTORCH_MPS_LOW_WATERMARK_RATIO</key><string>$PYTORCH_MPS_LOW_WATERMARK_RATIO</string>
-    <key>KEV_PREFIX_CACHE</key><string>$KEV_PREFIX_CACHE</string>
-    <key>KEV_PREFIX_MAX_TOKENS</key><string>$KEV_PREFIX_MAX_TOKENS</string>
+    <key>D1A_PREFIX_CACHE</key><string>$KEV_PREFIX_CACHE</string>
+    <key>D1A_PREFIX_MAX_TOKENS</key><string>$KEV_PREFIX_MAX_TOKENS</string>
 "
-  plist "$MODEL_LABEL" "$STATE/venv/bin/python" -m kev.serve --run "$KEV_RUN" --port "$KEV_PORT" --host 127.0.0.1 >"$AGENTS/$MODEL_LABEL.plist"
+  plist "$MODEL_LABEL" "$STATE/d1a-venv/bin/python" -m d1a.serve --run "$MODEL_RUN" --port "$KEV_PORT" --host 127.0.0.1 >"$AGENTS/$MODEL_LABEL.plist"
   ENV_XML="    <key>PATH</key><string>$path</string>
     <key>NODE_ENV</key><string>production</string>
     <key>KEV_API</key><string>http://127.0.0.1:$KEV_PORT</string>
@@ -114,6 +115,7 @@ start() {
   for l in "$MODEL_LABEL" "$WEB_LABEL"; do
     launchctl bootout "$d/$l" 2>/dev/null || true
     launchctl bootstrap "$d" "$AGENTS/$l.plist"
+    launchctl kickstart "$d/$l"   # a bootstrap right after a bootout can leave the agent loaded but not running
   done
   say "started; logs in $LOGS/d1a-model.log and $LOGS/d1a-web.log (the model takes about a minute to load)"
 }
@@ -142,7 +144,7 @@ case "${1:-status}" in
   status) status ;;
   update)
     git -C "$ROOT" pull --ff-only
-    KEV_SHA="$(sed -n 's/^KEV_SHA="\([0-9a-f]*\)".*/\1/p' "$ROOT/demo.sh")"
+    D1A_SHA="$(sed -n 's/^D1A_SHA="\([0-9a-f]*\)".*/\1/p' "$ROOT/mini.sh")"   # the pin the pull brought
     stop; install_code; write_agents; start ;;
   *) die "usage: ./mini.sh {install|start|stop|status|update}" ;;
 esac
