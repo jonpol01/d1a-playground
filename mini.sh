@@ -10,6 +10,7 @@
 #   ./mini.sh reinstall reinstall and rebuild, restart (no pull)
 #
 # Settings (read by install and update, then kept in .demo/mini.env):
+#   MODEL_RUN=JohnP1/d1a-e2b-mlx-q8 (Apple Silicon; JohnP1/d1a-e4b-mlx-q8 is more accurate, ~6.5 GB) or JohnP1/d1a-e2b elsewhere
 #   KEV_PORT=8009  PORT=3031  HOST=127.0.0.1 (0.0.0.0 to serve the LAN directly)  D1A_BASE_PATH= (e.g. /d1a behind a proxy)
 #   PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.7  PYTORCH_MPS_LOW_WATERMARK_RATIO=0.6  (cap on PyTorch's share of unified memory; unused on MLX)
 #   KEV_PREFIX_CACHE=4  KEV_PREFIX_MAX_TOKENS=65536  (the model server's cache of long states; lower them to save memory)
@@ -22,8 +23,8 @@ AGENTS="$HOME/Library/LaunchAgents"
 LOGS="$HOME/Library/Logs"
 MODEL_LABEL="io.github.jonpol01.d1a-model"
 WEB_LABEL="io.github.jonpol01.d1a-web"
-# the model: the MLX 8-bit build on Apple Silicon (4.2 GB, parity-checked), the PyTorch checkpoint elsewhere
-if [ "$(uname -sm)" = "Darwin arm64" ]; then MODEL_RUN="JohnP1/d1a-e2b-mlx-q8"; else MODEL_RUN="JohnP1/d1a-e2b"; fi
+# the default model: the MLX 8-bit build on Apple Silicon (4.2 GB, parity-checked), the PyTorch checkpoint elsewhere
+if [ "$(uname -sm)" = "Darwin arm64" ]; then DEFAULT_MODEL_RUN="JohnP1/d1a-e2b-mlx-q8"; else DEFAULT_MODEL_RUN="JohnP1/d1a-e2b"; fi
 D1A_REPO="https://github.com/jonpol01/d1a"
 D1A_SHA="0c6103bd8e4abe7f6475cd277a9ce29d3089dc53"   # the D1A model server this playground is tested against
 PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
@@ -34,7 +35,7 @@ die() { printf '\033[31m[mini] error:\033[0m %s\n' "$*" >&2; exit 1; }
 load_env() {
   # shellcheck disable=SC1090
   [ -f "$ENVFILE" ] && . "$ENVFILE"
-  KEV_PORT="${KEV_PORT:-8009}"; PORT="${PORT:-3031}"; HOST="${HOST:-127.0.0.1}"; D1A_BASE_PATH="${D1A_BASE_PATH:-}"
+  MODEL_RUN="${MODEL_RUN:-$DEFAULT_MODEL_RUN}"; KEV_PORT="${KEV_PORT:-8009}"; PORT="${PORT:-3031}"; HOST="${HOST:-127.0.0.1}"; D1A_BASE_PATH="${D1A_BASE_PATH:-}"
   PYTORCH_MPS_HIGH_WATERMARK_RATIO="${PYTORCH_MPS_HIGH_WATERMARK_RATIO:-0.7}"
   PYTORCH_MPS_LOW_WATERMARK_RATIO="${PYTORCH_MPS_LOW_WATERMARK_RATIO:-0.6}"
   KEV_PREFIX_CACHE="${KEV_PREFIX_CACHE:-4}"; KEV_PREFIX_MAX_TOKENS="${KEV_PREFIX_MAX_TOKENS:-65536}"
@@ -43,6 +44,7 @@ load_env() {
 save_env() {
   mkdir -p "$STATE"
   cat >"$ENVFILE" <<EOF
+MODEL_RUN=$MODEL_RUN
 KEV_PORT=$KEV_PORT
 PORT=$PORT
 HOST=$HOST
