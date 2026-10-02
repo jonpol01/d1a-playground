@@ -72,7 +72,7 @@ git clone https://github.com/jonpol01/d1a-playground.git; cd d1a-playground
 powershell -ExecutionPolicy Bypass -File .\demo.ps1
 ```
 
-スクリプトはモデルサーバーを `.demo/venv` にインストールし（[jonpol01/kev](https://github.com/jonpol01/kev) のコミットに固定）、ポート 8009 で起動し、Web アプリをポート 3001（使用中なら 3011、3021〜3030）で起動してブラウザを開きます。初回は Python パッケージ約 1 GB とモデル約 10 GB をダウンロードします。2回目以降は約 20 秒で起動します。ログは `.demo/` に出ます。Ctrl+C ですべて止まります。ターミナルを閉じてしまった場合は `./demo.sh stop`（または `.\demo.ps1 stop`）で止められます。
+スクリプトは D1A のモデルサーバーを `.demo/venv` にインストールし（[jonpol01/d1a](https://github.com/jonpol01/d1a) のコミットに固定）、ポート 8009 で起動し、Web アプリをポート 3001（使用中なら 3011、3021〜3030）で起動してブラウザを開きます。Apple Silicon では 8 ビットの MLX 版（`JohnP1/d1a-e2b-mlx-q8`、ダウンロード約 4 GB、メモリ 3 GB）を、それ以外では PyTorch のチェックポイント `JohnP1/d1a-e2b`（Gemma 4 E2B 約 10 GB をダウンロード）を使います。初回は Python パッケージ約 1 GB もダウンロードし、2回目以降は数秒で起動します。`--media` を付けると、写真チェックと音声トリアージ用の写真・音声サーバーも起動します（最初の写真または音声のリクエストでモデル約 10 GB を読み込みます）。`MODEL_RUN` で別のチェックポイントを選べます（例: `MODEL_RUN=JohnP1/d1a-e4b-mlx-q8@v0.2-hybrid`）。ログは `.demo/` に出ます。Ctrl+C ですべて止まります。ターミナルを閉じてしまった場合は `./demo.sh stop`（または `.\demo.ps1 stop`）で止められます。
 
 ### 写真チェックと音声トリアージ
 
