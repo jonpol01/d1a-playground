@@ -143,6 +143,10 @@ git clone https://github.com/jonpol01/d1a-playground.git ~/d1a-playground && cd 
 
 メモリや速度の目安、LM Studio モード、制限事項、トラブルシューティング、開発手順は [README.md](README.md)（英語）を参照してください。要点: モデルサーバーはアイドル時に約 12 GB、ピーク時に約 15 GB のメモリを使います（M1 Max 64 GB で計測）。チェックポイントは英語データで学習した1エポックのプロトタイプです。
 
+## リリース
+
+バージョンは [セマンティック バージョニング](https://semver.org/lang/ja/) に従い、[GitHub](https://github.com/jonpol01/d1a-playground/releases) で公開します。各バージョンの変更点は [CHANGELOG.md](CHANGELOG.md)（英語）にあります。リリースの手順: CHANGELOG.md にそのバージョンの節を手で書き、`package.json` に同じバージョンを設定し（`npm version X.Y.Z --no-git-tag-version`）、マージしてからタグ `vX.Y.Z` を push します。CI が3つの一致を確認し、アプリをビルドして、その節を本文にしたリリースを公開します。
+
 ## クレジットとライセンス
 
 - Jared Palmer による [Kev](https://github.com/jaredpalmer/kev)（Apache-2.0）: モデルの構造、学習と配信のコード、System One API のクライアント、このアプリの元になったプレイグラウンド。変更して取り込んだファイルにはその旨のヘッダーがあり、[NOTICE](NOTICE) に一覧があります。

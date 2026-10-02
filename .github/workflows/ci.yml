@@ -1,0 +1,36 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web:
+    name: lint, type check and build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npx next typegen && npx tsc --noEmit -p .
+      - run: npm run build
+      # the Mac mini serves the app under /d1a behind a proxy (mini.sh, D1A_BASE_PATH): that build must work too
+      - run: D1A_BASE_PATH=/d1a npm run build
+
+  scripts:
+    name: scripts and release notes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: bash -n demo.sh && bash -n mini.sh
+      - run: python3 -m py_compile server/lmstudio_systemone.py server/kev/api.py
+      - run: python3 scripts/release_notes.py --check "v$(python3 -c "import json; print(json.load(open('package.json'))['version'])")"
