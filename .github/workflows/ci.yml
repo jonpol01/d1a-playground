@@ -35,5 +35,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: bash -n demo.sh && bash -n mini.sh
+      - name: demo.ps1 parses (PowerShell)
+        shell: pwsh
+        run: |
+          $errors = $null
+          [void][System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path demo.ps1), [ref]$null, [ref]$errors)
+          if ($errors) { $errors | ForEach-Object { "demo.ps1:$($_.Extent.StartLineNumber): $($_.Message)" }; exit 1 }
       - run: python3 -m py_compile server/lmstudio_systemone.py server/kev/api.py
       - run: python3 scripts/release_notes.py --check "v$(python3 -c "import json; print(json.load(open('package.json'))['version'])")"

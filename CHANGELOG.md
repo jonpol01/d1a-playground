@@ -12,6 +12,18 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- `demo.sh` and `demo.ps1` install and run the D1A model server instead of the Kev fork's: on Apple Silicon the 8-bit
+  MLX build (about 4 GB to download instead of 10 GB), elsewhere the PyTorch checkpoint; `MODEL_RUN` picks another one.
+  `--media` also starts the photo and voice server, so the one-command setup runs all eleven demos.
+
+### Changed
+
+- `mini.sh` and the demo scripts pin D1A `d659835`, which reads Gemma 4's per-layer embeddings from disk (about 1.5 GB
+  less memory for the E4B model on the Mac mini).
+- CI also checks that `demo.ps1` parses.
+
 ## [0.2.0] - 2026-10-02
 
 Eleven demos instead of nine: D1A now also answers questions about a photo or a voice note. The playground runs as an

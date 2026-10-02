@@ -92,7 +92,7 @@ git clone https://github.com/jonpol01/d1a-playground.git; cd d1a-playground
 powershell -ExecutionPolicy Bypass -File .\demo.ps1
 ```
 
-The script installs the model server into `.demo/venv` (from [jonpol01/kev](https://github.com/jonpol01/kev), pinned to a commit), starts it on port 8009, starts the web app on port 3001 (or 3011, or 3021–3030 if those are busy), and opens your browser. The first run downloads about 1 GB of Python packages and the model (about 10 GB); after that a start takes about 20 seconds. Logs go to `.demo/`. Ctrl+C stops everything, and `./demo.sh stop` (or `.\demo.ps1 stop`) stops a run whose terminal you closed.
+The script installs the D1A model server into `.demo/venv` (from [jonpol01/d1a](https://github.com/jonpol01/d1a), pinned to a commit), starts it on port 8009, starts the web app on port 3001 (or 3011, or 3021–3030 if those are busy), and opens your browser. On Apple Silicon it serves the 8-bit MLX build (`JohnP1/d1a-e2b-mlx-q8`, about 4 GB to download, 3 GB of memory); elsewhere the PyTorch checkpoint `JohnP1/d1a-e2b`, which downloads Gemma 4 E2B (about 10 GB). The first run also downloads about 1 GB of Python packages; after that a start takes seconds. Add `--media` to also start the photo and voice server for Photo check and Voice triage (it loads its model, about 10 GB, on the first photo or voice request). `MODEL_RUN` picks another checkpoint, for example `MODEL_RUN=JohnP1/d1a-e4b-mlx-q8@v0.2-hybrid`. Logs go to `.demo/`. Ctrl+C stops everything, and `./demo.sh stop` (or `.\demo.ps1 stop`) stops a run whose terminal you closed.
 
 ### Photo Check and Voice Triage
 
@@ -118,7 +118,7 @@ Measured on an M1 Max with 64 GB of memory:
 
 ## How It Works
 
-The browser talks only to the web app, a Next.js app that forwards `/kev/*` to the model server (`KEV_API`, default `http://127.0.0.1:8009`), so there is no CORS setup. The model server is Kev's `kev.serve`, which implements TypeSafe's System One API: `POST /v1/systemone` with one `state` (the document: text or JSON) and a set of typed questions, `choice` (named options with descriptions), `noul` (yes/no) and `score` (ordered levels).
+The browser talks only to the web app, a Next.js app that forwards `/kev/*` to the model server (`KEV_API`, default `http://127.0.0.1:8009`), so there is no CORS setup. The model server is `d1a.serve`, which implements TypeSafe's System One API: `POST /v1/systemone` with one `state` (the document: text or JSON) and a set of typed questions, `choice` (named options with descriptions), `noul` (yes/no) and `score` (ordered levels).
 
 It is not a chat model. The checkpoint is a LoRA adapter and a pointer head on Gemma 4 E2B: it reads the state once, answers every question in the same forward pass without letting the questions see each other, and reads a probability for each option directly off the pointer head, with a temperature fitted on held-out data so the probabilities are calibrated. No text is generated, so there is nothing to parse and no format to break.
 
@@ -176,12 +176,12 @@ This runs [server/lmstudio_systemone.py](server/lmstudio_systemone.py), which as
 
 ## Troubleshooting
 
-- **"The model server is not answering"**: the server is not running or is still downloading. Check `.demo/kev-server.log`, or run `./demo.sh` again.
-- **Port busy**: port 8009 must be free or already running a Kev server; the web app picks the first free port of 3001, 3011, 3021–3030. Set `KEV_PORT` or `PORT` to use others.
+- **"The model server is not answering"**: the server is not running or is still downloading. Check `.demo/model-server.log`, or run `./demo.sh` again.
+- **Port busy**: port 8009 must be free or already running a D1A server; the web app picks the first free port of 3001, 3011, 3021–3030. Set `KEV_PORT` or `PORT` to use others.
 - **Out of memory, or the machine swaps hard**: close other apps, or use `--lmstudio`. On Apple Silicon the scripts already cap PyTorch's memory; a lower `PYTORCH_MPS_HIGH_WATERMARK_RATIO` makes it fail earlier instead of swapping.
 - **The page loads but buttons do nothing**: open `http://localhost:<port>`, not `127.0.0.1` or a LAN address. The Next.js dev server only hydrates the pages for hostnames it trusts (`allowedDevOrigins` in `next.config.ts`).
 - **Windows says scripts are disabled**: run it as `powershell -ExecutionPolicy Bypass -File .\demo.ps1`.
-- **Slow on a PC with an NVIDIA GPU**: check the `serving ... on <device>` line in `.demo/kev-server.log`. If it says `cpu`, delete `.demo/venv` and run the script again after updating the NVIDIA driver, so uv picks the CUDA build of PyTorch.
+- **Slow on a PC with an NVIDIA GPU**: check the `serving ... on <device>` line in `.demo/model-server.log`. If it says `cpu`, delete `.demo/venv` and run the script again after updating the NVIDIA driver, so uv picks the CUDA build of PyTorch.
 
 ## The Page
 
