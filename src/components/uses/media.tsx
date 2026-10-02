@@ -56,7 +56,13 @@ function useMediaRequest() {
   const [result, setResult] = useState<SystemOneResponse | null>(null);
   const [error, setError] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
+  const [slow, setSlow] = useState(false);   // still waiting after a few seconds: the server is loading its model
   const seq = useRef(0);
+  useEffect(() => {
+    if (!busy) return;
+    const t = setTimeout(() => setSlow(true), 4000);
+    return () => { clearTimeout(t); setSlow(false); };
+  }, [busy]);
   async function run(media: () => Promise<{ type: "image" | "audio"; data: string }>, questions: Record<string, Question>) {
     const id = ++seq.current;
     setBusy(true); setError(null);
@@ -70,7 +76,7 @@ function useMediaRequest() {
     }
   }
   function reset() { seq.current++; setResult(null); setError(null); setBusy(false); }
-  return { result, error, busy, run, reset };
+  return { result, error, busy, slow, run, reset };
 }
 
 function MediaError({ error }: { error: unknown }) {
@@ -81,6 +87,14 @@ function MediaError({ error }: { error: unknown }) {
   return <p role="alert" className="whitespace-pre-wrap rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-[13px] leading-5 text-destructive">
     {down ? `${lang === "ja" ? "メディア用のモデルサーバーが応答していません。" : "The media model server is not answering."} ${MEDIA_START_HINT[lang]}` : msg}
   </p>;
+}
+
+function WakingNote({ show }: { show: boolean }) {
+  const t = useText({
+    en: "Waking up the photo and voice model: it loads on demand after an idle spell, about 30 s. The next requests take a second or two.",
+    ja: "写真・音声用のモデルを起動しています。しばらく使われないと解放され、必要なときに読み込むため、約 30 秒かかります。次からは1〜2秒です。",
+  });
+  return show ? <p role="status" className="text-[12px] leading-5 text-muted-foreground">{t}</p> : null;
 }
 
 function ZeroShotNote() {
@@ -142,6 +156,7 @@ export function PhotoDemo() {
         {/* eslint-disable-next-line @next/next/no-img-element -- a local sample or a blob: URL, nothing to optimise */}
         <img src={src} alt="" className="aspect-[4/3] w-full rounded-xl border border-border object-cover" />
         <RunBar onRun={run} busy={req.busy} label={t.run} busyLabel={t.busy} />
+        <WakingNote show={req.slow} />
         <MediaError error={req.error} />
       </>}
       right={req.result && a && p !== null ? <>
@@ -233,6 +248,7 @@ export function VoiceDemo() {
         {micError && <p className="text-[12px] text-muted-foreground">{t.micBlocked}</p>}
         <Field label={clip ? t.yours : t.names[CLIPS[ci]]}><audio src={src} controls className="w-full" /></Field>
         <RunBar onRun={run} busy={req.busy} disabled={!!rec} label={t.run} busyLabel={t.busy} />
+        <WakingNote show={req.slow} />
         <MediaError error={req.error} />
       </>}
       right={req.result && a && p !== null ? <>

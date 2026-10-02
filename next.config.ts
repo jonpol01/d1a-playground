@@ -14,6 +14,9 @@ const nextConfig: NextConfig = {
   basePath,
   env: { NEXT_PUBLIC_BASE_PATH: basePath },
   reactCompiler: true,
+  // d1a.media loads its model on the first photo/voice request after an idle spell (15-30 s); the default 30 s proxy
+  // timeout would cut that request off
+  experimental: { proxyTimeout: 120_000 },
   devIndicators: false,
   // Next dev only trusts the hostname it was started with (localhost); without this,
   // opening the app via 127.0.0.1 renders the SSR HTML but never hydrates (no errors, buttons dead).
