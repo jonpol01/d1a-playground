@@ -14,7 +14,8 @@
 #   KEV_PORT=8009  PORT=3031  HOST=127.0.0.1 (0.0.0.0 to serve the LAN directly)  D1A_BASE_PATH= (e.g. /d1a behind a proxy)
 #   PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.7  PYTORCH_MPS_LOW_WATERMARK_RATIO=0.6  (cap on PyTorch's share of unified memory; unused on MLX)
 #   KEV_PREFIX_CACHE=4  KEV_PREFIX_MAX_TOKENS=65536  (the model server's cache of long states; lower them to save memory)
-#   MEDIA=0 (1 = also run d1a.media for demos 10-11; bf16 Gemma 4 with its vision and audio encoders, ~10 GB more memory)
+#   MEDIA=0 (1 = also run d1a.media for demos 10-11; bf16 Gemma 4 with its vision and audio encoders, ~10 GB while loaded:
+#   it loads on the first photo/voice request and frees the memory after 10 idle minutes)
 #   MEDIA_RUN=JohnP1/d1a-e2b@v0.2.1-2epoch-calibrated  MEDIA_PORT=8010
 set -euo pipefail
 
@@ -29,7 +30,7 @@ WEB_LABEL="io.github.jonpol01.d1a-web"
 # the default model: the MLX 8-bit build on Apple Silicon (4.2 GB, parity-checked), the PyTorch checkpoint elsewhere
 if [ "$(uname -sm)" = "Darwin arm64" ]; then DEFAULT_MODEL_RUN="JohnP1/d1a-e2b-mlx-q8"; else DEFAULT_MODEL_RUN="JohnP1/d1a-e2b"; fi
 D1A_REPO="https://github.com/jonpol01/d1a"
-D1A_SHA="e393be776da46c3ab2043f284c3d966108c89eba"   # the D1A model server this playground is tested against
+D1A_SHA="760613611b39f543ca428d18bba49f30122a8899"   # the D1A model server this playground is tested against
 PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 
 say() { printf '\033[1m[mini]\033[0m %s\n' "$*"; }
