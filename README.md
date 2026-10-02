@@ -1,14 +1,14 @@
-# D1A playground — eleven use cases
+# D1A playground — twelve use cases
 
 [日本語](README.ja.md)
 
-A small decision model reads one document, answers a few typed questions about it, and returns a probability for every option. This playground runs eleven real jobs on that idea, live, on your own machine: routing prompts to a model tier, blocking prompt injections, gating an agent's tool calls, triaging an inbox, reranking search results, grading LLM answers, labelling a table, steering a robot in real time, deciding when to act and when to ask a human, and, from a photo or a voice note, checking a delivery for damage and triaging a driver's message. Every example is editable, and every answer shows the full probability distribution behind it.
+A small decision model reads one document, answers a few typed questions about it, and returns a probability for every option. This playground runs twelve real jobs on that idea, live, on your own machine: routing prompts to a model tier, blocking prompt injections, gating an agent's tool calls, triaging an inbox, reranking search results, grading LLM answers, labelling a table, steering a robot in real time, deciding when to act and when to ask a human, and, from a photo or a voice note, checking a delivery for damage and triaging a driver's message, and labeling pull requests. Every example is editable, and every answer shows the full probability distribution behind it.
 
 D1A is built on [Kev](https://github.com/jaredpalmer/kev) by Jared Palmer (Apache-2.0). D1A is not affiliated with or endorsed by Jared Palmer or the Kev project. The playground serves D1A-E2B v0.1, a one-epoch model on Gemma 4 E2B ([JohnP1/d1a-e2b](https://huggingface.co/JohnP1/d1a-e2b), tag `v0.1-1epoch`; formerly JohnP1/kev-gemma4-e2b), trained with the Gemma 4 support in the fork [jonpol01/kev](https://github.com/jonpol01/kev).
 
 ![The nine demos, one after another, each with the live model's answer](docs/demos.gif)
 
-## The Eleven Demos
+## The Twelve Demos
 
 | # | Demo | What the model decides | Example answer from the live prototype |
 |---|---|---|---|
@@ -23,6 +23,7 @@ D1A is built on [Kev](https://github.com/jaredpalmer/kev) by Jared Palmer (Apach
 | 9 | Confidence gate | One question; your two thresholds put the answer in *act*, *act and confirm* or *send to a human* | a clear refund → refund (0.75), confirm lane; an ambiguous one → replace (0.41), human lane |
 | 10 | Photo check | From a delivery photo: is the parcel damaged (`noul`), and where was it left (five places) | a wet, torn box on a sidewalk → damaged (0.89), on a sidewalk (0.78); the locker photo → 0.57, "check by hand" |
 | 11 | Voice triage | From a short voice note, EN or JA, with no speech-to-text: is it urgent, and what does the speaker need | 「高速道路でタイヤがパンクしました…」 → urgent (0.77), a vehicle problem (0.71); a lost driver → routine (p(urgent) 0.30), directions to the address |
+| 12 | PR labeler | From a pull request's title, description and files: change type (7), blast radius (4) and severity (P0–P4), the questions a labeling job asks on every open PR; answers below p 0.7 add `review:needs-human` | a Next.js RCE fix from Dependabot → type/security, P0 (0.48, so flagged for a human); a docs-only PR → type/docs, P4 |
 
 The numbers are from runs on an M1 Max; yours will differ a little. Each demo has its own picture of the answer (a lit route, a shield, a traffic light, inbox trays, sliding search results, stars, a progress ring, a little arcade robot, a slider track), and the probability bars stay underneath it. Screenshots of every demo, in light mode plus one on a phone in dark mode, are in [docs/screenshots](docs/screenshots).
 
@@ -73,6 +74,10 @@ Short recordings of the live prototype in dark mode, with the page in English: e
 **11. Voice triage**
 
 ![Voice triage demo: a Japanese voice note about a flat tyre on the highway is judged urgent, a vehicle problem](docs/gifs/en/voice.gif)
+
+**12. PR labeler**
+
+![PR labeler demo: a Dependabot security fix is labeled type/security and P0, flagged for a human because the severity is a close call](docs/gifs/en/prlabel.gif)
 
 ## Quick Start
 
