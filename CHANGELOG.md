@@ -12,6 +12,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Security
+
+- Next.js 16.3.6, which fixes a remote code execution in `next/og` ImageResponse (GHSA-vcvr-r3jv-pc5j). The
+  playground does not render OG images, but every install now gets the fixed version.
+
 ### Added
 
 - Demo 12, **PR labeler**: pick an example, paste a pull request or load a public one from GitHub; D1A answers the three
