@@ -12,6 +12,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- Demo 12, **PR labeler**: pick an example, paste a pull request or load a public one from GitHub; D1A answers the three
+  questions the CTO bot's labeling job asks on every open PR (change type, blast radius, severity P0–P4), built from the
+  same document, and the page applies the job's rules: `review:needs-human` below p 0.7, and a committed `.env` forces
+  `type/security` and at least P1.
+
 ## [0.2.0] - 2026-10-02
 
 Eleven demos instead of nine: D1A now also answers questions about a photo or a voice note. The playground runs as an
