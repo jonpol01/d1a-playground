@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Run the D1A playground as an always-on service on a Mac: the model server and the web app as two user
-# LaunchAgents that start at login and restart after a crash.
+# Run the D1A playground as an always-on service on a Mac: the model server and the web app (and, with MEDIA=1, the
+# media server for Photo check and Voice triage) as user LaunchAgents that start at login and restart after a crash.
 #
 #   ./mini.sh install   first time: install the model server and the app, build, write and load the LaunchAgents
 #   ./mini.sh start     load both LaunchAgents
@@ -14,6 +14,8 @@
 #   KEV_PORT=8009  PORT=3031  HOST=127.0.0.1 (0.0.0.0 to serve the LAN directly)  D1A_BASE_PATH= (e.g. /d1a behind a proxy)
 #   PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.7  PYTORCH_MPS_LOW_WATERMARK_RATIO=0.6  (cap on PyTorch's share of unified memory; unused on MLX)
 #   KEV_PREFIX_CACHE=4  KEV_PREFIX_MAX_TOKENS=65536  (the model server's cache of long states; lower them to save memory)
+#   MEDIA=0 (1 = also run d1a.media for demos 10-11; bf16 Gemma 4 with its vision and audio encoders, ~10 GB more memory)
+#   MEDIA_RUN=JohnP1/d1a-e2b@v0.2.1-2epoch-calibrated  MEDIA_PORT=8010
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
@@ -22,11 +24,12 @@ ENVFILE="$STATE/mini.env"
 AGENTS="$HOME/Library/LaunchAgents"
 LOGS="$HOME/Library/Logs"
 MODEL_LABEL="io.github.jonpol01.d1a-model"
+MEDIA_LABEL="io.github.jonpol01.d1a-media"
 WEB_LABEL="io.github.jonpol01.d1a-web"
 # the default model: the MLX 8-bit build on Apple Silicon (4.2 GB, parity-checked), the PyTorch checkpoint elsewhere
 if [ "$(uname -sm)" = "Darwin arm64" ]; then DEFAULT_MODEL_RUN="JohnP1/d1a-e2b-mlx-q8"; else DEFAULT_MODEL_RUN="JohnP1/d1a-e2b"; fi
 D1A_REPO="https://github.com/jonpol01/d1a"
-D1A_SHA="adb237b8cac5450cb156c99dcd35c29906fa7966"   # the D1A model server this playground is tested against
+D1A_SHA="e393be776da46c3ab2043f284c3d966108c89eba"   # the D1A model server this playground is tested against
 PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 
 say() { printf '\033[1m[mini]\033[0m %s\n' "$*"; }
@@ -39,6 +42,7 @@ load_env() {
   PYTORCH_MPS_HIGH_WATERMARK_RATIO="${PYTORCH_MPS_HIGH_WATERMARK_RATIO:-0.7}"
   PYTORCH_MPS_LOW_WATERMARK_RATIO="${PYTORCH_MPS_LOW_WATERMARK_RATIO:-0.6}"
   KEV_PREFIX_CACHE="${KEV_PREFIX_CACHE:-4}"; KEV_PREFIX_MAX_TOKENS="${KEV_PREFIX_MAX_TOKENS:-65536}"
+  MEDIA="${MEDIA:-0}"; MEDIA_RUN="${MEDIA_RUN:-JohnP1/d1a-e2b@v0.2.1-2epoch-calibrated}"; MEDIA_PORT="${MEDIA_PORT:-8010}"
 }
 
 save_env() {
@@ -53,6 +57,9 @@ PYTORCH_MPS_HIGH_WATERMARK_RATIO=$PYTORCH_MPS_HIGH_WATERMARK_RATIO
 PYTORCH_MPS_LOW_WATERMARK_RATIO=$PYTORCH_MPS_LOW_WATERMARK_RATIO
 KEV_PREFIX_CACHE=$KEV_PREFIX_CACHE
 KEV_PREFIX_MAX_TOKENS=$KEV_PREFIX_MAX_TOKENS
+MEDIA=$MEDIA
+MEDIA_RUN=$MEDIA_RUN
+MEDIA_PORT=$MEDIA_PORT
 EOF
 }
 
@@ -61,9 +68,10 @@ domain() { if launchctl print "gui/$(id -u)" >/dev/null 2>&1; then echo "gui/$(i
 install_code() {
   command -v uv >/dev/null || die "uv is missing (brew install uv)"
   command -v node >/dev/null || die "node is missing (brew install node)"
-  say "model server: d1a[serve] from $D1A_REPO@${D1A_SHA:0:7} into .demo/d1a-venv ($MODEL_RUN)"
+  local extras="serve"; [ "$MEDIA" = 1 ] && extras="serve,media"
+  say "model server: d1a[$extras] from $D1A_REPO@${D1A_SHA:0:7} into .demo/d1a-venv ($MODEL_RUN)"
   uv venv --quiet --allow-existing --python 3.12 "$STATE/d1a-venv"
-  uv pip install --quiet --python "$STATE/d1a-venv/bin/python" --torch-backend auto "d1a[serve] @ git+$D1A_REPO@$D1A_SHA"
+  uv pip install --quiet --python "$STATE/d1a-venv/bin/python" --torch-backend auto "d1a[$extras] @ git+$D1A_REPO@$D1A_SHA"
   say "web app: npm ci and a production build${D1A_BASE_PATH:+ under $D1A_BASE_PATH}"
   (cd "$ROOT" && npm ci --no-audit --no-fund --loglevel=error && D1A_BASE_PATH="$D1A_BASE_PATH" npm run build >/dev/null)
 }
@@ -104,38 +112,51 @@ write_agents() {
     <key>D1A_PREFIX_MAX_TOKENS</key><string>$KEV_PREFIX_MAX_TOKENS</string>
 "
   plist "$MODEL_LABEL" "$STATE/d1a-venv/bin/python" -m d1a.serve --run "$MODEL_RUN" --port "$KEV_PORT" --host 127.0.0.1 >"$AGENTS/$MODEL_LABEL.plist"
+  if [ "$MEDIA" = 1 ]; then
+    plist "$MEDIA_LABEL" "$STATE/d1a-venv/bin/python" -m d1a.media --run "$MEDIA_RUN" --port "$MEDIA_PORT" --host 127.0.0.1 >"$AGENTS/$MEDIA_LABEL.plist"
+  else
+    rm -f "$AGENTS/$MEDIA_LABEL.plist"
+  fi
   ENV_XML="    <key>PATH</key><string>$path</string>
     <key>NODE_ENV</key><string>production</string>
     <key>KEV_API</key><string>http://127.0.0.1:$KEV_PORT</string>
+    <key>MEDIA_API</key><string>http://127.0.0.1:$MEDIA_PORT</string>
     <key>D1A_BASE_PATH</key><string>$D1A_BASE_PATH</string>
 "   # next start reads next.config.ts again, so the base path must match the build's
   plist "$WEB_LABEL" "$(command -v node)" "$ROOT/node_modules/next/dist/bin/next" start -p "$PORT" -H "$HOST" >"$AGENTS/$WEB_LABEL.plist"
   plutil -lint "$AGENTS/$MODEL_LABEL.plist" "$AGENTS/$WEB_LABEL.plist" >/dev/null
 }
 
+labels() {   # the agents this machine runs, in start order (the media server only when its plist exists)
+  echo "$MODEL_LABEL"; [ -f "$AGENTS/$MEDIA_LABEL.plist" ] && echo "$MEDIA_LABEL"; echo "$WEB_LABEL"
+}
+
 start() {
   local d; d="$(domain)"
-  for l in "$MODEL_LABEL" "$WEB_LABEL"; do
+  for l in $(labels); do
     launchctl bootout "$d/$l" 2>/dev/null || true
     launchctl bootstrap "$d" "$AGENTS/$l.plist"
     launchctl kickstart "$d/$l"   # a bootstrap right after a bootout can leave the agent loaded but not running
   done
-  say "started; logs in $LOGS/d1a-model.log and $LOGS/d1a-web.log (the model takes about a minute to load)"
+  say "started; logs in $LOGS/d1a-model.log, $LOGS/d1a-web.log$( [ "$MEDIA" = 1 ] && echo " and $LOGS/d1a-media.log") (the models take a minute or two to load)"
 }
 
 stop() {
   local d; d="$(domain)"
-  for l in "$WEB_LABEL" "$MODEL_LABEL"; do launchctl bootout "$d/$l" 2>/dev/null && say "stopped $l" || say "$l was not loaded"; done
+  for l in "$WEB_LABEL" "$MEDIA_LABEL" "$MODEL_LABEL"; do launchctl bootout "$d/$l" 2>/dev/null && say "stopped $l" || say "$l was not loaded"; done
 }
 
 status() {
   local d; d="$(domain)"
-  for l in "$MODEL_LABEL" "$WEB_LABEL"; do
+  for l in $(labels); do
     if launchctl print "$d/$l" >/dev/null 2>&1; then
       say "$l: loaded, $(launchctl print "$d/$l" | awk -F'= ' '/^\tstate/ {s=$2} /^\tpid/ {p=$2} END {print s (p ? ", pid " p : "")}')"
     else say "$l: not loaded"; fi
   done
   curl -fsS -m 3 "http://127.0.0.1:$KEV_PORT/v1/models" >/dev/null && say "model server answers on :$KEV_PORT" || say "model server not answering on :$KEV_PORT (still loading?)"
+  if [ "$MEDIA" = 1 ]; then
+    curl -fsS -m 3 "http://127.0.0.1:$MEDIA_PORT/v1/models" >/dev/null && say "media server answers on :$MEDIA_PORT" || say "media server not answering on :$MEDIA_PORT (still loading?)"
+  fi
   curl -fsS -m 5 -o /dev/null "http://127.0.0.1:$PORT$D1A_BASE_PATH" && say "web app answers on http://$HOST:$PORT$D1A_BASE_PATH" || say "web app not answering on :$PORT"
 }
 
