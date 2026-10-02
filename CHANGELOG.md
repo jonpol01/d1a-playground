@@ -12,18 +12,6 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-### Fixed
-
-- `demo.sh` and `demo.ps1` install and run the D1A model server instead of the Kev fork's: on Apple Silicon the 8-bit
-  MLX build (about 4 GB to download instead of 10 GB), elsewhere the PyTorch checkpoint; `MODEL_RUN` picks another one.
-  `--media` also starts the photo and voice server, so the one-command setup runs all eleven demos.
-
-### Changed
-
-- `mini.sh` and the demo scripts pin D1A `d659835`, which reads Gemma 4's per-layer embeddings from disk (about 1.5 GB
-  less memory for the E4B model on the Mac mini).
-- CI also checks that `demo.ps1` parses.
-
 ## [0.2.0] - 2026-10-02
 
 Eleven demos instead of nine: D1A now also answers questions about a photo or a voice note. The playground runs as an
@@ -35,6 +23,9 @@ always-on service on a Mac, with the model as a setting.
   left.
 - **Voice triage.** Pick a driver's voice note, record one or upload a clip, in English or Japanese: D1A says what the
   driver needs and whether it is urgent, with no speech-to-text step.
+- **One command runs D1A.** `./demo.sh` (or `.\demo.ps1`) installs the D1A server and, with `--media`, the photo and
+  voice server too, so a friend's machine runs all eleven demos; a Mac gets the 4 GB MLX build instead of a 10 GB
+  download.
 - **Always on, on a Mac.** `mini.sh` runs the model server and the web app as LaunchAgents that start at login, serves
   D1A on MLX, and can run E4B or the photo and voice server (`MODEL_RUN`, `MEDIA=1`).
 - **A README that shows it.** A GIF of every demo in English and Japanese, and animated diagrams of how D1A works.
@@ -53,21 +44,23 @@ always-on service on a Mac, with the model as a setting.
 - README: a GIF of each demo in English and Japanese ([#1](https://github.com/jonpol01/d1a-playground/pull/1),
   [#7](https://github.com/jonpol01/d1a-playground/pull/7)) and the architecture diagrams from D1A
   ([#7](https://github.com/jonpol01/d1a-playground/pull/7)).
-- CI: lint, type check, production builds at `/` and under `/d1a`, script syntax checks, and this release workflow.
+- `demo.sh` / `demo.ps1 --media`: also start the photo and voice server; `MODEL_RUN` picks the checkpoint
+  ([#12](https://github.com/jonpol01/d1a-playground/pull/12)).
+- CI: lint, type check, production builds at `/` and under `/d1a`, script syntax checks (`demo.ps1` included), and
+  this release workflow ([#10](https://github.com/jonpol01/d1a-playground/pull/10),
+  [#11](https://github.com/jonpol01/d1a-playground/pull/11), [#12](https://github.com/jonpol01/d1a-playground/pull/12)).
 
 ### Changed
 
-- `mini.sh` pins the D1A model server it is tested against; this release was tested with D1A 0.2.0 and
+- `demo.sh` and `demo.ps1` install and run the D1A model server (`d1a.serve`) instead of the Kev fork's, with the 8-bit
+  MLX build on Apple Silicon and the PyTorch checkpoint elsewhere ([#12](https://github.com/jonpol01/d1a-playground/pull/12)).
+- `mini.sh` and the demo scripts pin the D1A model server they are tested against (d1a `d659835`, which reads Gemma 4's
+  per-layer embeddings from disk: about 1.5 GB less memory for E4B); this release was tested with D1A 0.2.0 and
   `JohnP1/d1a-e4b-mlx-q8@v0.2-hybrid` (text) and `JohnP1/d1a-e2b@v0.2.1-2epoch-calibrated` (photo and voice)
   ([#4](https://github.com/jonpol01/d1a-playground/pull/4), [#6](https://github.com/jonpol01/d1a-playground/pull/6),
   [#9](https://github.com/jonpol01/d1a-playground/pull/9)).
 - `mini.sh update` continues in the freshly pulled script instead of the old one
   ([#3](https://github.com/jonpol01/d1a-playground/pull/3)).
-
-### Known issues
-
-- `demo.sh` and `demo.ps1` (the one-command setup) still install the Kev fork's model server, so they run the nine text
-  demos only; `mini.sh` and a manually started `d1a.serve` / `d1a.media` run all eleven.
 
 ## 0.1.0 - 2026-09-30
 
