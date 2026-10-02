@@ -213,6 +213,10 @@ KEV_API=http://127.0.0.1:8009 npm run dev      # with a model server already run
 npm run lint && npx next typegen && npx tsc --noEmit -p .
 ```
 
+## Releases
+
+Versions follow [Semantic Versioning](https://semver.org) and are published on [GitHub](https://github.com/jonpol01/d1a-playground/releases); [CHANGELOG.md](CHANGELOG.md) says what changed in each one. To release: write the version's section in CHANGELOG.md by hand, set the same version in `package.json` (`npm version X.Y.Z --no-git-tag-version`), merge, then push the tag `vX.Y.Z`; CI checks that all three agree, builds the app and publishes the release with that section as its text.
+
 ## Credits and License
 
 - [Kev](https://github.com/jaredpalmer/kev) by Jared Palmer, Apache-2.0: the model architecture, training and serving code, the System One API client and the playground this app started from. Files carried over and changed say so in a header; [NOTICE](NOTICE) lists them.

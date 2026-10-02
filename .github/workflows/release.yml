@@ -1,0 +1,27 @@
+name: release
+
+# Push a vX.Y.Z tag to release. The tag, package.json and CHANGELOG.md must agree (scripts/release_notes.py --check);
+# the app is linted and built again on the tagged commit; the GitHub release text is that version's CHANGELOG.md
+# section, written by hand.
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: python3 scripts/release_notes.py --check "$GITHUB_REF_NAME"
+      - run: npm ci && npm run lint && npm run build
+      - run: python3 scripts/release_notes.py "$GITHUB_REF_NAME" > release-notes.md
+      - run: gh release create "$GITHUB_REF_NAME" --verify-tag --title "D1A playground ${GITHUB_REF_NAME#v}" --notes-file release-notes.md
+        env:
+          GH_TOKEN: ${{ github.token }}
