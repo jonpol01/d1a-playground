@@ -2,12 +2,13 @@
 
 import { useEffect, useState, useSyncExternalStore, type ComponentType, type CSSProperties, type ReactNode } from "react";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, Gamepad2, Gauge, Inbox, ListOrdered, Route, ShieldCheck, Star, Tags, Wrench, type LucideIcon } from "lucide-react";
+import { ArrowLeft, ArrowRight, Camera, Gamepad2, Mic, Gauge, Inbox, ListOrdered, Route, ShieldCheck, Star, Tags, Wrench, type LucideIcon } from "lucide-react";
 import { api, START_HINT } from "@/lib/kev";
 import { LANGS, setLang, useHtmlLang, useLang, useText, type Lang } from "@/lib/i18n";
 import { HwMonitor, type ModelMeta } from "@/components/hw-monitor";
 import { BulkDemo, InboxDemo, RerankDemo } from "@/components/uses/batch";
 import { ControlDemo } from "@/components/uses/control";
+import { PhotoDemo, VoiceDemo } from "@/components/uses/media";
 import { EvalsDemo, GateDemo, GuardrailsDemo, RoutingDemo, ToolGateDemo } from "@/components/uses/single";
 
 type Demo = { id: string; accent: string; Icon: LucideIcon; outcomes: string[]; Component: ComponentType };
@@ -23,6 +24,8 @@ const DEMOS: Demo[] = [
   { id: "labeling", accent: "#0d9488", Icon: Tags, outcomes: ["positive", "neutral", "negative"], Component: BulkDemo },
   { id: "control", accent: "#e11d48", Icon: Gamepad2, outcomes: ["left", "stay", "right"], Component: ControlDemo },
   { id: "gate", accent: "#4f46e5", Icon: Gauge, outcomes: ["act", "confirm", "human"], Component: GateDemo },
+  { id: "photo", accent: "#0891b2", Icon: Camera, outcomes: ["damaged?", "where?"], Component: PhotoDemo },
+  { id: "voice", accent: "#be185d", Icon: Mic, outcomes: ["urgent?", "intent"], Component: VoiceDemo },
 ];
 
 const DEMO_TEXT: Record<Lang, Record<string, DemoText>> = {
@@ -45,6 +48,10 @@ const DEMO_TEXT: Record<Lang, Record<string, DemoText>> = {
       line: "The model reads a text description of the world every tick and picks the next move; each decision is one short forward pass." },
     gate: { title: "Confidence gate", input: "any text", caption: "Act when sure, confirm when unsure, escalate otherwise.",
       line: "The model answers one question with a calibrated probability, and your thresholds decide whether to act, act and confirm, or ask a human." },
+    photo: { title: "Photo check", input: "photo", caption: "Check a delivery photo for damage and where the parcel was left.",
+      line: "The model looks at a proof-of-delivery photo and answers typed questions about it: is the parcel damaged, and where was it left. Gemma 4's own vision encoder reads the photo; there is no captioning step." },
+    voice: { title: "Voice triage", input: "voice note", caption: "Hear what a driver's voice note needs and whether it is urgent.",
+      line: "The model listens to a short voice note, in English or Japanese, and decides what the speaker needs and whether it is urgent. Gemma 4's own audio encoder reads the sound; there is no speech-to-text step." },
   },
   ja: {
     routing: { title: "モデルの振り分け", input: "プロンプト", caption: "各プロンプトを、処理できる一番安いモデルに送ります。",
@@ -65,12 +72,16 @@ const DEMO_TEXT: Record<Lang, Record<string, DemoText>> = {
       line: "モデルが毎ティック、世界をテキストで表した状態を読み、次の動きを選びます。1回の判断は短い順伝播1回だけです。" },
     gate: { title: "確信度ゲート", input: "任意のテキスト", caption: "確かなら実行、迷うなら確認、それ以外は人に回します。",
       line: "モデルが1つの質問に較正済みの確率で答え、実行する・実行して確認する・人に回すのどれにするかは、あなたのしきい値が決めます。" },
+    photo: { title: "写真チェック", input: "写真", caption: "配達写真から、荷物の破損と置き場所を確認します。",
+      line: "モデルが配達完了の写真を見て、型付きの質問に答えます。荷物は破損しているか、どこに置かれたか。写真は Gemma 4 自身の画像エンコーダーが読み、キャプション生成の段階はありません。" },
+    voice: { title: "音声トリアージ", input: "音声メモ", caption: "ドライバーの音声メモから、用件と緊急かどうかを聞き取ります。",
+      line: "モデルが英語または日本語の短い音声メモを聞き、話し手の用件と緊急かどうかを判定します。音声は Gemma 4 自身の音声エンコーダーが読み、文字起こしの段階はありません。" },
   },
 };
 
 const UI_EN = {
-  heroA: "Nine jobs for a ", heroB: "small decision model", heroC: ".",
-  heroSub: "One document and a few typed questions in, a calibrated probability for every option out, in well under a second. Pick a use case: every example is live and editable.",
+  heroA: "Eleven jobs for a ", heroB: "small decision model", heroC: ".",
+  heroSub: "One document and a few typed questions in, a calibrated probability for every option out, in well under a second. Pick a use case: every example is live and editable, and two of them read a photo or a voice note.",
   down: "The model server is not answering on port 8009, so the demos cannot run.",
   lmstudio: "LM Studio mode: answers come from a prompted chat model, not the trained checkpoint. Probabilities are the chat model's letter probabilities, uncalibrated.",
   all: "All", useCases: "Use cases", architecture: "Architecture", language: "Language",
@@ -80,8 +91,8 @@ const UI_EN = {
 const UI: Record<Lang, typeof UI_EN> = {
   en: UI_EN,
   ja: {
-    heroA: "", heroB: "小さな判断モデル", heroC: "に任せる9つの仕事",
-    heroSub: "1つの文書といくつかの型付きの質問を入れると、すべての選択肢に較正済みの確率が返ってきます。1秒もかかりません。ユースケースを選んでください。どの例もライブで動き、自由に編集できます。",
+    heroA: "", heroB: "小さな判断モデル", heroC: "に任せる11の仕事",
+    heroSub: "1つの文書といくつかの型付きの質問を入れると、すべての選択肢に較正済みの確率が返ってきます。1秒もかかりません。ユースケースを選んでください。どの例もライブで動き、自由に編集できます。うち2つは写真や音声メモを読み取ります。",
     down: "モデルサーバー（ポート 8009）が応答しないため、デモを実行できません。",
     lmstudio: "LM Studio モード: 答えは学習済みのチェックポイントではなく、プロンプトで指示したチャットモデルから返っています。確率はチャットモデルの選択肢記号の確率で、較正されていません。",
     all: "一覧", useCases: "ユースケース", architecture: "アーキテクチャ", language: "言語",
