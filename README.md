@@ -1,14 +1,14 @@
-# D1A playground — nine use cases
+# D1A playground — eleven use cases
 
 [日本語](README.ja.md)
 
-A small decision model reads one document, answers a few typed questions about it, and returns a probability for every option. This playground runs nine real jobs on that idea, live, on your own machine: routing prompts to a model tier, blocking prompt injections, gating an agent's tool calls, triaging an inbox, reranking search results, grading LLM answers, labelling a table, steering a robot in real time, and deciding when to act and when to ask a human. Every example is editable, and every answer shows the full probability distribution behind it.
+A small decision model reads one document, answers a few typed questions about it, and returns a probability for every option. This playground runs eleven real jobs on that idea, live, on your own machine: routing prompts to a model tier, blocking prompt injections, gating an agent's tool calls, triaging an inbox, reranking search results, grading LLM answers, labelling a table, steering a robot in real time, deciding when to act and when to ask a human, and, from a photo or a voice note, checking a delivery for damage and triaging a driver's message. Every example is editable, and every answer shows the full probability distribution behind it.
 
 D1A is built on [Kev](https://github.com/jaredpalmer/kev) by Jared Palmer (Apache-2.0). D1A is not affiliated with or endorsed by Jared Palmer or the Kev project. The playground serves D1A-E2B v0.1, a one-epoch model on Gemma 4 E2B ([JohnP1/d1a-e2b](https://huggingface.co/JohnP1/d1a-e2b), tag `v0.1-1epoch`; formerly JohnP1/kev-gemma4-e2b), trained with the Gemma 4 support in the fork [jonpol01/kev](https://github.com/jonpol01/kev).
 
 ![The nine demos, one after another, each with the live model's answer](docs/demos.gif)
 
-## The Nine Demos
+## The Eleven Demos
 
 | # | Demo | What the model decides | Example answer from the live prototype |
 |---|---|---|---|
@@ -21,6 +21,8 @@ D1A is built on [Kev](https://github.com/jaredpalmer/kev) by Jared Palmer (Apach
 | 7 | Bulk labeling | `positive`, `neutral` or `negative` for 30 product reviews, with a p(label) column | 30 rows in 7–13 s at 3 requests in flight; the two rows below 0.60 are flagged for a human |
 | 8 | Real-time control | `left`, `right` or `stay` for a robot chasing a target, every tick | 2–3 decisions per second at 250–450 ms each; ticks in between are skipped, never queued |
 | 9 | Confidence gate | One question; your two thresholds put the answer in *act*, *act and confirm* or *send to a human* | a clear refund → refund (0.75), confirm lane; an ambiguous one → replace (0.41), human lane |
+| 10 | Photo check | From a delivery photo: is the parcel damaged (`noul`), and where was it left (five places) | a wet, torn box on a sidewalk → damaged (0.89), on a sidewalk (0.78); the locker photo → 0.57, "check by hand" |
+| 11 | Voice triage | From a short voice note, EN or JA, with no speech-to-text: is it urgent, and what does the speaker need | 「高速道路でタイヤがパンクしました…」 → urgent (0.77), a vehicle problem (0.71); a lost driver → routine (p(urgent) 0.30), directions to the address |
 
 The numbers are from runs on an M1 Max; yours will differ a little. Each demo has its own picture of the answer (a lit route, a shield, a traffic light, inbox trays, sliding search results, stars, a progress ring, a little arcade robot, a slider track), and the probability bars stay underneath it. Screenshots of every demo, in light mode plus one on a phone in dark mode, are in [docs/screenshots](docs/screenshots).
 
@@ -64,6 +66,14 @@ Short recordings of the live prototype in dark mode, with the page in English: e
 
 ![Confidence gate demo: an ambiguous support case gets a low top probability and lands in the send-to-a-human lane](docs/gifs/en/gate.gif)
 
+**10. Photo check**
+
+![Photo check demo: a wet, torn box on a sidewalk is judged damaged with p 0.89, left on a sidewalk with p 0.78](docs/gifs/en/photo.gif)
+
+**11. Voice triage**
+
+![Voice triage demo: a Japanese voice note about a flat tyre on the highway is judged urgent, a vehicle problem](docs/gifs/en/voice.gif)
+
 ## Quick Start
 
 You need [git](https://git-scm.com/downloads), [Node.js](https://nodejs.org) 20.9 or newer and [uv](https://docs.astral.sh/uv/). You don't need Python: uv fetches Python 3.13 if it is missing. The scripts check all of this and say what to install.
@@ -84,6 +94,17 @@ powershell -ExecutionPolicy Bypass -File .\demo.ps1
 
 The script installs the model server into `.demo/venv` (from [jonpol01/kev](https://github.com/jonpol01/kev), pinned to a commit), starts it on port 8009, starts the web app on port 3001 (or 3011, or 3021–3030 if those are busy), and opens your browser. The first run downloads about 1 GB of Python packages and the model (about 10 GB); after that a start takes about 20 seconds. Logs go to `.demo/`. Ctrl+C stops everything, and `./demo.sh stop` (or `.\demo.ps1 stop`) stops a run whose terminal you closed.
 
+### Photo Check and Voice Triage
+
+These two demos need a second model server, `d1a.media` from [jonpol01/d1a](https://github.com/jonpol01/d1a), which loads Gemma 4 with its vision and audio encoders (bf16, about 10 GB of memory) and answers the same questions about a photo or a voice clip. The web app forwards `/media/*` to it (`MEDIA_API`, default `http://127.0.0.1:8010`). Start it next to the playground:
+
+```bash
+# in a checkout of https://github.com/jonpol01/d1a, next to this one
+uv run --extra serve --extra media python -m d1a.media --run JohnP1/d1a-e2b --port 8010
+```
+
+The checkpoint is trained on text only, so these answers are zero-shot: on the six sample photos it judged damage right on 6 of 6 and the drop-off place on 5 of 6 (it calls the mailbox a locker), and it read all four sample voice notes right. The voice samples were made with Qwen3-TTS; recording your own needs microphone access, which browsers allow on `localhost` or https only.
+
 Other options: `--no-server` uses a model server that is already running on port 8009, `--no-browser` skips opening the browser, `KEV_PORT` and `PORT` change the two ports.
 
 ## Requirements
@@ -102,6 +123,38 @@ The browser talks only to the web app, a Next.js app that forwards `/kev/*` to t
 It is not a chat model. The checkpoint is a LoRA adapter and a pointer head on Gemma 4 E2B: it reads the state once, answers every question in the same forward pass without letting the questions see each other, and reads a probability for each option directly off the pointer head, with a temperature fitted on held-out data so the probabilities are calibrated. No text is generated, so there is nothing to parse and no format to break.
 
 Everything the demos do with the answers (route, block, sort, grade, move a robot, pick a lane) is plain code in [src/components/uses](src/components/uses). Each demo's questions are in the same files, so you can see exactly what the model was asked. The batch demos send one request per item, a few in flight at a time; the control loop sends a new state only when the previous answer has come back.
+
+### Inside the Model
+
+The same diagrams as the `/architecture` page, from [jonpol01/d1a](https://github.com/jonpol01/d1a#how-it-works) (generated by its `docs/arch/make_svgs.py`).
+
+**The input.** The document comes first, once; each question follows as its own branch, `<q>` and the instructions, one `<opt> … </opt>` span per option, then `<decide>`. Position ids restart for every question, so each question sees exactly what it would see alone.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/arch/layout-dark.svg">
+  <img src="docs/arch/layout-light.svg" alt="Token layout: the document once, then per question <q>, the options and <decide>" width="100%">
+</picture>
+
+**The model.** A Gemma 4 backbone with a LoRA adapter, and a small pointer head that scores each option's `</opt>` against the question's `<decide>`. A temperature fitted on held-out data makes the probabilities calibrated.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/arch/model-dark.svg">
+  <img src="docs/arch/model-light.svg" alt="Gemma 4 backbone with LoRA, pointer head, softmax over the options" width="100%">
+</picture>
+
+**Two ways to run it, same answers.** Packed runs the whole request as one sequence under a block-causal mask; rows reads the document once into a prefix cache and runs each question as its own short row.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/arch/forms-dark.svg">
+  <img src="docs/arch/forms-light.svg" alt="Packed form with a block-causal mask, and rows over a cached document" width="100%">
+</picture>
+
+**Where it runs.** The text demos call `d1a.serve`; Photo check and Voice triage call `d1a.media`, where Gemma 4's own vision and audio encoders feed the same head.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/arch/serving-dark.svg">
+  <img src="docs/arch/serving-light.svg" alt="Clients call d1a.serve; photos and voice notes go to d1a.media" width="100%">
+</picture>
 
 ## LM Studio Mode (Not the Trained Model)
 
