@@ -101,14 +101,12 @@ The script installs the D1A model server into `.demo/venv` (from [jonpol01/d1a](
 
 ### Photo Check and Voice Triage
 
-These two demos need a second model server, `d1a.media` from [jonpol01/d1a](https://github.com/jonpol01/d1a), which loads Gemma 4 with its vision and audio encoders (bf16, about 10 GB of memory) and answers the same questions about a photo or a voice clip. The web app forwards `/media/*` to it (`MEDIA_API`, default `http://127.0.0.1:8010`). Start it next to the playground:
+These two demos ask the same questions about a photo or a voice clip; the web app forwards `/media/*` to `MEDIA_API`. Start the playground with `./demo.sh --media`:
 
-```bash
-# in a checkout of https://github.com/jonpol01/d1a, next to this one
-uv run --extra serve --extra media python -m d1a.media --run JohnP1/d1a-e2b --port 8010
-```
+- **On Apple Silicon** the model server answers them itself, with the same model: Gemma 4's own vision and audio encoders (about 1 GB, fetched on the first photo or voice request) turn the media into tokens the D1A model reads. The MLX builds `JohnP1/d1a-e2b-mlx-q8` and `JohnP1/d1a-e4b-mlx-q8@v0.3` carry them.
+- **Elsewhere (PyTorch)** they run on a second server, `d1a.media` from [jonpol01/d1a](https://github.com/jonpol01/d1a), which loads Gemma 4 with its encoders (bf16, about 10 GB) on the first such request, on port 8010.
 
-The checkpoint is trained on text only, so these answers are zero-shot: on the six sample photos it judged damage right on 6 of 6 and the drop-off place on 5 of 6 (it calls the mailbox a locker), and it read all four sample voice notes right. The voice samples were made with Qwen3-TTS; recording your own needs microphone access, which browsers allow on `localhost` or https only.
+The checkpoint is trained on text only, so these answers are zero-shot: on the six sample photos D1A-E2B judges damage right on 4 of 6 and the drop-off place on 5 of 6 (it calls the mailbox a locker), D1A-E4B v0.3 on 5 of 6 and 6 of 6, and both read all four sample voice notes right. The voice samples were made with Qwen3-TTS; recording your own needs microphone access, which browsers allow on `localhost` or https only.
 
 Other options: `--no-server` uses a model server that is already running on port 8009, `--no-browser` skips opening the browser, `KEV_PORT` and `PORT` change the two ports.
 
@@ -154,11 +152,11 @@ The same diagrams as the `/architecture` page, from [jonpol01/d1a](https://githu
   <img src="docs/arch/forms-light.svg" alt="Packed form with a block-causal mask, and rows over a cached document" width="100%">
 </picture>
 
-**Where it runs.** The text demos call `d1a.serve`; Photo check and Voice triage call `d1a.media`, where Gemma 4's own vision and audio encoders feed the same head.
+**Where it runs.** Every demo calls `d1a.serve`. For Photo check and Voice triage, Gemma 4's own vision and audio encoders turn the photo or voice note into tokens the same model reads, so there is no captioning or speech-to-text step.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/arch/serving-dark.svg">
-  <img src="docs/arch/serving-light.svg" alt="Clients call d1a.serve; photos and voice notes go to d1a.media" width="100%">
+  <img src="docs/arch/serving-light.svg" alt="Clients call d1a.serve; photos and voice notes go through the vision and audio encoders into the same model" width="100%">
 </picture>
 
 ## LM Studio Mode (Not the Trained Model)
@@ -206,7 +204,9 @@ git clone https://github.com/jonpol01/d1a-playground.git ~/d1a-playground && cd 
 
 Logs go to `~/Library/Logs/d1a-model.log` and `~/Library/Logs/d1a-web.log`. Settings are read by `install` and `update` and kept in `.demo/mini.env`: `KEV_PORT` (8009), `PORT` (3031), `HOST` (127.0.0.1; use 0.0.0.0 to serve the LAN directly), `D1A_BASE_PATH` (empty), and the MPS memory cap `PYTORCH_MPS_HIGH_WATERMARK_RATIO` / `PYTORCH_MPS_LOW_WATERMARK_RATIO` (0.7 / 0.6, sized for a 32 GB Mac that runs other things; lower them to fail early instead of swapping), and the model server's cache of long states `KEV_PREFIX_CACHE` / `KEV_PREFIX_MAX_TOKENS` (4 / 65536). The model server always listens on 127.0.0.1 only. LaunchAgents run while the user is logged in, so turn on automatic login if the Mac must come back by itself after a reboot. uv's own settings apply to the install, for example `UV_SYSTEM_CERTS=1` on a network that inspects TLS, or `UV_CACHE_DIR` when the default cache is not writable.
 
-**Photo check and Voice triage.** Set `MEDIA=1` in `.demo/mini.env` and run `./mini.sh reinstall` to add a third LaunchAgent, `io.github.jonpol01.d1a-media`: `d1a.media` on port `MEDIA_PORT` (8010, 127.0.0.1 only) with `MEDIA_RUN` (JohnP1/d1a-e2b@v0.2.1-2epoch-calibrated), logging to `~/Library/Logs/d1a-media.log`. It runs bf16 Gemma 4 with its vision and audio encoders on PyTorch MPS, under the same MPS cap. It loads the model only when someone uses Photo check or Voice triage (the first request then takes about 30 s, and the page says so) and frees it after 10 idle minutes, so it costs about 10 GB only while in use. `MEDIA=0` removes it again.
+**The model loads on demand.** The model server frees the model after `IDLE_UNLOAD` seconds without a request (600; `0` keeps it loaded) and loads it again on the next one, in a few seconds; `./mini.sh status` says whether it is in memory.
+
+**Photo check and Voice triage.** Set `MEDIA=1` in `.demo/mini.env`, with a `MODEL_RUN` that carries the vision and audio encoders (`JohnP1/d1a-e4b-mlx-q8@v0.3`, or `JohnP1/d1a-e2b-mlx-q8`), and run `./mini.sh reinstall`. The same model server and the same model answer them: the encoders (about 1 GB) load on the first photo or voice request and are freed with the model. `MEDIA=0` leaves them out. (Earlier versions ran a third LaunchAgent, `io.github.jonpol01.d1a-media`, with a second model; `install` and `reinstall` remove it.)
 
 **Behind a reverse proxy, under a sub-path.** Build with `D1A_BASE_PATH=/d1a` (for example `D1A_BASE_PATH=/d1a ./mini.sh install`) and the app serves everything under `/d1a`: pages, assets, the model API proxy (`/d1a/kev/...`) and `/d1a/api/hw`. Point the proxy's `/d1a` prefix at `http://127.0.0.1:3031` with the path unchanged, e.g. `http://<your-mac-ip>/d1a`. `next build` and `next start` both need the same `D1A_BASE_PATH` (mini.sh sets it for both), so change it with `./mini.sh update` after editing `.demo/mini.env`.
 

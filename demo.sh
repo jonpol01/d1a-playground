@@ -3,8 +3,9 @@
 # macOS, Linux and WSL. Windows PowerShell: demo.ps1.
 #
 #   ./demo.sh                      install what is missing, start both, open the browser; Ctrl+C stops both
-#   ./demo.sh --media              also start the photo and voice server (d1a.media) for Photo check and Voice triage;
-#                                  it loads its model (~10 GB) on the first photo or voice request
+#   ./demo.sh --media              Photo check and Voice triage too: on Apple Silicon the model server answers them with
+#                                  the same model (Gemma 4's vision and audio encoders, ~1 GB, fetched on the first photo
+#                                  or voice request); elsewhere a second server, d1a.media (~10 GB, loaded on that request)
 #   ./demo.sh --no-server          start only the web app, against a model server already running on $KEV_PORT
 #   ./demo.sh --lmstudio URL       no D1A weights: a prompted Gemma 4 chat model in LM Studio answers instead (NOT D1A)
 #             [--lmstudio-model ID]   the LM Studio model id (default gemma-4-e4b-it-mlx)
@@ -17,7 +18,7 @@ set -euo pipefail
 
 # The D1A model server this demo runs, pinned to a commit so every friend gets the same server (mini.sh pins the same one).
 D1A_REPO="https://github.com/jonpol01/d1a"
-D1A_SHA="d659835b113d9165c82dc873325b3bf312313b4a"
+D1A_SHA="1a6d25b47bd565082b794da0a42c9125b0b24757"
 APPLE_SILICON=0; [ "$(uname -s)" = Darwin ] && [ "$(uname -m)" = arm64 ] && APPLE_SILICON=1
 # the 8-bit MLX build on Apple Silicon (4.2 GB, no base download), the PyTorch checkpoint elsewhere
 if [ "$APPLE_SILICON" = 1 ]; then MODEL_RUN="${MODEL_RUN:-JohnP1/d1a-e2b-mlx-q8}"; else MODEL_RUN="${MODEL_RUN:-JohnP1/d1a-e2b}"; fi
@@ -56,6 +57,7 @@ done
 [ -n "$LMSTUDIO" ] && [ "$NO_SERVER" = 1 ] && die "--lmstudio and --no-server do not go together"
 [ "$MEDIA" = 1 ] && { [ -n "$LMSTUDIO" ] || [ "$NO_SERVER" = 1 ]; } && die "--media starts a D1A server; it does not go with --lmstudio or --no-server"
 MEDIA_PORT="${MEDIA_PORT:-8010}"
+[ "$APPLE_SILICON" = 1 ] && MEDIA_PORT="$KEV_PORT"   # the model server answers photos and voice itself (MLX)
 
 # ---------------------------------------------------------------- helpers
 port_busy() { (exec 3<>"/dev/tcp/127.0.0.1/$1") 2>/dev/null; }     # something accepts connections on 127.0.0.1:$1
@@ -218,7 +220,7 @@ if [ "$NO_SERVER" = 1 ]; then
   say "Using the model server already running on port $KEV_PORT."
 else
   start_kev
-  [ "$MEDIA" = 1 ] && start_media
+  [ "$MEDIA" = 1 ] && [ "$APPLE_SILICON" != 1 ] && start_media
 fi
 
 # ---------------------------------------------------------------- the web app
@@ -241,7 +243,7 @@ curl -fsS -m 5 "http://localhost:$WEB_PORT/kev/v1/models" >/dev/null || warn "th
 URL="http://localhost:$WEB_PORT"
 say ""
 say "D1A playground is running:"
-if [ "$MEDIA" = 1 ]; then say "  $URL                the eleven demos"
+if [ "$MEDIA" = 1 ]; then say "  $URL                all twelve demos"
 else say "  $URL                the demos (Photo check and Voice triage need --media)"; fi
 say "  $URL/#inbox         jump to one (#routing #guardrails #tools #inbox #rerank #evals #labeling #control #gate #photo #voice)"
 say "  http://127.0.0.1:$KEV_PORT/v1/models   the server's model card"

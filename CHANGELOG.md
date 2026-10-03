@@ -24,6 +24,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   same document, and the page applies the job's rules: `review:needs-human` below p 0.7, and a committed `.env` forces
   `type/security` and at least P1.
 
+### Changed
+
+- **One model, loaded only while in use.** Photo check and Voice triage on a Mac are answered by the model server
+  itself, with the same model, through Gemma 4's vision and audio encoders (~1 GB more while loaded) instead of a
+  second bf16 Gemma 4 (~10 GB). `./demo.sh --media` starts no second server on Apple Silicon; `mini.sh` drops the
+  `d1a-media` LaunchAgent, sends `/media` to the model server, and frees the model after `IDLE_UNLOAD` seconds without a
+  request (600; it loads again in a few seconds). On PyTorch machines the demos still use `d1a.media`.
+- The "waking up" note says a few seconds instead of about 30.
+
 ## [0.2.0] - 2026-10-02
 
 Eleven demos instead of nine: D1A now also answers questions about a photo or a voice note. The playground runs as an
