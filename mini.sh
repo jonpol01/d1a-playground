@@ -75,7 +75,9 @@ install_code() {
   uv venv --quiet --allow-existing --python 3.12 "$STATE/d1a-venv"
   uv pip install --quiet --python "$STATE/d1a-venv/bin/python" --torch-backend auto "d1a[$extras] @ git+$D1A_REPO@$D1A_SHA"
   say "web app: npm ci and a production build${D1A_BASE_PATH:+ under $D1A_BASE_PATH}"
-  (cd "$ROOT" && npm ci --no-audit --no-fund --loglevel=error && D1A_BASE_PATH="$D1A_BASE_PATH" npm run build >/dev/null)
+  # next build bakes the /kev and /media proxy targets into the build; next start does not read them again
+  (cd "$ROOT" && npm ci --no-audit --no-fund --loglevel=error && D1A_BASE_PATH="$D1A_BASE_PATH" KEV_API="http://127.0.0.1:$KEV_PORT" \
+    MEDIA_API="http://127.0.0.1:$KEV_PORT" npm run build >/dev/null)
 }
 
 plist() {   # label, then program arguments; environment from the ENV_* variables below
