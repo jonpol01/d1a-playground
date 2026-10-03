@@ -7,8 +7,9 @@ import { useLang, useText } from "@/lib/i18n";
 import { AnswerBars, DemoGrid, Empty, Field, Latency, Presets, ResultCard, RunBar, Verdict, inputCls } from "@/components/uses/shared";
 import { Shimmer } from "@/components/uses/visuals";
 
-// Photo check and Voice triage: the same typed questions, asked about a photo or a voice clip instead of text. They call
-// d1a.media (a second server, proxied under /media), where Gemma 4 keeps its vision and audio encoders. The checkpoint
+// Photo check and Voice triage: the same typed questions, asked about a photo or a voice clip instead of text, proxied
+// under /media: on a Mac the model server itself (the same model, through Gemma 4's vision and audio encoders), on a
+// PyTorch machine the separate d1a.media server. The checkpoint
 // is trained on text only, so these answers are zero-shot. Questions stay in English (see englishNote); labels are shown
 // in the UI language.
 
@@ -91,8 +92,8 @@ function MediaError({ error }: { error: unknown }) {
 
 function WakingNote({ show }: { show: boolean }) {
   const t = useText({
-    en: "Waking up the photo and voice model: it loads on demand after an idle spell, about 30 s. The next requests take a second or two.",
-    ja: "写真・音声用のモデルを起動しています。しばらく使われないと解放され、必要なときに読み込むため、約 30 秒かかります。次からは1〜2秒です。",
+    en: "Waking up the model: it is freed after an idle spell and loads again on demand, which takes a few seconds (up to 30 s on a PyTorch machine). The next requests take a second or two.",
+    ja: "モデルを起動しています。しばらく使われないと解放され、必要なときに読み込み直すため、数秒かかります（PyTorch のマシンでは最大 30 秒）。次からは1〜2秒です。",
   });
   return show ? <p role="status" className="text-[12px] leading-5 text-muted-foreground">{t}</p> : null;
 }

@@ -80,14 +80,12 @@ powershell -ExecutionPolicy Bypass -File .\demo.ps1
 
 ### 写真チェックと音声トリアージ
 
-この2つのデモは、2つ目のモデルサーバー [jonpol01/d1a](https://github.com/jonpol01/d1a) の `d1a.media` を使います。画像・音声エンコーダー付きの Gemma 4 を読み込み（bf16、メモリ約 10 GB）、写真や音声に対して同じ形の質問に答えます。Web アプリは `/media/*` をこのサーバーに転送します（`MEDIA_API`、既定は `http://127.0.0.1:8010`）。プレイグラウンドと並べて起動してください。
+この2つのデモは、写真や音声に対して同じ形の質問をします。Web アプリは `/media/*` を `MEDIA_API` に転送します。プレイグラウンドは `./demo.sh --media` で起動してください。
 
-```bash
-# このリポジトリの隣にチェックアウトした https://github.com/jonpol01/d1a で
-uv run --extra serve --extra media python -m d1a.media --run JohnP1/d1a-e2b --port 8010
-```
+- **Apple Silicon では**、モデルサーバー自身が同じモデルで答えます。Gemma 4 自身の画像・音声エンコーダー（約 1 GB、最初の写真・音声リクエストで取得）が写真や音声をトークンに変え、それを D1A のモデルが読みます。MLX 版の `JohnP1/d1a-e2b-mlx-q8` と `JohnP1/d1a-e4b-mlx-q8@v0.3` にはエンコーダーが入っています。
+- **それ以外（PyTorch）では**、[jonpol01/d1a](https://github.com/jonpol01/d1a) の2つ目のサーバー `d1a.media` がポート 8010 で動き、最初のリクエストでエンコーダー付きの Gemma 4（bf16、約 10 GB）を読み込みます。
 
-チェックポイントはテキストだけで学習しているため、これらの答えはゼロショットです。サンプル写真6枚では破損の判定が6枚中6枚、置き場所が6枚中5枚で正しく（郵便受けを宅配ロッカーと答えます）、サンプルの音声メモ4つはすべて正しく聞き取りました。音声のサンプルは Qwen3-TTS で作りました。自分で録音するにはマイクの許可が必要で、ブラウザが許可するのは `localhost` か https の場合だけです。
+チェックポイントはテキストだけで学習しているため、これらの答えはゼロショットです。サンプル写真6枚では、D1A-E2B は破損の判定が6枚中4枚、置き場所が6枚中5枚で正しく（郵便受けを宅配ロッカーと答えます）、D1A-E4B v0.3 はそれぞれ6枚中5枚と6枚中6枚です。サンプルの音声メモ4つはどちらもすべて正しく聞き取りました。音声のサンプルは Qwen3-TTS で作りました。自分で録音するにはマイクの許可が必要で、ブラウザが許可するのは `localhost` か https の場合だけです。
 
 ### モデルの中身
 
@@ -114,11 +112,11 @@ uv run --extra serve --extra media python -m d1a.media --run JohnP1/d1a-e2b --po
   <img src="docs/arch/forms-light.svg" alt="ブロック因果マスクの packed 形式と、キャッシュした文書の上の rows 形式" width="100%">
 </picture>
 
-**どこで動くか。** テキストのデモは `d1a.serve` を、写真チェックと音声トリアージは `d1a.media` を呼びます。`d1a.media` では Gemma 4 自身の画像・音声エンコーダーが同じヘッドに入力します。
+**どこで動くか。** すべてのデモが `d1a.serve` を呼びます。写真チェックと音声トリアージでは、Gemma 4 自身の画像・音声エンコーダーが写真や音声メモをトークンに変え、同じモデルがそれを読みます。キャプション生成や音声認識の段階はありません。
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/arch/serving-dark.svg">
-  <img src="docs/arch/serving-light.svg" alt="クライアントは d1a.serve を呼び、写真と音声メモは d1a.media に送られる" width="100%">
+  <img src="docs/arch/serving-light.svg" alt="クライアントは d1a.serve を呼び、写真と音声メモは画像・音声エンコーダーを通って同じモデルに入る" width="100%">
 </picture>
 
 ## 画面
@@ -139,7 +137,9 @@ git clone https://github.com/jonpol01/d1a-playground.git ~/d1a-playground && cd 
 
 ログは `~/Library/Logs/d1a-model.log` と `~/Library/Logs/d1a-web.log` です。設定は `install` と `update` が読み、`.demo/mini.env` に保存します。`KEV_PORT`（8009）、`PORT`（3031）、`HOST`（127.0.0.1。LAN に直接公開するなら 0.0.0.0）、`D1A_BASE_PATH`（空）、MPS のメモリ上限 `PYTORCH_MPS_HIGH_WATERMARK_RATIO` / `PYTORCH_MPS_LOW_WATERMARK_RATIO`（0.7 / 0.6。他の用途にも使う 32 GB の Mac 向けの値です。スワップさせずに早めに失敗させたいときは下げてください）、モデルサーバーの長い state のキャッシュ `KEV_PREFIX_CACHE` / `KEV_PREFIX_MAX_TOKENS`（4 / 65536）。モデルサーバーは常に 127.0.0.1 だけで待ち受けます。LaunchAgent はユーザーがログインしている間だけ動くので、再起動後に自動で戻したい場合は自動ログインを有効にしてください。インストールには uv の設定がそのまま効きます（TLS を検査するネットワークでは `UV_SYSTEM_CERTS=1`、既定のキャッシュに書き込めないときは `UV_CACHE_DIR`）。
 
-**写真チェックと音声トリアージ。** `.demo/mini.env` に `MEDIA=1` を設定して `./mini.sh reinstall` を実行すると、3つ目の LaunchAgent `io.github.jonpol01.d1a-media` が加わります。`d1a.media` をポート `MEDIA_PORT`（8010、127.0.0.1 のみ）で `MEDIA_RUN`（JohnP1/d1a-e2b@v0.2.1-2epoch-calibrated）を使って動かし、ログは `~/Library/Logs/d1a-media.log` に出ます。画像・音声エンコーダー付きの bf16 の Gemma 4 を PyTorch MPS で動かします（MPS の上限は同じ設定が効きます）。モデルは写真チェックか音声トリアージが使われたときにだけ読み込み（そのときの最初のリクエストは約 30 秒かかり、画面にその旨が出ます）、10 分使われないと解放するので、約 10 GB を使うのは使用中だけです。`MEDIA=0` に戻すと外れます。
+**モデルは必要なときに読み込みます。** モデルサーバーは、リクエストが `IDLE_UNLOAD` 秒（600。`0` で常に読み込んだまま）来ないとモデルを解放し、次のリクエストで数秒かけて読み込み直します。メモリに載っているかどうかは `./mini.sh status` で分かります。
+
+**写真チェックと音声トリアージ。** `.demo/mini.env` に `MEDIA=1` と、画像・音声エンコーダーを含む `MODEL_RUN`（`JohnP1/d1a-e4b-mlx-q8@v0.3` か `JohnP1/d1a-e2b-mlx-q8`）を設定し、`./mini.sh reinstall` を実行してください。同じモデルサーバーの同じモデルが答えます。エンコーダー（約 1 GB）は最初の写真・音声リクエストで読み込まれ、モデルと一緒に解放されます。`MEDIA=0` にすると使いません（以前の版は2つ目のモデルを持つ3つ目の LaunchAgent `io.github.jonpol01.d1a-media` を動かしていました。`install` と `reinstall` がそれを取り除きます）。
 
 **リバースプロキシの下、サブパスで公開する場合。** `D1A_BASE_PATH=/d1a` でビルドすると（例: `D1A_BASE_PATH=/d1a ./mini.sh install`）、ページ、アセット、モデル API のプロキシ（`/d1a/kev/...`）、`/d1a/api/hw` のすべてが `/d1a` の下で提供されます。プロキシでは `/d1a` で始まるパスを、パスを変えずに `http://127.0.0.1:3031` に転送してください（例: `http://<your-mac-ip>/d1a`）。`next build` と `next start` の両方に同じ `D1A_BASE_PATH` が必要です（mini.sh は両方に設定します）。`.demo/mini.env` を書き換えたら `./mini.sh update` で反映します。
 
