@@ -33,9 +33,9 @@ export type PermuteResponse = {
 // The app can be served under a sub-path (D1A_BASE_PATH at build time); fetch URLs are not prefixed by Next itself.
 export const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 const KEV = `${BASE_PATH}/kev`;
-const MEDIA = `${BASE_PATH}/media`;   // the same questions about a photo or a voice clip: the model server on a Mac, d1a.media on PyTorch
+const MEDIA = `${BASE_PATH}/media`;   // the same questions about a photo, a voice clip or a video: the model server on a Mac, d1a.media on PyTorch
 
-export type MediaRequest = Omit<SystemOneRequest, "state"> & { state?: JSONContent; media: { type: "image" | "audio"; data: string } };
+export type MediaRequest = Omit<SystemOneRequest, "state"> & { state?: JSONContent; media: { type: "image" | "audio" | "video"; data: string } };
 
 async function post<T>(path: string, body: unknown, base = KEV): Promise<T> {
   const r = await fetch(`${base}${path}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });

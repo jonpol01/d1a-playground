@@ -7,7 +7,7 @@ import { useLang, useText } from "@/lib/i18n";
 import { AnswerBars, DemoGrid, Empty, Field, Latency, Presets, ResultCard, RunBar, Verdict, inputCls } from "@/components/uses/shared";
 import { Shimmer } from "@/components/uses/visuals";
 
-// Photo check and Voice triage: the same typed questions, asked about a photo or a voice clip instead of text, proxied
+// Photo check, Voice triage and Video check: the same typed questions, asked about a photo, a voice clip or a video instead of text, proxied
 // under /media: on a Mac the model server itself (the same model, through Gemma 4's vision and audio encoders), on a
 // PyTorch machine the separate d1a.media server. The checkpoint
 // is trained on text only, so these answers are zero-shot. Questions stay in English (see englishNote); labels are shown
@@ -17,6 +17,7 @@ const SAMPLES = `${BASE_PATH}/samples`;
 const MAX_IMAGE_SIDE = 1024;   // the image processor resizes anyway; this keeps the upload small
 const SAMPLE_RATE = 16_000;    // what Gemma 4's audio encoder reads
 const MAX_RECORD_S = 20;
+const MAX_VIDEO_MB = 24;       // sent as is (base64): the server reads clips up to 32 MB and samples 16 frames
 
 const toBase64 = (buf: ArrayBuffer) => {
   const bytes = new Uint8Array(buf); let s = "";
@@ -64,7 +65,7 @@ function useMediaRequest() {
     const t = setTimeout(() => setSlow(true), 4000);
     return () => { clearTimeout(t); setSlow(false); };
   }, [busy]);
-  async function run(media: () => Promise<{ type: "image" | "audio"; data: string }>, questions: Record<string, Question>) {
+  async function run(media: () => Promise<{ type: "image" | "audio" | "video"; data: string }>, questions: Record<string, Question>) {
     const id = ++seq.current;
     setBusy(true); setError(null);
     try {
@@ -257,6 +258,69 @@ export function VoiceDemo() {
         <ResultCard title={<>{t.qIntent} · <Latency r={req.result} /></>}><AnswerBars answer={a.intent} labels={t.intents} /></ResultCard>
         <ResultCard title={t.qUrgent}><AnswerBars answer={a.urgent} /></ResultCard>
         <ZeroShotNote />
+      </> : req.busy ? <Shimmer tall /> : <Empty>{t.empty}</Empty>}
+    />
+  );
+}
+
+/* ------------------------------------------------------------------ Video check */
+
+const VIDEOS = ["damaged_wet", "intact_locker", "damaged_crushed_truck", "intact_door"];
+const VIDEO_TEXT = {
+  en: {
+    names: { damaged_wet: "Wet box on a sidewalk", intact_locker: "Locker", damaged_crushed_truck: "Crushed in the van", intact_door: "Neat drop at a door" } as Record<string, string>,
+    upload: "Your clip", uploadHint: `MP4, MOV or WebM, up to ${MAX_VIDEO_MB} MB`, choose: "Choose a video…", tooBig: `That clip is over ${MAX_VIDEO_MB} MB; trim it or pick a shorter one.`,
+    run: "Check the video", busy: "Watching…", slow: "Reading 16 frames takes 10–20 s on a Mac, longer if the model first has to load.", empty: "Pick a clip or upload one: the model watches it and checks for damage and where the parcel was left.",
+    note: "The sample clips are short pans over the sample photos. The model reads 16 frames spread over the clip, each with its timestamp; the sound is not used. It answers about the scene as a whole. Questions about the order of events (\"where is it at the end?\") are not reliable yet.",
+  },
+  ja: {
+    names: { damaged_wet: "歩道で濡れた箱", intact_locker: "宅配ロッカー", damaged_crushed_truck: "車内でつぶれた箱", intact_door: "玄関前（きれい）" } as Record<string, string>,
+    upload: "あなたの動画", uploadHint: `MP4・MOV・WebM、${MAX_VIDEO_MB} MB まで`, choose: "動画を選ぶ…", tooBig: `この動画は ${MAX_VIDEO_MB} MB を超えています。短くするか、別の動画を選んでください。`,
+    run: "動画をチェック", busy: "見ています…", slow: "16 フレームを読むので、Mac では 10〜20 秒かかります。モデルの読み込みが必要なときはさらにかかります。", empty: "動画を選ぶかアップロードしてください。モデルが動画を見て、荷物の破損と置き場所を判定します。",
+    note: "サンプル動画は、サンプル写真の上をゆっくり動かした短いクリップです。モデルは動画全体から均等に選んだ 16 フレームを、それぞれのタイムスタンプ付きで読みます。音声は使いません。答えるのは場面全体についてで、出来事の順番に関する質問（「最後はどこにあるか」など）にはまだ安定して答えられません。",
+  },
+};
+
+export function VideoDemo() {
+  const t = useText(VIDEO_TEXT);
+  const p0 = useText(PHOTO_TEXT);
+  const [vi, setVi] = useState(0);
+  const [file, setFile] = useState<{ url: string; blob: Blob; name: string } | null>(null);
+  const [tooBig, setTooBig] = useState(false);
+  const req = useMediaRequest();
+  const src = file?.url ?? `${SAMPLES}/video_${VIDEOS[vi]}.mp4`;
+  useEffect(() => () => { if (file) URL.revokeObjectURL(file.url); }, [file]);
+
+  const run = () => req.run(async () => ({ type: "video", data: toBase64(await (file?.blob ?? await (await fetch(src)).blob()).arrayBuffer()) }), PHOTO_Q);
+  const a = req.result?.answers;
+  const p = a?.damaged?.type === "noul" ? a.damaged.noul : null;
+
+  return (
+    <DemoGrid
+      left={<>
+        <Presets presets={VIDEOS.map((id) => ({ name: t.names[id] }))} current={file ? -1 : vi} onPick={(i) => { setVi(i); setFile(null); setTooBig(false); req.reset(); }} />
+        <Field label={t.upload} hint={t.uploadHint} htmlFor="video-file">
+          <label className={`${inputCls} flex cursor-pointer items-center gap-2 text-muted-foreground`}>
+            <Upload className="size-4" aria-hidden /><span className="truncate">{file?.name ?? t.choose}</span>
+            <input id="video-file" type="file" accept="video/*" className="sr-only"
+              onChange={(e) => {
+                const f = e.target.files?.[0]; if (!f) return;
+                if (f.size > MAX_VIDEO_MB * 2 ** 20) { setTooBig(true); return; }
+                setTooBig(false); setFile({ url: URL.createObjectURL(f), blob: f, name: f.name }); req.reset();
+              }} />
+          </label>
+        </Field>
+        {tooBig && <p role="alert" className="text-[12px] text-destructive">{t.tooBig}</p>}
+        <video key={src} src={src} controls muted loop playsInline autoPlay className="aspect-[4/3] w-full rounded-xl border border-border bg-black object-cover" />
+        <RunBar onRun={run} busy={req.busy} label={t.run} busyLabel={t.busy} />
+        {req.slow && <p role="status" className="text-[12px] leading-5 text-muted-foreground">{t.slow}</p>}
+        <MediaError error={req.error} />
+      </>}
+      right={req.result && a && p !== null ? <>
+        <Verdict label={p >= 0.7 ? p0.damaged : p <= 0.3 ? p0.ok : p0.unsure} tone={p >= 0.7 ? "stop" : p <= 0.3 ? "go" : "wait"}>{p0.why(p)}</Verdict>
+        <ResultCard title={<>{p0.qDamaged} · <Latency r={req.result} /></>}><AnswerBars answer={a.damaged} /></ResultCard>
+        <ResultCard title={p0.qPlace}><AnswerBars answer={a.place} labels={p0.places} /></ResultCard>
+        <p className="text-[12px] leading-5 text-muted-foreground">{t.note}</p>
       </> : req.busy ? <Shimmer tall /> : <Empty>{t.empty}</Empty>}
     />
   );
