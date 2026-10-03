@@ -31,6 +31,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- The D1A model server pin moves to a commit whose state pass skips Gemma 4's KV-shared layers: long pull requests
+  (Demo 12, the labeling job) answer about 30% faster on a Mac, with identical answers (jonpol01/d1a#104).
 - **One model, loaded only while in use.** Photo check and Voice triage on a Mac are answered by the model server
   itself, with the same model, through Gemma 4's vision and audio encoders (~1 GB more while loaded) instead of a
   second bf16 Gemma 4 (~10 GB). `./demo.sh --media` starts no second server on Apple Silicon; `mini.sh` drops the

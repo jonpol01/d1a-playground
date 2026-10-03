@@ -32,7 +32,7 @@ WEB_LABEL="io.github.jonpol01.d1a-web"
 # the default model: the MLX 8-bit build on Apple Silicon (4.2 GB, parity-checked), the PyTorch checkpoint elsewhere
 if [ "$(uname -sm)" = "Darwin arm64" ]; then DEFAULT_MODEL_RUN="JohnP1/d1a-e2b-mlx-q8"; else DEFAULT_MODEL_RUN="JohnP1/d1a-e2b"; fi
 D1A_REPO="https://github.com/jonpol01/d1a"
-D1A_SHA="e08252651bf7d4368103d3f539a42d8601f0d57c"   # the D1A model server this playground is tested against
+D1A_SHA="1bce9a4a92b9404abd06d304324fa5c8e1d63bce"   # the D1A model server this playground is tested against
 PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 
 say() { printf '\033[1m[mini]\033[0m %s\n' "$*"; }
