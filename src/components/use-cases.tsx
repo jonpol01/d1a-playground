@@ -2,13 +2,13 @@
 
 import { useEffect, useState, useSyncExternalStore, type ComponentType, type CSSProperties, type ReactNode } from "react";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, Camera, Gamepad2, GitPullRequest, Mic, Gauge, Inbox, ListOrdered, Route, ShieldCheck, Star, Tags, Wrench, type LucideIcon } from "lucide-react";
+import { ArrowLeft, ArrowRight, Camera, Clapperboard, Gamepad2, GitPullRequest, Mic, Gauge, Inbox, ListOrdered, Route, ShieldCheck, Star, Tags, Wrench, type LucideIcon } from "lucide-react";
 import { api, START_HINT } from "@/lib/kev";
 import { LANGS, setLang, useHtmlLang, useLang, useText, type Lang } from "@/lib/i18n";
 import { HwMonitor, type ModelMeta } from "@/components/hw-monitor";
 import { BulkDemo, InboxDemo, RerankDemo } from "@/components/uses/batch";
 import { ControlDemo } from "@/components/uses/control";
-import { PhotoDemo, VoiceDemo } from "@/components/uses/media";
+import { PhotoDemo, VideoDemo, VoiceDemo } from "@/components/uses/media";
 import { PRLabelDemo } from "@/components/uses/prlabel";
 import { EvalsDemo, GateDemo, GuardrailsDemo, RoutingDemo, ToolGateDemo } from "@/components/uses/single";
 
@@ -28,6 +28,7 @@ const DEMOS: Demo[] = [
   { id: "photo", accent: "#0891b2", Icon: Camera, outcomes: ["damaged?", "where?"], Component: PhotoDemo },
   { id: "voice", accent: "#be185d", Icon: Mic, outcomes: ["urgent?", "intent"], Component: VoiceDemo },
   { id: "prlabel", accent: "#16a34a", Icon: GitPullRequest, outcomes: ["type", "blast", "P0–P4"], Component: PRLabelDemo },
+  { id: "video", accent: "#9333ea", Icon: Clapperboard, outcomes: ["damaged?", "where?"], Component: VideoDemo },
 ];
 
 const DEMO_TEXT: Record<Lang, Record<string, DemoText>> = {
@@ -56,6 +57,8 @@ const DEMO_TEXT: Record<Lang, Record<string, DemoText>> = {
       line: "The model listens to a short voice note, in English or Japanese, and decides what the speaker needs and whether it is urgent. Gemma 4's own audio encoder reads the sound; there is no speech-to-text step." },
     prlabel: { title: "PR labeler", input: "pull request", caption: "Label every pull request: change type, blast radius and severity.",
       line: "The model reads a pull request (title, description, changed files) and answers the three questions a labeling job asks on every open PR: what kind of change, how far a mistake would spread, and how serious the problem is. Answers below p 0.7 are flagged for a human." },
+    video: { title: "Video check", input: "video", caption: "Watch a short delivery clip: is the parcel damaged, and where was it left?",
+      line: "The model watches a short clip, 16 frames each with its timestamp, and answers the same typed questions as for a photo. Gemma 4's own vision encoder reads the frames; there is no captioning step, and the sound is not used." },
   },
   ja: {
     routing: { title: "モデルの振り分け", input: "プロンプト", caption: "各プロンプトを、処理できる一番安いモデルに送ります。",
@@ -82,12 +85,14 @@ const DEMO_TEXT: Record<Lang, Record<string, DemoText>> = {
       line: "モデルが英語または日本語の短い音声メモを聞き、話し手の用件と緊急かどうかを判定します。音声は Gemma 4 自身の音声エンコーダーが読み、文字起こしの段階はありません。" },
     prlabel: { title: "PR ラベル付け", input: "プルリクエスト", caption: "すべてのプルリクエストに、変更の種類・影響範囲・深刻度のラベルを付けます。",
       line: "モデルがプルリクエスト（タイトル、説明、変更ファイル）を読み、ラベル付けジョブが開いている PR ごとに聞く3つの質問に答えます。どんな変更か、間違いがどこまで広がるか、どれだけ深刻な問題か。確率が 0.7 未満の答えは人の確認に回します。" },
+    video: { title: "動画チェック", input: "動画", caption: "短い配達動画から、荷物の破損と置き場所を確認します。",
+      line: "モデルが短い動画をタイムスタンプ付きの 16 フレームとして見て、写真と同じ型付きの質問に答えます。フレームは Gemma 4 自身の画像エンコーダーが読み、キャプション生成の段階はありません。音声は使いません。" },
   },
 };
 
 const UI_EN = {
-  heroA: "Twelve jobs for a ", heroB: "small decision model", heroC: ".",
-  heroSub: "One document and a few typed questions in, a calibrated probability for every option out, in well under a second. Pick a use case: every example is live and editable, two of them read a photo or a voice note, and one labels pull requests.",
+  heroA: "Thirteen jobs for a ", heroB: "small decision model", heroC: ".",
+  heroSub: "One document and a few typed questions in, a calibrated probability for every option out, in well under a second. Pick a use case: every example is live and editable, three of them read a photo, a voice note or a video, and one labels pull requests.",
   down: "The model server is not answering on port 8009, so the demos cannot run.",
   lmstudio: "LM Studio mode: answers come from a prompted chat model, not the trained checkpoint. Probabilities are the chat model's letter probabilities, uncalibrated.",
   all: "All", useCases: "Use cases", architecture: "Architecture", language: "Language",
@@ -97,8 +102,8 @@ const UI_EN = {
 const UI: Record<Lang, typeof UI_EN> = {
   en: UI_EN,
   ja: {
-    heroA: "", heroB: "小さな判断モデル", heroC: "に任せる12の仕事",
-    heroSub: "1つの文書といくつかの型付きの質問を入れると、すべての選択肢に較正済みの確率が返ってきます。1秒もかかりません。ユースケースを選んでください。どの例もライブで動き、自由に編集できます。うち2つは写真や音声メモを読み取り、1つはプルリクエストにラベルを付けます。",
+    heroA: "", heroB: "小さな判断モデル", heroC: "に任せる13の仕事",
+    heroSub: "1つの文書といくつかの型付きの質問を入れると、すべての選択肢に較正済みの確率が返ってきます。1秒もかかりません。ユースケースを選んでください。どの例もライブで動き、自由に編集できます。うち3つは写真・音声メモ・動画を読み取り、1つはプルリクエストにラベルを付けます。",
     down: "モデルサーバー（ポート 8009）が応答しないため、デモを実行できません。",
     lmstudio: "LM Studio モード: 答えは学習済みのチェックポイントではなく、プロンプトで指示したチャットモデルから返っています。確率はチャットモデルの選択肢記号の確率で、較正されていません。",
     all: "一覧", useCases: "ユースケース", architecture: "アーキテクチャ", language: "言語",

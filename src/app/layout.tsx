@@ -21,7 +21,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "D1A playground",
-  description: "小さな判断モデルの12のユースケースのライブデモ / Live demos of twelve use cases for a small decision model: one document and typed questions in, a probability per option out.",
+  description: "小さな判断モデルの13のユースケースのライブデモ / Live demos of thirteen use cases for a small decision model: one document and typed questions in, a probability per option out.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

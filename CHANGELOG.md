@@ -19,6 +19,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Demo 13, **Video check**: the Photo check questions (is the parcel damaged, where was it left) about a short clip, with
+  four sample clips and an upload (MP4, MOV, WebM up to 24 MB). The model reads 16 timestamped frames through Gemma 4's
+  vision encoder (jonpol01/d1a#100); the sound is not used. Zero-shot, like the photos: right about the scene as a whole,
+  not yet about the order of events. Needs a D1A model server with video support.
+
 - Demo 12, **PR labeler**: pick an example, paste a pull request or load a public one from GitHub; D1A answers the three
   questions the CTO bot's labeling job asks on every open PR (change type, blast radius, severity P0–P4), built from the
   same document, and the page applies the job's rules: `review:needs-human` below p 0.7, and a committed `.env` forces
