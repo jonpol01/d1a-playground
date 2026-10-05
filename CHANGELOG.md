@@ -28,6 +28,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   questions the CTO bot's labeling job asks on every open PR (change type, blast radius, severity P0–P4), built from the
   same document, and the page applies the job's rules: `review:needs-human` below p 0.7, and a committed `.env` forces
   `type/security` and at least P1.
+- `scripts/pr_outcomes.py`, and `LABEL_OUTCOMES=1` in `mini.sh` to run it every 15 minutes. It turns the CTO bot's
+  PR-labeling decisions into outcomes for D1A to learn from: the review bot's own type and blast-radius labels on the
+  head it reviewed, and any label a person changes. Over the 142 labeling calls since 2026-10-02, the review bot kept
+  D1A's type on 80 of 99 decisions and its blast radius on 71 of 102, and usually called the blast radius wider.
 
 ### Changed
 

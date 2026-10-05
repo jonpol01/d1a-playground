@@ -41,5 +41,6 @@ jobs:
           $errors = $null
           [void][System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path demo.ps1), [ref]$null, [ref]$errors)
           if ($errors) { $errors | ForEach-Object { "demo.ps1:$($_.Extent.StartLineNumber): $($_.Message)" }; exit 1 }
-      - run: python3 -m py_compile server/lmstudio_systemone.py server/kev/api.py
+      - run: python3 -m py_compile server/lmstudio_systemone.py server/kev/api.py scripts/pr_outcomes.py
+      - run: python3 -m unittest scripts/test_pr_outcomes.py
       - run: python3 scripts/release_notes.py --check "v$(python3 -c "import json; print(json.load(open('package.json'))['version'])")"

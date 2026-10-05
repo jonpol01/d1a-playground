@@ -29,6 +29,7 @@ LOGS="$HOME/Library/Logs"
 MODEL_LABEL="io.github.jonpol01.d1a-model"
 MEDIA_LABEL="io.github.jonpol01.d1a-media"   # the separate media server older versions ran; removed on install
 WEB_LABEL="io.github.jonpol01.d1a-web"
+OUTCOMES_LABEL="io.github.jonpol01.d1a-outcomes"   # LABEL_OUTCOMES=1: scripts/pr_outcomes.py every 15 minutes
 # the default model: the MLX 8-bit build on Apple Silicon (4.2 GB, parity-checked), the PyTorch checkpoint elsewhere
 if [ "$(uname -sm)" = "Darwin arm64" ]; then DEFAULT_MODEL_RUN="JohnP1/d1a-e2b-mlx-q8"; else DEFAULT_MODEL_RUN="JohnP1/d1a-e2b"; fi
 D1A_REPO="https://github.com/jonpol01/d1a"
@@ -46,7 +47,7 @@ load_env() {
   PYTORCH_MPS_LOW_WATERMARK_RATIO="${PYTORCH_MPS_LOW_WATERMARK_RATIO:-0.6}"
   KEV_PREFIX_CACHE="${KEV_PREFIX_CACHE:-4}"; KEV_PREFIX_MAX_TOKENS="${KEV_PREFIX_MAX_TOKENS:-65536}"
   MEDIA="${MEDIA:-0}"; IDLE_UNLOAD="${IDLE_UNLOAD:-600}"
-  FEEDBACK_LOG="${FEEDBACK_LOG:-}"; OUTCOME_CALIBRATOR="${OUTCOME_CALIBRATOR:-}"
+  FEEDBACK_LOG="${FEEDBACK_LOG:-}"; OUTCOME_CALIBRATOR="${OUTCOME_CALIBRATOR:-}"; LABEL_OUTCOMES="${LABEL_OUTCOMES:-0}"
 }
 
 save_env() {
@@ -65,6 +66,7 @@ MEDIA=$MEDIA
 IDLE_UNLOAD=$IDLE_UNLOAD
 FEEDBACK_LOG=$FEEDBACK_LOG
 OUTCOME_CALIBRATOR=$OUTCOME_CALIBRATOR
+LABEL_OUTCOMES=$LABEL_OUTCOMES
 EOF
 }
 
@@ -133,10 +135,44 @@ write_agents() {
 "   # next start reads next.config.ts again, so the base path must match the build's
   plist "$WEB_LABEL" "$(command -v node)" "$ROOT/node_modules/next/dist/bin/next" start -p "$PORT" -H "$HOST" >"$AGENTS/$WEB_LABEL.plist"
   plutil -lint "$AGENTS/$MODEL_LABEL.plist" "$AGENTS/$WEB_LABEL.plist" >/dev/null
+  if [ "$LABEL_OUTCOMES" = 1 ]; then
+    [ -n "$FEEDBACK_LOG" ] || die "LABEL_OUTCOMES=1 needs FEEDBACK_LOG: the outcomes go to the model server's decision log"
+    # the PR labeler's outcomes (review bot and human label changes) posted to /v1/feedback; runs at load, then every 900 s
+    cat >"$AGENTS/$OUTCOMES_LABEL.plist" <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>$OUTCOMES_LABEL</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>$STATE/d1a-venv/bin/python</string>
+    <string>$ROOT/scripts/pr_outcomes.py</string>
+    <string>--feedback</string>
+    <string>http://127.0.0.1:$KEV_PORT/v1/feedback</string>
+  </array>
+  <key>WorkingDirectory</key><string>$ROOT</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key><string>$path</string>
+  </dict>
+  <key>RunAtLoad</key><true/>
+  <key>StartInterval</key><integer>900</integer>
+  <key>StandardOutPath</key><string>$LOGS/d1a-outcomes.log</string>
+  <key>StandardErrorPath</key><string>$LOGS/d1a-outcomes.log</string>
+</dict>
+</plist>
+EOF
+    plutil -lint "$AGENTS/$OUTCOMES_LABEL.plist" >/dev/null
+  else
+    launchctl bootout "$(domain)/$OUTCOMES_LABEL" 2>/dev/null || true; rm -f "$AGENTS/$OUTCOMES_LABEL.plist"
+  fi
 }
 
 labels() {   # the agents this machine runs, in start order
   echo "$MODEL_LABEL"; echo "$WEB_LABEL"
+  [ -f "$AGENTS/$OUTCOMES_LABEL.plist" ] && echo "$OUTCOMES_LABEL"
+  return 0
 }
 
 start() {
@@ -151,7 +187,7 @@ start() {
 
 stop() {
   local d; d="$(domain)"
-  for l in "$WEB_LABEL" "$MEDIA_LABEL" "$MODEL_LABEL"; do launchctl bootout "$d/$l" 2>/dev/null && say "stopped $l" || say "$l was not loaded"; done
+  for l in "$OUTCOMES_LABEL" "$WEB_LABEL" "$MEDIA_LABEL" "$MODEL_LABEL"; do launchctl bootout "$d/$l" 2>/dev/null && say "stopped $l" || say "$l was not loaded"; done
 }
 
 status() {
