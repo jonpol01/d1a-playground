@@ -110,11 +110,11 @@ function ZeroShotNote() {
 /* ------------------------------------------------------------------ Photo check */
 
 const PLACES = ["at a front door", "in a mailbox", "in a delivery locker", "on a sidewalk", "inside a delivery van"];
-const PHOTO_Q: Record<string, Question> = {
+export const PHOTO_Q: Record<string, Question> = {
   damaged: { type: "noul", instructions: "Is the parcel damaged?" },
   place: { type: "choice", instructions: "Where was the parcel left?", criteria: Object.fromEntries(PLACES.map((p) => [p, null])) },
 };
-const PHOTOS = ["damaged_door", "intact_door", "intact_locker", "damaged_wet", "intact_mailbox", "damaged_crushed_truck"];
+export const PHOTOS = ["damaged_door", "intact_door", "intact_locker", "damaged_wet", "intact_mailbox", "damaged_crushed_truck"];
 const PHOTO_TEXT = {
   en: {
     names: { damaged_door: "Torn box at a door", intact_door: "Neat drop at a door", intact_locker: "Locker", damaged_wet: "Wet box on a sidewalk", intact_mailbox: "Mailbox", damaged_crushed_truck: "Crushed in the van" } as Record<string, string>,
@@ -174,11 +174,11 @@ export function PhotoDemo() {
 /* ------------------------------------------------------------------ Voice triage */
 
 const INTENTS = ["directions to the address", "report a damaged parcel", "the customer is not home", "a vehicle problem"];
-const VOICE_Q: Record<string, Question> = {
+export const VOICE_Q: Record<string, Question> = {
   urgent: { type: "noul", instructions: "Is this urgent?" },
   intent: { type: "choice", instructions: "What does the speaker need?", criteria: Object.fromEntries(INTENTS.map((p) => [p, null])) },
 };
-const CLIPS = ["en_directions", "en_damaged", "ja_nothome", "ja_vehicle"];
+export const CLIPS = ["en_directions", "en_damaged", "ja_nothome", "ja_vehicle"];
 const VOICE_TEXT = {
   en: {
     names: { en_directions: "Lost driver (EN)", en_damaged: "Damaged box (EN)", ja_nothome: "Nobody home (JA)", ja_vehicle: "Flat tyre (JA)" } as Record<string, string>,
@@ -265,7 +265,7 @@ export function VoiceDemo() {
 
 /* ------------------------------------------------------------------ Video check */
 
-const VIDEOS = ["damaged_wet", "intact_locker", "damaged_crushed_truck", "intact_door"];
+export const VIDEOS = ["damaged_wet", "intact_locker", "damaged_crushed_truck", "intact_door"];
 const VIDEO_TEXT = {
   en: {
     names: { damaged_wet: "Wet box on a sidewalk", intact_locker: "Locker", damaged_crushed_truck: "Crushed in the van", intact_door: "Neat drop at a door" } as Record<string, string>,

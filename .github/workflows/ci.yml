@@ -24,6 +24,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run lint
+      # the demo examples the UI ships must be the ones scripts/demo-baseline.json pins (scripts/demo_smoke.mjs)
+      - run: node scripts/demo_smoke.mjs --list
       - run: npx next typegen && npx tsc --noEmit -p .
       - run: npm run build
       # the Mac mini serves the app under /d1a behind a proxy (mini.sh, D1A_BASE_PATH): that build must work too

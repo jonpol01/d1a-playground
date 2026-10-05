@@ -62,14 +62,16 @@ function Concurrency({ value, onChange, disabled }: { value: number; onChange: (
   );
 }
 
-const splitBlocks = (s: string) => s.split(/\n\s*---\s*\n|\n\s*\n\s*\n/).map((b) => b.trim()).filter(Boolean);
+export const splitBlocks = (s: string) => s.split(/\n\s*---\s*\n|\n\s*\n\s*\n/).map((b) => b.trim()).filter(Boolean);
 
 /* ---------------------------------------------------------------- 4. Inbox triage */
 
 // Two questions per email, one request: the three-way triage and a yes/no on urgency. The prototype checkpoint is
 // much better at the yes/no, so the urgency answer can promote an email to reply_now. The questions stay English in
 // both languages: with Japanese wording the manager's deadline mail fell just under the urgency line.
-const TRIAGE_Q: Record<string, Question> = {
+export const splitPassages = (s: string) => s.split(/\n\s*\n/).map((x) => x.trim()).filter(Boolean);
+export const splitLines = (s: string) => s.split("\n").map((x) => x.trim()).filter(Boolean);
+export const TRIAGE_Q: Record<string, Question> = {
   triage: {
     type: "choice",
     instructions: "What should I do with this email?",
@@ -122,7 +124,7 @@ const INBOX_EN = {
   cardNote: "Each card shows the probability of its tray (for reply now, the higher of the triage and urgency answers); hover a card for every probability.",
   empty: "Sort the inbox to see every email labelled and ordered: reply now first, most certain at the top.",
 };
-const INBOX_TEXT: Record<Lang, typeof INBOX_EN> = {
+export const INBOX_TEXT: Record<Lang, typeof INBOX_EN> = {
   en: INBOX_EN,
   ja: {
     emails: `From: 佐藤部長
@@ -279,7 +281,7 @@ const RERANK_EN = {
   rankedFor: (q: string) => <>Reranked for <span className="italic">“{q}”</span></>, scoring: "Scoring…", was: (i: number) => `was #${i}`,
   empty: "Rerank to score every passage with p(answers the query) and see the before and after order.",
 };
-const RERANK_TEXT: Record<Lang, typeof RERANK_EN> = {
+export const RERANK_TEXT: Record<Lang, typeof RERANK_EN> = {
   en: RERANK_EN,
   ja: {
     query: "メールにアクセスできなくなった場合、パスワードをリセットするにはどうすればよいですか？", passages: `パスワードポリシーでは、数字と記号をそれぞれ1文字以上含む12文字以上が必要です。パスワードは180日ごとに期限切れになります。
@@ -314,7 +316,7 @@ export function RerankDemo() {
   const batch = useBatch<Rel>();
 
   function run() {
-    const passages = text.split(/\n\s*\n/).map((s) => s.trim()).filter(Boolean);
+    const passages = splitPassages(text);
     setItems(passages); setAskedQuery(query);
     const q: Record<string, Question> = { answers: { type: "noul", instructions: t.ask(query) } };
     batch.start(passages, 3, async (passage) => {
@@ -403,7 +405,7 @@ Doesn't fit my model even though the listing said it would.
 Lightweight and does the job.
 Total waste of money.`;
 
-const LABEL_Q: Record<string, Question> = {
+export const LABEL_Q: Record<string, Question> = {
   sentiment: { type: "choice", instructions: "What is the sentiment of this product review?", criteria: { positive: "The reviewer is happy with the product or service", neutral: "Mixed, plain or factual, no clear feeling either way", negative: "The reviewer is unhappy with the product or service" } },
 };
 const BULK_EN = {
@@ -413,7 +415,7 @@ const BULK_EN = {
   low: (n: number) => `${n} with p(label) below 0.60`, lowTail: ", the rows to send to a human reviewer",
   cols: { review: "Review", label: "Label" },
 };
-const BULK_TEXT: Record<Lang, typeof BULK_EN> = {
+export const BULK_TEXT: Record<Lang, typeof BULK_EN> = {
   en: BULK_EN,
   ja: {
     reviews: `予定より2日早く届き、サイズもぴったりでした。また買いたいです。
@@ -468,7 +470,7 @@ export function BulkDemo() {
   const batch = useBatch<Label>();
 
   function run() {
-    const lines = text.split("\n").map((s) => s.trim()).filter(Boolean);
+    const lines = splitLines(text);
     setRows(lines);
     batch.start(lines, concurrency, async (line) => {
       const r = await ask(line, LABEL_Q);

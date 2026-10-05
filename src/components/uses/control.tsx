@@ -6,11 +6,11 @@ import { Button } from "@/components/ui/button";
 import { accentButton, AnswerBars, ask, ErrorNote, ResultCard } from "@/components/uses/shared";
 import { useText, type Lang } from "@/lib/i18n";
 
-const CELLS = 21;          // cells 0..20
+export const CELLS = 21;          // cells 0..20
 const TICK_MS = 100;       // the control loop runs at 10 Hz; a tick with a request still in flight is skipped, never queued
 const TARGET_EVERY = 8;    // the target moves one cell every 8 ticks (0.8 s)
 
-const MOVE_Q: Record<string, Question> = {
+export const MOVE_Q: Record<string, Question> = {
   move: {
     type: "choice",
     instructions: "The robot must move toward the target. Which move?",
@@ -20,7 +20,7 @@ const MOVE_Q: Record<string, Question> = {
 
 // The state is machine-generated and stays English in both languages: the prototype follows it with p 0.75-0.96,
 // against 0.64-0.92 for the same sentences in Japanese.
-function describe(robot: number, target: number, hint: boolean) {
+export function describe(robot: number, target: number, hint: boolean) {
   const base = `Robot at cell ${robot}. Target at cell ${target}.`;
   if (!hint) return `1-D track with cells 0 to ${CELLS - 1}. ${base}`;
   if (robot === target) return `${base} The robot is on the target.`;
