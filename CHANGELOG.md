@@ -19,6 +19,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Demo smoke test** (`scripts/demo_smoke.mjs`, #26). Every demo's built-in examples (145 requests: the 9 text demos
+  in English and Japanese, the PR labeler, fixed Control states, 6 photos, 4 voice clips and 4 videos) are sent through
+  the web app and checked against `scripts/demo-baseline.json`. Each must answer, with every question answered, and give
+  the baseline's choice. The requests come from the demos' own questions, presets and state builders
+  (`src/components/uses/smoke.ts`), so the test follows the UI. Checks: CI's `--list` (no server) fails when an example
+  is added or removed without re-recording the baseline. `mini.sh install|reinstall|update` and `./mini.sh smoke` run
+  the full test after a deploy and stop on a failure. Baseline recorded on the Mac mini (D1A `a84bd8c`,
+  `d1a-e4b-mlx-q8@v0.4`): 145/145, in 77 s.
 - The Mini runs D1A's promotion gate daily: with `LABEL_OUTCOMES=1` and `OUTCOME_CALIBRATOR` set, `mini.sh` adds the
   `io.github.jonpol01.d1a-promote` LaunchAgent (04:00, `python -m d1a.feedback promote`), and removes it when either is off.
 - Demo 13, **Video check**: the Photo check questions (is the parcel damaged, where was it left) about a short clip, with
