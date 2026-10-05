@@ -35,7 +35,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
-- The D1A model server pin moves to D1A 0.3.0 (`9c93afb`), which can learn from outcomes. `mini.sh` passes two new
+- The D1A model server pin moves to D1A 0.3.0 (`9c93afb`), which can learn from outcomes, and then to `9d6b9e8`
+  (jonpol01/d1a#145): choice questions are recalibrated too, and `/v1/feedback` keeps each outcome's source. `mini.sh` passes two new
   settings to it, both off unless set in `.demo/mini.env`: `FEEDBACK_LOG` (log every decision and accept outcomes at
   `POST /v1/feedback`) and `OUTCOME_CALIBRATOR` (apply a calibrator fitted on those outcomes).
 - The D1A model server pin moves to a commit whose state pass skips Gemma 4's KV-shared layers: long pull requests
