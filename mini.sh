@@ -229,8 +229,8 @@ start() {
 smoke() {   # every demo's examples through the web app, checked against scripts/demo-baseline.json (scripts/demo_smoke.mjs)
   local url="http://127.0.0.1:$PORT$D1A_BASE_PATH" n=0
   until curl -fsS -m 5 -o /dev/null "$url/kev/v1/models"; do n=$((n + 1)); [ $n -gt 120 ] && die "the web app or the model server did not come up; see $LOGS"; sleep 5; done
-  local media=(); [ "$MEDIA" = 1 ] || media=(--no-media)
-  node "$ROOT/scripts/demo_smoke.mjs" "$url" "${media[@]}" || die "demo smoke test FAILED: a demo no longer answers, or answers differently (scripts/demo_smoke.mjs)"
+  local media=""; [ "$MEDIA" = 1 ] || media="--no-media"   # a string, not an array: bash 3.2 under set -u calls an empty array unbound
+  node "$ROOT/scripts/demo_smoke.mjs" "$url" $media || die "demo smoke test FAILED: a demo no longer answers, or answers differently (scripts/demo_smoke.mjs)"
 }
 
 stop() {
