@@ -19,6 +19,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- The Mini runs D1A's promotion gate daily: with `LABEL_OUTCOMES=1` and `OUTCOME_CALIBRATOR` set, `mini.sh` adds the
+  `io.github.jonpol01.d1a-promote` LaunchAgent (04:00, `python -m d1a.feedback promote`), and removes it when either is off.
 - Demo 13, **Video check**: the Photo check questions (is the parcel damaged, where was it left) about a short clip, with
   four sample clips and an upload (MP4, MOV, WebM up to 24 MB). The model reads 16 timestamped frames through Gemma 4's
   vision encoder (jonpol01/d1a#100); the sound is not used. Zero-shot, like the photos: right about the scene as a whole,
@@ -35,6 +37,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- `scripts/pr_outcomes.py` sends `group` `<repo>#<number>` with every outcome, the unit `d1a.feedback promote` bootstraps over.
+- D1A pinned at jonpol01/d1a@a84bd8c2 (#151: `d1a.feedback promote`, `group` on `POST /v1/feedback`) in `mini.sh`, `demo.sh`
+  and `demo.ps1`.
 - The D1A model server pin moves to D1A 0.3.0 (`9c93afb`), which can learn from outcomes, and then to `9d6b9e8`
   (jonpol01/d1a#145): choice questions are recalibrated too, and `/v1/feedback` keeps each outcome's source. `mini.sh` passes two new
   settings to it, both off unless set in `.demo/mini.env`: `FEEDBACK_LOG` (log every decision and accept outcomes at

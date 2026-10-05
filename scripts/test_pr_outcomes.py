@@ -4,6 +4,7 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import pr_outcomes  # noqa: E402
 from pr_outcomes import outcomes  # noqa: E402
 
 BOT, PERSON = "hermes-prbot[bot]", "jonpol01"
@@ -46,6 +47,25 @@ class Outcomes(unittest.TestCase):
         edited = EVENTS + [ev("12:30:00", "unlabeled", "P3", PERSON), ev("12:30:01", "labeled", "P1", PERSON)]
         self.assertEqual(decide(2, edited)["human"], {"sev": "P1"})
         self.assertNotIn("human", decide(1, edited))      # after the next call: that edit is about a later head
+
+
+class Posting(unittest.TestCase):
+    def test_each_outcome_is_posted_with_its_pr_as_the_group(self):
+        """d1a.feedback promote bootstraps over groups: every outcome of one PR carries group "<repo>#<number>"."""
+        import json, tempfile
+        from unittest import mock
+        with tempfile.TemporaryDirectory() as tmp:
+            decisions = Path(tmp) / "decisions.jsonl"
+            now = "2099-01-01T00:00:00Z"
+            decisions.write_text(json.dumps({"ts": "2026-10-05T12:20:17Z", "repo": "jonpol01/d1a", "number": 136, "head_sha": "155bb4ad",
+                                             "decision_id": "d-1", "applied_labels": D1A}) + "\n", encoding="utf-8")
+            sent = []
+            fake_open = lambda req, timeout: (sent.append(json.loads(req.data)), mock.MagicMock(status=200, __enter__=lambda s: s, __exit__=lambda *a: None))[1]
+            with mock.patch.object(pr_outcomes, "pr_history", return_value=(EVENTS + [ev("12:30:00", "unlabeled", "P3", PERSON), ev("12:30:01", "labeled", "P1", PERSON)], REVIEWS)), \
+                 mock.patch("urllib.request.urlopen", fake_open):
+                self.assertEqual(pr_outcomes.main(["--decisions", str(decisions), "--state", str(Path(tmp) / "posted.json"), "--days", "100000"]), 0)
+        self.assertTrue(sent)
+        self.assertTrue(all(body["group"] == "jonpol01/d1a#136" and body["decision_id"] == "d-1" for body in sent), sent)
 
 
 if __name__ == "__main__":

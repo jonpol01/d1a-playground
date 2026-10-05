@@ -30,10 +30,11 @@ MODEL_LABEL="io.github.jonpol01.d1a-model"
 MEDIA_LABEL="io.github.jonpol01.d1a-media"   # the separate media server older versions ran; removed on install
 WEB_LABEL="io.github.jonpol01.d1a-web"
 OUTCOMES_LABEL="io.github.jonpol01.d1a-outcomes"   # LABEL_OUTCOMES=1: scripts/pr_outcomes.py every 15 minutes
+PROMOTE_LABEL="io.github.jonpol01.d1a-promote"     # LABEL_OUTCOMES=1 and OUTCOME_CALIBRATOR: d1a.feedback promote daily at 04:00
 # the default model: the MLX 8-bit build on Apple Silicon (4.2 GB, parity-checked), the PyTorch checkpoint elsewhere
 if [ "$(uname -sm)" = "Darwin arm64" ]; then DEFAULT_MODEL_RUN="JohnP1/d1a-e2b-mlx-q8"; else DEFAULT_MODEL_RUN="JohnP1/d1a-e2b"; fi
 D1A_REPO="https://github.com/jonpol01/d1a"
-D1A_SHA="9d6b9e8a4f6f6df52b56a293e43c46d8118b3b59"   # the D1A model server this playground is tested against
+D1A_SHA="a84bd8c2abece804f806c068c51174a21e02536f"   # the D1A model server this playground is tested against
 PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 
 say() { printf '\033[1m[mini]\033[0m %s\n' "$*"; }
@@ -167,11 +168,51 @@ EOF
   else
     launchctl bootout "$(domain)/$OUTCOMES_LABEL" 2>/dev/null || true; rm -f "$AGENTS/$OUTCOMES_LABEL.plist"
   fi
+  if [ "$LABEL_OUTCOMES" = 1 ] && [ -n "$OUTCOME_CALIBRATOR" ]; then
+    # the promotion gate on the live decision log (d1a.feedback promote, d1a#148): daily at 04:00 it fits a calibrator on
+    # the outcomes so far and writes OUTCOME_CALIBRATOR only for the questions that pass; the server picks the file up
+    # without a restart. Nothing else ever writes that file.
+    cat >"$AGENTS/$PROMOTE_LABEL.plist" <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>$PROMOTE_LABEL</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>$STATE/d1a-venv/bin/python</string>
+    <string>-m</string>
+    <string>d1a.feedback</string>
+    <string>promote</string>
+    <string>$FEEDBACK_LOG</string>
+    <string>--calibrator</string>
+    <string>$OUTCOME_CALIBRATOR</string>
+  </array>
+  <key>WorkingDirectory</key><string>$ROOT</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key><string>$path</string>
+  </dict>
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Hour</key><integer>4</integer>
+    <key>Minute</key><integer>0</integer>
+  </dict>
+  <key>StandardOutPath</key><string>$LOGS/d1a-promote.log</string>
+  <key>StandardErrorPath</key><string>$LOGS/d1a-promote.log</string>
+</dict>
+</plist>
+EOF
+    plutil -lint "$AGENTS/$PROMOTE_LABEL.plist" >/dev/null
+  else
+    launchctl bootout "$(domain)/$PROMOTE_LABEL" 2>/dev/null || true; rm -f "$AGENTS/$PROMOTE_LABEL.plist"
+  fi
 }
 
 labels() {   # the agents this machine runs, in start order
   echo "$MODEL_LABEL"; echo "$WEB_LABEL"
   [ -f "$AGENTS/$OUTCOMES_LABEL.plist" ] && echo "$OUTCOMES_LABEL"
+  [ -f "$AGENTS/$PROMOTE_LABEL.plist" ] && echo "$PROMOTE_LABEL"
   return 0
 }
 
@@ -180,6 +221,7 @@ start() {
   for l in $(labels); do
     launchctl bootout "$d/$l" 2>/dev/null || true
     launchctl bootstrap "$d" "$AGENTS/$l.plist"
+    [ "$l" = "$PROMOTE_LABEL" ] && continue   # a calendar job: it runs at 04:00, not at start
     launchctl kickstart "$d/$l"   # a bootstrap right after a bootout can leave the agent loaded but not running
   done
   say "started; logs in $LOGS/d1a-model.log and $LOGS/d1a-web.log (the model takes a minute or two to load the first time)"
@@ -187,7 +229,7 @@ start() {
 
 stop() {
   local d; d="$(domain)"
-  for l in "$OUTCOMES_LABEL" "$WEB_LABEL" "$MEDIA_LABEL" "$MODEL_LABEL"; do launchctl bootout "$d/$l" 2>/dev/null && say "stopped $l" || say "$l was not loaded"; done
+  for l in "$PROMOTE_LABEL" "$OUTCOMES_LABEL" "$WEB_LABEL" "$MEDIA_LABEL" "$MODEL_LABEL"; do launchctl bootout "$d/$l" 2>/dev/null && say "stopped $l" || say "$l was not loaded"; done
 }
 
 status() {
