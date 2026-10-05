@@ -19,7 +19,7 @@ $ErrorActionPreference = 'Stop'
 
 # The D1A model server this demo runs, pinned to a commit so every friend gets the same server (mini.sh pins the same one).
 $D1aRepo = 'https://github.com/jonpol01/d1a'
-$D1aSha = '9d6b9e8a4f6f6df52b56a293e43c46d8118b3b59'
+$D1aSha = 'a84bd8c2abece804f806c068c51174a21e02536f'
 $MediaRun = 'JohnP1/d1a-e2b@v0.2.1-2epoch-calibrated'
 $PythonVersion = '3.13'       # torch has no wheels for 3.14 yet; uv downloads 3.13 if it is missing
 

@@ -105,8 +105,10 @@ def pr_history(repo, number):
     return events, reviews
 
 
-def post(url, decision_id, labels, src):
-    body = json.dumps({"decision_id": decision_id, "labels": labels, "src": src}).encode()
+def post(url, decision_id, labels, src, group):
+    """group: the outcome's unit for d1a.feedback promote's clustered bootstrap, "<repo>#<number>", so a PR's
+    re-labelled decisions count as one piece of evidence (d1a#148)."""
+    body = json.dumps({"decision_id": decision_id, "labels": labels, "src": src, "group": group}).encode()
     req = urllib.request.Request(url, body, {"Content-Type": "application/json"})
     with urllib.request.urlopen(req, timeout=30) as r: return r.status
 
@@ -138,7 +140,7 @@ def main(argv=None):
                 if done.get(src) == labels: continue
                 print(f"{repo}#{number} {c['head_sha'][:8]} {src}: {labels}")
                 if not a.dry_run:
-                    try: post(a.feedback, c["decision_id"], labels, src)
+                    try: post(a.feedback, c["decision_id"], labels, src, f"{repo}#{number}")
                     except (urllib.error.URLError, OSError) as e:
                         print(f"feedback not reachable ({e}); stopping", file=sys.stderr); return 1
                     done[src] = labels; sent += 1
