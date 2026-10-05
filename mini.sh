@@ -226,6 +226,12 @@ start() {
   done
   say "started; logs in $LOGS/d1a-model.log and $LOGS/d1a-web.log (the model takes a minute or two to load the first time)"
 }
+smoke() {   # every demo's examples through the web app, checked against scripts/demo-baseline.json (scripts/demo_smoke.mjs)
+  local url="http://127.0.0.1:$PORT$D1A_BASE_PATH" n=0
+  until curl -fsS -m 5 -o /dev/null "$url/kev/v1/models"; do n=$((n + 1)); [ $n -gt 120 ] && die "the web app or the model server did not come up; see $LOGS"; sleep 5; done
+  local media=(); [ "$MEDIA" = 1 ] || media=(--no-media)
+  node "$ROOT/scripts/demo_smoke.mjs" "$url" "${media[@]}" || die "demo smoke test FAILED: a demo no longer answers, or answers differently (scripts/demo_smoke.mjs)"
+}
 
 stop() {
   local d; d="$(domain)"
@@ -246,13 +252,14 @@ status() {
 
 load_env
 case "${1:-status}" in
-  install) save_env; install_code; write_agents; start ;;
+  install) save_env; install_code; write_agents; start; smoke ;;
   start) [ -f "$AGENTS/$MODEL_LABEL.plist" ] || die "run ./mini.sh install first"; start ;;
   stop) stop ;;
   status) status ;;
   update)
     git -C "$ROOT" pull --ff-only
     exec "$ROOT/mini.sh" reinstall ;;   # the pulled script, not the functions this process read before the pull
-  reinstall) stop; install_code; write_agents; start ;;
-  *) die "usage: ./mini.sh {install|start|stop|status|update|reinstall}" ;;
+  reinstall) stop; install_code; write_agents; start; smoke ;;
+  smoke) smoke ;;
+  *) die "usage: ./mini.sh {install|start|stop|status|update|reinstall|smoke}" ;;
 esac

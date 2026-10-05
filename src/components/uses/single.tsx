@@ -9,7 +9,7 @@ import { CountUp, GateTrack, RouteViz, Shimmer, ShieldViz, StarsViz, TrafficLigh
 
 /* ---------------------------------------------------------------- 1. Model routing */
 
-const ROUTE_Q: Record<string, Question> = {
+export const ROUTE_Q: Record<string, Question> = {
   route: {
     type: "choice",
     instructions: "How hard is this request for an AI assistant?",
@@ -37,7 +37,7 @@ const ROUTE_EN = {
   closeCall: (tier: string, p: string) => <>Close call: p({tier}) = {p}. A cautious router would send this one to <span className="font-mono">{tier}</span>.</>,
   empty: "Route the prompt to see which model tier the prompt is routed to and what that costs.",
 };
-const ROUTE_TEXT: Record<Lang, typeof ROUTE_EN> = {
+export const ROUTE_TEXT: Record<Lang, typeof ROUTE_EN> = {
   en: ROUTE_EN,
   ja: {
     presets: [
@@ -103,7 +103,7 @@ export function RoutingDemo() {
 
 /* ---------------------------------------------------------------- 2. Guardrails */
 
-const GUARD_Q: Record<string, Question> = {
+export const GUARD_Q: Record<string, Question> = {
   category: {
     type: "choice",
     instructions: "This message was sent to the customer-support assistant of an online shoe store. What kind of message is it?",
@@ -134,7 +134,7 @@ const GUARD_EN = {
   reachTitle: "reach_llm · noul · should this reach the LLM?",
   empty: "Check a message to see its category, whether it should reach the LLM, and the verdict.",
 };
-const GUARD_TEXT: Record<Lang, typeof GUARD_EN> = {
+export const GUARD_TEXT: Record<Lang, typeof GUARD_EN> = {
   en: GUARD_EN,
   ja: {
     presets: [
@@ -189,7 +189,7 @@ export function GuardrailsDemo() {
 
 /* ---------------------------------------------------------------- 3. Tool-call gating */
 
-const TOOL_Q: Record<string, Question> = {
+export const TOOL_Q: Record<string, Question> = {
   decision: {
     type: "choice",
     instructions: "How risky is this tool call?",
@@ -215,7 +215,7 @@ const TOOL_EN = {
   policyNote: "",
   empty: "Gate the proposed call to see allow / ask / deny before the agent runs it.",
 };
-const TOOL_TEXT: Record<Lang, typeof TOOL_EN> = {
+export const TOOL_TEXT: Record<Lang, typeof TOOL_EN> = {
   en: TOOL_EN,
   ja: {
     presets: [
@@ -238,6 +238,10 @@ const TOOL_TEXT: Record<Lang, typeof TOOL_EN> = {
   },
 };
 
+/** The Tool gate's state: the user's task and the tool call (its English frame in both languages). */
+export const toolState = (task: string, tool: string, args: unknown) =>
+  `User's task: ${task}\nThe agent wants to call the tool \`${tool}\` with arguments ${JSON.stringify(args)}.`;
+
 export function ToolGateDemo() {
   const t = useText(TOOL_TEXT);
   const TOOL_PRESETS = t.presets;
@@ -256,7 +260,7 @@ export function ToolGateDemo() {
     let parsed;
     try { parsed = JSON.parse(args); } catch (e) { req.fail(new Error(t.badJson((e as Error).message))); return; }
     // The state keeps its English frame in both languages; only the task and arguments are the user's text.
-    req.run(`User's task: ${task}\nThe agent wants to call the tool \`${tool}\` with arguments ${JSON.stringify(parsed)}.`, TOOL_Q);
+    req.run(toolState(task, tool, parsed), TOOL_Q);
   }
   const tone = a?.type === "choice" ? ({ allow: "go", ask: "wait", deny: "stop" } as const)[a.choice as "allow" | "ask" | "deny"] ?? "plain" : "plain";
 
@@ -304,7 +308,7 @@ const EVAL_LEVELS = [
   "4: correct, with minor omissions",
   "5: fully correct and complete",
 ];
-const EVAL_Q = (withReference: boolean): Record<string, Question> => ({
+export const EVAL_Q = (withReference: boolean): Record<string, Question> => ({
   quality: { type: "score", instructions: "How good is the answer to the question? Judge correctness and completeness, using the reference answer if one is given.", criteria: EVAL_LEVELS },
   error: withReference
     ? { type: "noul", instructions: "Does the answer contradict the reference answer?" }
@@ -328,7 +332,7 @@ const EVAL_EN = {
   note: "A single grade hides how sure the grader was. The distribution shows it: a 3.0 with all mass on 3 is not the same as a 3.0 split between 1 and 5.",
   empty: "Grade the answer to see an expected score out of 5 and the full distribution.",
 };
-const EVAL_TEXT: Record<Lang, typeof EVAL_EN> = {
+export const EVAL_TEXT: Record<Lang, typeof EVAL_EN> = {
   en: EVAL_EN,
   ja: {
     question: "アポロ11号が月に着陸したのはいつで、月面を歩いたのは誰ですか？",
@@ -348,6 +352,11 @@ const EVAL_TEXT: Record<Lang, typeof EVAL_EN> = {
   },
 };
 
+/** The Evals state: the question, the reference answer when there is one, and the answer to grade. */
+export const evalState = (question: string, reference: string, answer: string) => reference.trim()
+  ? `Question: ${question}\n\nReference answer: ${reference}\n\nAnswer to grade: ${answer}`
+  : `Question: ${question}\n\nAnswer to grade: ${answer}`;
+
 export function EvalsDemo() {
   const t = useText(EVAL_TEXT);
   const EVAL_PRESETS = t.presets;
@@ -363,9 +372,7 @@ export function EvalsDemo() {
 
   function run() {
     const withReference = !!reference.trim();
-    const state = withReference
-      ? `Question: ${question}\n\nReference answer: ${reference}\n\nAnswer to grade: ${answer}`
-      : `Question: ${question}\n\nAnswer to grade: ${answer}`;
+    const state = evalState(question, reference, answer);
     setGradedWithReference(withReference);
     req.run(state, EVAL_Q(withReference));
   }
@@ -418,7 +425,7 @@ const GATE_EN = {
   note: "The thresholds are your policy, not the model's: it returns a calibrated probability for the top option, and you decide how sure is sure enough to act. Move the sliders; the lane updates without a new request.",
   empty: "Decide to see the top option, its probability, and which lane your thresholds put it in.",
 };
-const GATE_TEXT: Record<Lang, typeof GATE_EN> = {
+export const GATE_TEXT: Record<Lang, typeof GATE_EN> = {
   en: GATE_EN,
   ja: {
     presets: [
@@ -437,7 +444,7 @@ const GATE_TEXT: Record<Lang, typeof GATE_EN> = {
   },
 };
 
-function parseOptions(s: string): Record<string, string> {
+export function parseOptions(s: string): Record<string, string> {
   const out: Record<string, string> = {};
   for (const line of s.split("\n")) {
     const t = line.trim();

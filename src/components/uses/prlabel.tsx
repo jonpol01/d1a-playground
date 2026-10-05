@@ -12,7 +12,7 @@ import { Shimmer } from "@/components/uses/visuals";
 // answers; the rules it applies on top (a low-confidence flag, committed secrets) are the job's too.
 
 const TYPES = ["type/bug", "type/docs", "type/feature", "type/perf", "type/refactor", "type/security", "type/test"];
-const PR_Q: Record<string, Question> = {
+export const PR_Q: Record<string, Question> = {
   type: {
     type: "choice", instructions: "Primary change type from files and body, not the title prefix.",
     criteria: {
@@ -45,7 +45,7 @@ const isSecret = (path: string) => SECRET.test(path) && !/example|sample|templat
 type PR = { title: string; author: string; body: string; files: string };   // files: one "status path +a/-d" per line
 
 /** The job's document: title, author, stats, body (HTML stripped, 3,500 characters), up to 40 files. */
-function prState(pr: PR) {
+export function prState(pr: PR) {
   const files = pr.files.split("\n").map((l) => l.trim()).filter(Boolean).slice(0, 40);
   let add = 0, del = 0;
   for (const f of files) { const m = /\+(\d+)\/-(\d+)\s*$/.exec(f); if (m) { add += +m[1]; del += +m[2]; } }
@@ -69,7 +69,7 @@ async function fetchPR(url: string): Promise<PR> {
   };
 }
 
-const PRESETS: { name: string; pr: PR }[] = [
+export const PRESETS: { name: string; pr: PR }[] = [
   { name: "Dependency security fix", pr: { title: "Bump next from 16.3.5 to 16.3.6 in /playground", author: "dependabot[bot]",
     body: "Bumps next from 16.3.5 to 16.3.6. This release contains a security fix for GHSA-vcvr-r3jv-pc5j: Remote Code Execution in next/og ImageResponse.",
     files: "modified playground/package-lock.json +106/-40\nmodified playground/package.json +1/-1" } },
