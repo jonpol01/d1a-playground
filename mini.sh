@@ -32,7 +32,7 @@ WEB_LABEL="io.github.jonpol01.d1a-web"
 # the default model: the MLX 8-bit build on Apple Silicon (4.2 GB, parity-checked), the PyTorch checkpoint elsewhere
 if [ "$(uname -sm)" = "Darwin arm64" ]; then DEFAULT_MODEL_RUN="JohnP1/d1a-e2b-mlx-q8"; else DEFAULT_MODEL_RUN="JohnP1/d1a-e2b"; fi
 D1A_REPO="https://github.com/jonpol01/d1a"
-D1A_SHA="1bce9a4a92b9404abd06d304324fa5c8e1d63bce"   # the D1A model server this playground is tested against
+D1A_SHA="9c93afbbcd1dbf0132ed39534fde49d391c2fd90"   # the D1A model server this playground is tested against
 PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 
 say() { printf '\033[1m[mini]\033[0m %s\n' "$*"; }
@@ -46,6 +46,7 @@ load_env() {
   PYTORCH_MPS_LOW_WATERMARK_RATIO="${PYTORCH_MPS_LOW_WATERMARK_RATIO:-0.6}"
   KEV_PREFIX_CACHE="${KEV_PREFIX_CACHE:-4}"; KEV_PREFIX_MAX_TOKENS="${KEV_PREFIX_MAX_TOKENS:-65536}"
   MEDIA="${MEDIA:-0}"; IDLE_UNLOAD="${IDLE_UNLOAD:-600}"
+  FEEDBACK_LOG="${FEEDBACK_LOG:-}"; OUTCOME_CALIBRATOR="${OUTCOME_CALIBRATOR:-}"
 }
 
 save_env() {
@@ -62,6 +63,8 @@ KEV_PREFIX_CACHE=$KEV_PREFIX_CACHE
 KEV_PREFIX_MAX_TOKENS=$KEV_PREFIX_MAX_TOKENS
 MEDIA=$MEDIA
 IDLE_UNLOAD=$IDLE_UNLOAD
+FEEDBACK_LOG=$FEEDBACK_LOG
+OUTCOME_CALIBRATOR=$OUTCOME_CALIBRATOR
 EOF
 }
 
@@ -114,6 +117,11 @@ write_agents() {
     <key>PYTORCH_MPS_LOW_WATERMARK_RATIO</key><string>$PYTORCH_MPS_LOW_WATERMARK_RATIO</string>
     <key>D1A_PREFIX_CACHE</key><string>$KEV_PREFIX_CACHE</string>
     <key>D1A_PREFIX_MAX_TOKENS</key><string>$KEV_PREFIX_MAX_TOKENS</string>
+"
+  # self-learning (d1a.feedback): log every decision and take outcomes at POST /v1/feedback; apply a fitted calibrator
+  [ -n "$FEEDBACK_LOG" ] && ENV_XML+="    <key>D1A_FEEDBACK_LOG</key><string>$FEEDBACK_LOG</string>
+"
+  [ -n "$OUTCOME_CALIBRATOR" ] && ENV_XML+="    <key>D1A_OUTCOME_CALIBRATOR</key><string>$OUTCOME_CALIBRATOR</string>
 "
   plist "$MODEL_LABEL" "$STATE/d1a-venv/bin/python" -m d1a.serve --run "$MODEL_RUN" --port "$KEV_PORT" --host 127.0.0.1 --idle-unload "$IDLE_UNLOAD" >"$AGENTS/$MODEL_LABEL.plist"
   launchctl bootout "$(domain)/$MEDIA_LABEL" 2>/dev/null || true; rm -f "$AGENTS/$MEDIA_LABEL.plist"   # photos and voice now go to the model server
