@@ -85,6 +85,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - If the web build or the start fails after the stop, the agents start again on whatever is installed.
   - `scripts/test_mini_update.sh` (CI's mini-macos job, under bash 3.2) forces each failure and checks that the services
     stay up or come back up.
+- **`mini.sh` keeps uv's cache in `.demo/uv-cache`** unless `UV_CACHE_DIR` names another. A global `~/.cache/uv` that a
+  `sudo` run left owned by root can no longer fail an install (#33). `scripts/test_mini_update.sh` checks that uv sees the
+  path, with and without the override.
 
 ## [0.2.0] - 2026-10-02
 
