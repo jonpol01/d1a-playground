@@ -8,7 +8,7 @@ const criteria = (keys) => ({ criteria: Object.fromEntries(keys.map((k) => [k, k
 const QS = { type: criteria(["type/bug", "type/feature", "type/docs"]), blast: criteria(["review:blast-contained", "review:blast-broad"]),
              sev: criteria(["P0", "P1", "P2", "P3", "P4"]) };
 const pick = (type, blast, sev = "P3") => ({ type: { choice: type }, blast: { choice: blast }, sev: { choice: sev } });
-const state = (n) => `title: PR ${n}\nauthor: someone\nstats: +1/-1 files=1\nbody:\n${"x".repeat(2000)}`;
+const state = (n) => `title: PR ${n}\nauthor: someone\nstats: +1/-1 files=1\nbody:\n${"x".repeat(7000)}\nfiles:\nsrc/a.py (+1/-1)`;
 
 function decision(id, ts, answers, extra = {}) { return { kind: "decision", id, ts, state: state(id), questions: QS, answers, meta: {}, ...extra }; }
 function outcome(id, ts, labels, src, group) { return { kind: "outcome", id, ts, labels, meta: { src, ...(group && { group }) } }; }
@@ -41,11 +41,12 @@ test("only reviewer-resolved labeler decisions, the latest per pull request, wit
   assert.deepEqual(d.options.blast, ["review:blast-contained", "review:blast-broad"]);
 });
 
-test("only the shown fields leave the server: the header and a trimmed body", () => {
+test("only the shown fields leave the server: the header, the body and the files, capped", () => {
   const f = prFields(state("x"));
-  assert.deepEqual([f.title, f.author, f.stats], ["PR x", "someone", "+1/-1 files=1"]);
-  assert.ok(f.body.length <= 702 && f.body.endsWith(" …"));
-  assert.deepEqual(prFields({ not: "text" }), { title: "", author: "", stats: "", body: "" });
+  assert.deepEqual([f.title, f.author, f.stats, f.files], ["PR x", "someone", "+1/-1 files=1", "src/a.py (+1/-1)"]);
+  assert.ok(f.body.length === 6002 && f.body.endsWith(" …") && !f.body.includes("files:"));   // the whole body up to a cap, without the files
+  assert.equal(prFields("title: t\nbody:\nshort").body, "short");
+  assert.deepEqual(prFields({ not: "text" }), { title: "", author: "", stats: "", body: "", files: "" });
   const [item] = candidates(log(1, 0));
   assert.deepEqual(Object.keys(item).sort(), ["d1a", "decision_id", "disagree", "group", "human", "options", "pr", "reviewer"]);
 });

@@ -6,7 +6,8 @@ export const TARGET = 50;                                   // decisions John ch
 export const QUESTIONS = ["type", "blast", "sev"] as const;  // the labeler's three choice questions
 export const REVIEWED = ["type", "blast"];                  // the review bot re-decides these; it never sets P0-P4
 export const UNSURE = "unsure";
-const BODY_CHARS = 700;
+const BODY_CHARS = 6000;   // the labeler's states run to about 4,500 characters
+const FILES_CHARS = 3000;
 
 export type Question = (typeof QUESTIONS)[number];
 type Event = { kind: string; id: string; ts: number; state?: unknown; questions?: Record<string, { criteria?: Record<string, unknown> }>;
@@ -17,7 +18,7 @@ export type Item = {
   decision_id: string;
   group: string;                                          // "<repo>#<number>"
   disagree: boolean;                                      // D1A and the reviewer differ on type or blast
-  pr: { title: string; author: string; stats: string; body: string };
+  pr: { title: string; author: string; stats: string; body: string; files: string };
   options: Record<Question, string[]>;
   d1a: Record<Question, string | null>;
   reviewer: Partial<Record<Question, string>>;
@@ -33,14 +34,20 @@ export function parseJsonl<T>(text: string): T[] {
   return out;
 }
 
-/** The PR document's header fields and the start of its body (the labeler's state: "title: ...\nauthor: ...\nstats: ...\nbody:\n..."). */
+/** The PR document as the page shows it (the labeler's state: "title: ...\nauthor: ...\nstats: ...\nbody:\n...\nfiles:\n..."):
+ *  the header fields, the body and the changed files, each capped so one huge PR cannot flood the page. */
 export function prFields(state: unknown) {
   const text = typeof state === "string" ? state : "";
   const field = (name: string) => text.match(new RegExp(`^${name}: (.*)$`, "m"))?.[1]?.trim() ?? "";
-  const at = text.indexOf("\nbody:");
-  const body = at < 0 ? "" : text.slice(at + 6).trim();
+  const section = (name: string, next?: string) => {
+    const at = text.indexOf(`\n${name}:`);
+    if (at < 0) return "";
+    const end = next ? text.indexOf(`\n${next}:`, at + 1) : -1;
+    return text.slice(at + name.length + 2, end < 0 ? undefined : end).trim();
+  };
+  const cap = (s: string, n: number) => (s.length > n ? s.slice(0, n).trimEnd() + " …" : s);
   return { title: field("title"), author: field("author"), stats: field("stats"),
-           body: body.length > BODY_CHARS ? body.slice(0, BODY_CHARS).trimEnd() + " …" : body };
+           body: cap(section("body", "files"), BODY_CHARS), files: cap(section("files"), FILES_CHARS) };
 }
 
 /** FNV-1a: a stable order that does not depend on when a decision arrived. */

@@ -14,6 +14,7 @@ export function Review() {
   const [at, setAt] = useState(0);
   const [chosen, setChosen] = useState<Record<string, Partial<Record<Question, string>>>>({});   // per decision, until saved
   const [busy, setBusy] = useState(false);
+  const [expanded, setExpanded] = useState<string | null>(null);   // the decision whose whole body is shown
 
   const load = useCallback(async (next?: number) => {
     const r = await fetch(`${BASE_PATH}/api/review`, { cache: "no-store" });
@@ -65,7 +66,23 @@ export function Review() {
         <a className="text-[13px] text-muted-foreground underline-offset-4 hover:underline" href={`https://github.com/${owner}/pull/${number}`} target="_blank" rel="noreferrer">{item.group}</a>
         <h2 className="text-lg font-semibold leading-snug">{item.pr.title}</h2>
         <p className="font-mono text-[12px] text-muted-foreground">{item.pr.author} · {item.pr.stats}</p>
-        <p className="whitespace-pre-wrap text-[13px] leading-5">{item.pr.body}</p>
+        {item.pr.body ? (
+          <div>
+            <p className={`whitespace-pre-wrap text-[13px] leading-5 ${expanded === item.decision_id ? "" : "line-clamp-[12]"}`}>{item.pr.body}</p>
+            {item.pr.body.split("\n").length > 12 || item.pr.body.length > 900 ? (
+              <button type="button" className="mt-1 text-[12px] text-muted-foreground underline-offset-4 hover:underline"
+                      onClick={() => setExpanded(expanded === item.decision_id ? null : item.decision_id)}>
+                {expanded === item.decision_id ? "Show less" : "Show more"}
+              </button>
+            ) : null}
+          </div>
+        ) : <p className="text-[13px] text-muted-foreground">(no description)</p>}
+        {item.pr.files && (
+          <details open className="text-[12px]">
+            <summary className="cursor-pointer text-muted-foreground">Changed files</summary>
+            <pre className="mt-1 max-h-48 overflow-auto whitespace-pre-wrap font-mono text-[12px] leading-5">{item.pr.files}</pre>
+          </details>
+        )}
       </article>
 
       {QUESTIONS.map((q) => (
