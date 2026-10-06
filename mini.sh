@@ -76,6 +76,9 @@ domain() { if launchctl print "gui/$(id -u)" >/dev/null 2>&1; then echo "gui/$(i
 
 install_server() {   # reinstall runs it before stop: a failed download or install leaves the old server serving
   command -v uv >/dev/null || die "uv is missing (brew install uv)"
+  # uv's cache under .demo, which this user owns, unless UV_CACHE_DIR says otherwise: a global ~/.cache/uv that a `sudo`
+  # run left owned by root failed the Mac mini's install (#33)
+  : "${UV_CACHE_DIR:=$STATE/uv-cache}"; export UV_CACHE_DIR
   command -v node >/dev/null || die "node is missing (brew install node)"
   local extras="serve"; [ "$MEDIA" = 1 ] && extras="serve,media"
   say "model server: d1a[$extras] from $D1A_REPO@${D1A_SHA:0:7} into .demo/d1a-venv ($MODEL_RUN)"
