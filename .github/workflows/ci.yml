@@ -24,6 +24,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run lint
+      # the PR label check's sampling and answer rules (src/lib/review.ts; Node 22 strips the types)
+      - run: node --test scripts/test_review.mjs
       # the demo examples the UI ships must be the ones scripts/demo-baseline.json pins (scripts/demo_smoke.mjs)
       - run: node scripts/demo_smoke.mjs --list
       - run: npx next typegen && npx tsc --noEmit -p .

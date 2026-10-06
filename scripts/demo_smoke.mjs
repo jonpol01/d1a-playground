@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Every demo's built-in examples, sent through the web app (its /kev and /media proxies) as the UI sends them, checked
-// against a committed baseline of the answers.
+// against a committed baseline of the answers; and the PR label check (/review) answers, read only.
 //
 //   node scripts/demo_smoke.mjs http://127.0.0.1:3032/d1a             # check: exits 1 on any failure or changed answer
 //   node scripts/demo_smoke.mjs http://127.0.0.1:3032/d1a --record    # (re)write scripts/demo-baseline.json
@@ -88,6 +88,21 @@ for (const r of reqs) {
   if (errs.length) failures.push(`${k}: ${errs.join("; ")}`); else row.pass++;
 }
 if (!record) for (const k of Object.keys(baseline)) if (!reqs.some((r) => key(r) === k)) failures.push(`${k}: in the baseline but no longer sent (an example was removed)`);
+if (!record) failures.push(...(await reviewCheck()));
+
+// The human check (/review, d1a-playground#29): the page renders, and its route either serves the sample or is off.
+// Read only: nothing is posted, so the live decision log gets no outcome from a smoke run.
+async function reviewCheck() {
+  const errs = [], page = await fetch(`${base}/review`).catch((e) => ({ ok: false, status: e.message }));
+  if (!page.ok || !(await page.text()).includes("PR label check")) errs.push(`review page: HTTP ${page.status}`);
+  const r = await fetch(`${base}/api/review`, { cache: "no-store" }).catch((e) => ({ ok: false, status: e.message, json: async () => ({}) }));
+  const j = await r.json().catch(() => ({}));
+  const shaped = r.ok && j.target === 50 && Array.isArray(j.items) && j.items.length <= 50 && j.items.every((i) => i.group && i.options?.sev && i.pr);
+  const off = r.status === 404 && /review is off/.test(j.error ?? "");
+  if (!shaped && !off) errs.push(`review route: HTTP ${r.status} ${JSON.stringify(j).slice(0, 120)}`);
+  console.log(`review: page ${page.status}, route ${off ? "off (404)" : shaped ? `${j.done}/${j.target} checked, ${j.items.length} in the sample` : "BAD"}`);
+  return errs.map((e) => `review | ${e}`);
+}
 
 const p50 = (xs) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)];
 console.log("demo          requests  pass  p50 ms");

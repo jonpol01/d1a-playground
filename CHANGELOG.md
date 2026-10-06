@@ -19,6 +19,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **PR label check** (`/review`, #29). It is the human check of the PR labeler's labels, to measure how noisy the review
+  bot's labels are; the outcome calibrator and outcome memory learn from them.
+  - **What it shows:** 50 pull requests with a review-bot outcome, stratified half disagree, half agree. For each, D1A's
+    and the reviewer's labels for type and blast radius, and D1A's severity.
+  - **Answers:** the person's pick goes to the model server's `POST /v1/feedback` as `src` human with the PR's group.
+    "unsure" leaves the reviewer's label standing.
+  - **Where it runs:** on with `LABEL_OUTCOMES=1` (`mini.sh` passes the decision log as `REVIEW_FEEDBACK_LOG`); off
+    (404) otherwise.
+  - **Checks:** `node --test scripts/test_review.mjs` in CI (sampling, stratification, a checked decision kept across
+    new heads, which posts are forwarded). The demo smoke test now also checks the page and its route, read only.
 - **Demo smoke test** (`scripts/demo_smoke.mjs`, #26). Every demo's built-in examples (145 requests: the 9 text demos
   in English and Japanese, the PR labeler, fixed Control states, 6 photos, 4 voice clips and 4 videos) are sent through
   the web app and checked against `scripts/demo-baseline.json`. Each must answer, with every question answered, and give

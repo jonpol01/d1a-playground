@@ -134,6 +134,9 @@ write_agents() {
     <key>MEDIA_API</key><string>http://127.0.0.1:$KEV_PORT</string>
     <key>D1A_BASE_PATH</key><string>$D1A_BASE_PATH</string>
 "   # next start reads next.config.ts again, so the base path must match the build's
+  # the PR label check (/review, d1a-playground#29) reads the decision log; off unless the labeler's outcomes are on
+  [ "$LABEL_OUTCOMES" = 1 ] && [ -n "$FEEDBACK_LOG" ] && ENV_XML+="    <key>REVIEW_FEEDBACK_LOG</key><string>$FEEDBACK_LOG</string>
+"
   plist "$WEB_LABEL" "$(command -v node)" "$ROOT/node_modules/next/dist/bin/next" start -p "$PORT" -H "$HOST" >"$AGENTS/$WEB_LABEL.plist"
   plutil -lint "$AGENTS/$MODEL_LABEL.plist" "$AGENTS/$WEB_LABEL.plist" >/dev/null
   if [ "$LABEL_OUTCOMES" = 1 ]; then
