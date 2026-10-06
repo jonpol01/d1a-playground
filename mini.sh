@@ -7,8 +7,9 @@
 #   ./mini.sh start     load both LaunchAgents
 #   ./mini.sh stop      unload both
 #   ./mini.sh status    what is running, and whether the two ports answer
-#   ./mini.sh update    git pull, reinstall and rebuild, restart
-#   ./mini.sh reinstall reinstall and rebuild, restart (no pull)
+#   ./mini.sh update    git pull, then reinstall
+#   ./mini.sh reinstall install the model server while the old one still serves, then stop, rebuild the app and start;
+#                       a step that fails after the stop starts the agents again on whatever is installed (no pull)
 #
 # Settings (read by install and update, then kept in .demo/mini.env):
 #   MODEL_RUN=JohnP1/d1a-e2b-mlx-q8 (Apple Silicon; JohnP1/d1a-e4b-mlx-q8 is more accurate, ~6.5 GB) or JohnP1/d1a-e2b elsewhere
@@ -73,13 +74,16 @@ EOF
 
 domain() { if launchctl print "gui/$(id -u)" >/dev/null 2>&1; then echo "gui/$(id -u)"; else echo "user/$(id -u)"; fi; }
 
-install_code() {
+install_server() {   # reinstall runs it before stop: a failed download or install leaves the old server serving
   command -v uv >/dev/null || die "uv is missing (brew install uv)"
   command -v node >/dev/null || die "node is missing (brew install node)"
   local extras="serve"; [ "$MEDIA" = 1 ] && extras="serve,media"
   say "model server: d1a[$extras] from $D1A_REPO@${D1A_SHA:0:7} into .demo/d1a-venv ($MODEL_RUN)"
   uv venv --quiet --allow-existing --python 3.12 "$STATE/d1a-venv"
   uv pip install --quiet --python "$STATE/d1a-venv/bin/python" --torch-backend auto "d1a[$extras] @ git+$D1A_REPO@$D1A_SHA"
+}
+
+build_web() {   # after stop: npm ci and next build replace the files the running web app serves from
   say "web app: npm ci and a production build${D1A_BASE_PATH:+ under $D1A_BASE_PATH}"
   # next build bakes the /kev and /media proxy targets into the build; next start does not read them again
   (cd "$ROOT" && npm ci --no-audit --no-fund --loglevel=error && D1A_BASE_PATH="$D1A_BASE_PATH" KEV_API="http://127.0.0.1:$KEV_PORT" \
@@ -241,6 +245,13 @@ stop() {
   for l in "$PROMOTE_LABEL" "$OUTCOMES_LABEL" "$WEB_LABEL" "$MEDIA_LABEL" "$MODEL_LABEL"; do launchctl bootout "$d/$l" 2>/dev/null && say "stopped $l" || say "$l was not loaded"; done
 }
 
+restart_after_failure() {   # the EXIT trap between reinstall's stop and start: a down model server also stops the PR labeler
+  local status=$?
+  say "a step after the stop failed (exit $status): starting the agents again on whatever is installed"
+  start || true
+  exit "$status"
+}
+
 status() {
   local d; d="$(domain)"
   for l in $(labels); do
@@ -255,14 +266,17 @@ status() {
 
 load_env
 case "${1:-status}" in
-  install) save_env; install_code; write_agents; start; smoke ;;
+  install) save_env; install_server; build_web; write_agents; start; smoke ;;
   start) [ -f "$AGENTS/$MODEL_LABEL.plist" ] || die "run ./mini.sh install first"; start ;;
   stop) stop ;;
   status) status ;;
   update)
     git -C "$ROOT" pull --ff-only
     exec "$ROOT/mini.sh" reinstall ;;   # the pulled script, not the functions this process read before the pull
-  reinstall) stop; install_code; write_agents; start; smoke ;;
+  reinstall)
+    install_server; write_agents; stop
+    trap restart_after_failure EXIT; build_web; start; trap - EXIT
+    smoke ;;
   smoke) smoke ;;
   *) die "usage: ./mini.sh {install|start|stop|status|update|reinstall|smoke}" ;;
 esac
