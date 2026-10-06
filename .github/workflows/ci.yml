@@ -58,3 +58,6 @@ jobs:
       # way. A copy of mini.sh runs `smoke` against a stand-in web app (a static server answering the model check) with a
       # stand-in demo_smoke.mjs that records its arguments; media on and off must pass the right ones.
       - run: bash scripts/test_mini_smoke.sh
+      # a failed install must leave the running services up, and a failure after the stop must start them again: a uv cache
+      # owned by root once failed the install after the stop and left the Mac mini down (stand-in uv, npm and launchctl)
+      - run: bash scripts/test_mini_update.sh

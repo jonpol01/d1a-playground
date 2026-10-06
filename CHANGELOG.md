@@ -75,6 +75,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   checkpoint tools. Checked with D1A's `scripts/quality_gate.py` on real weights (`d1a-e4b-mlx-q8@v0.4`): every demo
   example and the labeler replay, 237 requests, 0 changed answers, max |dp| 0, latency 0.996 against a 1.002 floor.
 
+### Fixed
+
+- **A failed `mini.sh update` no longer leaves the Mac down.** Before, `reinstall` (which `update` runs) stopped every
+  agent before installing anything. On 2026-10-07 the Mac mini's uv cache, owned by root, failed the install, and the
+  model server, the PR labeler and the demos stayed down until they were restarted by hand.
+  - `reinstall` now installs the model server and writes the LaunchAgents while the old version still serves, and stops
+    the agents only after both succeed.
+  - If the web build or the start fails after the stop, the agents start again on whatever is installed.
+  - `scripts/test_mini_update.sh` (CI's mini-macos job, under bash 3.2) forces each failure and checks that the services
+    stay up or come back up.
+
 ## [0.2.0] - 2026-10-02
 
 Eleven demos instead of nine: D1A now also answers questions about a photo or a voice note. The playground runs as an
