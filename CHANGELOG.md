@@ -52,9 +52,6 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   PR-labeling decisions into outcomes for D1A to learn from: the review bot's own type and blast-radius labels on the
   head it reviewed, and any label a person changes. Over the 142 labeling calls since 2026-10-02, the review bot kept
   D1A's type on 80 of 99 decisions and its blast radius on 71 of 102, and usually called the blast radius wider.
-
-### Changed
-
 - `scripts/pr_outcomes.py` sends `group` `<repo>#<number>` with every outcome, the unit `d1a.feedback promote` bootstraps over.
 - D1A pinned at jonpol01/d1a@a84bd8c2 (#151: `d1a.feedback promote`, `group` on `POST /v1/feedback`) in `mini.sh`, `demo.sh`
   and `demo.ps1`.
@@ -70,6 +67,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   `d1a-media` LaunchAgent, sends `/media` to the model server, and frees the model after `IDLE_UNLOAD` seconds without a
   request (600; it loads again in a few seconds). On PyTorch machines the demos still use `d1a.media`.
 - The "waking up" note says a few seconds instead of about 30.
+
+### Changed
+
+- The D1A model server pin moves to jonpol01/d1a@ff212c06 (from `a84bd8c`): D1A's package layout (#60), so the
+  launchers start `d1a.serving.serve`, `d1a.serving.media` and `d1a.learning.feedback`; plus the skills-training recipe and
+  checkpoint tools. Checked with D1A's `scripts/quality_gate.py` on real weights (`d1a-e4b-mlx-q8@v0.4`): every demo
+  example and the labeler replay, 237 requests, 0 changed answers, max |dp| 0, latency 0.996 against a 1.002 floor.
 
 ## [0.2.0] - 2026-10-02
 

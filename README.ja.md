@@ -85,7 +85,7 @@ powershell -ExecutionPolicy Bypass -File .\demo.ps1
 この2つのデモは、写真や音声に対して同じ形の質問をします。Web アプリは `/media/*` を `MEDIA_API` に転送します。プレイグラウンドは `./demo.sh --media` で起動してください。
 
 - **Apple Silicon では**、モデルサーバー自身が同じモデルで答えます。Gemma 4 自身の画像・音声エンコーダー（約 1 GB、最初の写真・音声リクエストで取得）が写真や音声をトークンに変え、それを D1A のモデルが読みます。MLX 版の `JohnP1/d1a-e2b-mlx-q8` と `JohnP1/d1a-e4b-mlx-q8@v0.3` にはエンコーダーが入っています。
-- **それ以外（PyTorch）では**、[jonpol01/d1a](https://github.com/jonpol01/d1a) の2つ目のサーバー `d1a.media` がポート 8010 で動き、最初のリクエストでエンコーダー付きの Gemma 4（bf16、約 10 GB）を読み込みます。
+- **それ以外（PyTorch）では**、[jonpol01/d1a](https://github.com/jonpol01/d1a) の2つ目のサーバー `d1a.serving.media` がポート 8010 で動き、最初のリクエストでエンコーダー付きの Gemma 4（bf16、約 10 GB）を読み込みます。
 
 チェックポイントはテキストだけで学習しているため、これらの答えはゼロショットです。サンプル写真6枚では、D1A-E2B は破損の判定が6枚中4枚、置き場所が6枚中5枚で正しく（郵便受けを宅配ロッカーと答えます）、D1A-E4B v0.3 はそれぞれ6枚中5枚と6枚中6枚です。サンプルの音声メモ4つはどちらもすべて正しく聞き取りました。音声のサンプルは Qwen3-TTS で作りました。自分で録音するにはマイクの許可が必要で、ブラウザが許可するのは `localhost` か https の場合だけです。
 
@@ -114,11 +114,11 @@ powershell -ExecutionPolicy Bypass -File .\demo.ps1
   <img src="docs/arch/forms-light.svg" alt="ブロック因果マスクの packed 形式と、キャッシュした文書の上の rows 形式" width="100%">
 </picture>
 
-**どこで動くか。** すべてのデモが `d1a.serve` を呼びます。写真チェックと音声トリアージでは、Gemma 4 自身の画像・音声エンコーダーが写真や音声メモをトークンに変え、同じモデルがそれを読みます。キャプション生成や音声認識の段階はありません。
+**どこで動くか。** すべてのデモが `d1a.serving.serve` を呼びます。写真チェックと音声トリアージでは、Gemma 4 自身の画像・音声エンコーダーが写真や音声メモをトークンに変え、同じモデルがそれを読みます。キャプション生成や音声認識の段階はありません。
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/arch/serving-dark.svg">
-  <img src="docs/arch/serving-light.svg" alt="クライアントは d1a.serve を呼び、写真と音声メモは画像・音声エンコーダーを通って同じモデルに入る" width="100%">
+  <img src="docs/arch/serving-light.svg" alt="クライアントは d1a.serving.serve を呼び、写真と音声メモは画像・音声エンコーダーを通って同じモデルに入る" width="100%">
 </picture>
 
 ## 画面

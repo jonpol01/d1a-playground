@@ -51,7 +51,7 @@ class Outcomes(unittest.TestCase):
 
 class Posting(unittest.TestCase):
     def test_each_outcome_is_posted_with_its_pr_as_the_group(self):
-        """d1a.feedback promote bootstraps over groups: every outcome of one PR carries group "<repo>#<number>"."""
+        """d1a.learning.feedback promote bootstraps over groups: every outcome of one PR carries group "<repo>#<number>"."""
         import json, tempfile
         from unittest import mock
         with tempfile.TemporaryDirectory() as tmp:

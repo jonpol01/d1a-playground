@@ -30,11 +30,11 @@ MODEL_LABEL="io.github.jonpol01.d1a-model"
 MEDIA_LABEL="io.github.jonpol01.d1a-media"   # the separate media server older versions ran; removed on install
 WEB_LABEL="io.github.jonpol01.d1a-web"
 OUTCOMES_LABEL="io.github.jonpol01.d1a-outcomes"   # LABEL_OUTCOMES=1: scripts/pr_outcomes.py every 15 minutes
-PROMOTE_LABEL="io.github.jonpol01.d1a-promote"     # LABEL_OUTCOMES=1 and OUTCOME_CALIBRATOR: d1a.feedback promote daily at 04:00
+PROMOTE_LABEL="io.github.jonpol01.d1a-promote"     # LABEL_OUTCOMES=1 and OUTCOME_CALIBRATOR: d1a.learning.feedback promote daily at 04:00
 # the default model: the MLX 8-bit build on Apple Silicon (4.2 GB, parity-checked), the PyTorch checkpoint elsewhere
 if [ "$(uname -sm)" = "Darwin arm64" ]; then DEFAULT_MODEL_RUN="JohnP1/d1a-e2b-mlx-q8"; else DEFAULT_MODEL_RUN="JohnP1/d1a-e2b"; fi
 D1A_REPO="https://github.com/jonpol01/d1a"
-D1A_SHA="a84bd8c2abece804f806c068c51174a21e02536f"   # the D1A model server this playground is tested against
+D1A_SHA="ff212c061f3bb9fb199c7afe4732b8aebb869080"   # the D1A model server this playground is tested against
 PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 
 say() { printf '\033[1m[mini]\033[0m %s\n' "$*"; }
@@ -121,12 +121,12 @@ write_agents() {
     <key>D1A_PREFIX_CACHE</key><string>$KEV_PREFIX_CACHE</string>
     <key>D1A_PREFIX_MAX_TOKENS</key><string>$KEV_PREFIX_MAX_TOKENS</string>
 "
-  # self-learning (d1a.feedback): log every decision and take outcomes at POST /v1/feedback; apply a fitted calibrator
+  # self-learning (d1a.learning.feedback): log every decision and take outcomes at POST /v1/feedback; apply a fitted calibrator
   [ -n "$FEEDBACK_LOG" ] && ENV_XML+="    <key>D1A_FEEDBACK_LOG</key><string>$FEEDBACK_LOG</string>
 "
   [ -n "$OUTCOME_CALIBRATOR" ] && ENV_XML+="    <key>D1A_OUTCOME_CALIBRATOR</key><string>$OUTCOME_CALIBRATOR</string>
 "
-  plist "$MODEL_LABEL" "$STATE/d1a-venv/bin/python" -m d1a.serve --run "$MODEL_RUN" --port "$KEV_PORT" --host 127.0.0.1 --idle-unload "$IDLE_UNLOAD" >"$AGENTS/$MODEL_LABEL.plist"
+  plist "$MODEL_LABEL" "$STATE/d1a-venv/bin/python" -m d1a.serving.serve --run "$MODEL_RUN" --port "$KEV_PORT" --host 127.0.0.1 --idle-unload "$IDLE_UNLOAD" >"$AGENTS/$MODEL_LABEL.plist"
   launchctl bootout "$(domain)/$MEDIA_LABEL" 2>/dev/null || true; rm -f "$AGENTS/$MEDIA_LABEL.plist"   # photos and voice now go to the model server
   ENV_XML="    <key>PATH</key><string>$path</string>
     <key>NODE_ENV</key><string>production</string>
@@ -172,7 +172,7 @@ EOF
     launchctl bootout "$(domain)/$OUTCOMES_LABEL" 2>/dev/null || true; rm -f "$AGENTS/$OUTCOMES_LABEL.plist"
   fi
   if [ "$LABEL_OUTCOMES" = 1 ] && [ -n "$OUTCOME_CALIBRATOR" ]; then
-    # the promotion gate on the live decision log (d1a.feedback promote, d1a#148): daily at 04:00 it fits a calibrator on
+    # the promotion gate on the live decision log (d1a.learning.feedback promote, d1a#148): daily at 04:00 it fits a calibrator on
     # the outcomes so far and writes OUTCOME_CALIBRATOR only for the questions that pass; the server picks the file up
     # without a restart. Nothing else ever writes that file.
     cat >"$AGENTS/$PROMOTE_LABEL.plist" <<EOF
@@ -185,7 +185,7 @@ EOF
   <array>
     <string>$STATE/d1a-venv/bin/python</string>
     <string>-m</string>
-    <string>d1a.feedback</string>
+    <string>d1a.learning.feedback</string>
     <string>promote</string>
     <string>$FEEDBACK_LOG</string>
     <string>--calibrator</string>

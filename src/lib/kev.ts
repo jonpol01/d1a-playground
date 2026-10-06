@@ -33,7 +33,7 @@ export type PermuteResponse = {
 // The app can be served under a sub-path (D1A_BASE_PATH at build time); fetch URLs are not prefixed by Next itself.
 export const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 const KEV = `${BASE_PATH}/kev`;
-const MEDIA = `${BASE_PATH}/media`;   // the same questions about a photo, a voice clip or a video: the model server on a Mac, d1a.media on PyTorch
+const MEDIA = `${BASE_PATH}/media`;   // the same questions about a photo, a voice clip or a video: the model server on a Mac, d1a.serving.media on PyTorch
 
 export type MediaRequest = Omit<SystemOneRequest, "state"> & { state?: JSONContent; media: { type: "image" | "audio" | "video"; data: string } };
 
@@ -68,8 +68,8 @@ export const api = {
 export const MODEL = "kev-latest";
 
 export const MEDIA_START_HINT = {
-  en: "Photo check and Voice triage need Gemma 4's vision and audio encoders: start with ./demo.sh --media (Windows: .\\demo.ps1 --media). On a Mac the model server answers them with the same model (about 1 GB more); on a PyTorch machine they run on a second server, d1a.media (about 10 GB).",
-  ja: "写真チェックと音声トリアージには Gemma 4 の画像・音声エンコーダーが必要です。./demo.sh --media（Windows では .\\demo.ps1 --media）で起動してください。Mac ではモデルサーバーが同じモデルで答えます（メモリ約 1 GB 増）。PyTorch のマシンでは2つ目のサーバー d1a.media で動きます（約 10 GB）。",
+  en: "Photo check and Voice triage need Gemma 4's vision and audio encoders: start with ./demo.sh --media (Windows: .\\demo.ps1 --media). On a Mac the model server answers them with the same model (about 1 GB more); on a PyTorch machine they run on a second server, d1a.serving.media (about 10 GB).",
+  ja: "写真チェックと音声トリアージには Gemma 4 の画像・音声エンコーダーが必要です。./demo.sh --media（Windows では .\\demo.ps1 --media）で起動してください。Mac ではモデルサーバーが同じモデルで答えます（メモリ約 1 GB 増）。PyTorch のマシンでは2つ目のサーバー d1a.serving.media で動きます（約 10 GB）。",
 };
 
 export const START_HINT = {

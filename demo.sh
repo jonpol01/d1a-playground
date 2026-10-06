@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Start the D1A playground: the D1A model server (d1a.serve with a trained D1A checkpoint) and the web app.
+# Start the D1A playground: the D1A model server (d1a.serving.serve with a trained D1A checkpoint) and the web app.
 # macOS, Linux and WSL. Windows PowerShell: demo.ps1.
 #
 #   ./demo.sh                      install what is missing, start both, open the browser; Ctrl+C stops both
 #   ./demo.sh --media              Photo check and Voice triage too: on Apple Silicon the model server answers them with
 #                                  the same model (Gemma 4's vision and audio encoders, ~1 GB, fetched on the first photo
-#                                  or voice request); elsewhere a second server, d1a.media (~10 GB, loaded on that request)
+#                                  or voice request); elsewhere a second server, d1a.serving.media (~10 GB, loaded on that request)
 #   ./demo.sh --no-server          start only the web app, against a model server already running on $KEV_PORT
 #   ./demo.sh --lmstudio URL       no D1A weights: a prompted Gemma 4 chat model in LM Studio answers instead (NOT D1A)
 #             [--lmstudio-model ID]   the LM Studio model id (default gemma-4-e4b-it-mlx)
@@ -18,7 +18,7 @@ set -euo pipefail
 
 # The D1A model server this demo runs, pinned to a commit so every friend gets the same server (mini.sh pins the same one).
 D1A_REPO="https://github.com/jonpol01/d1a"
-D1A_SHA="a84bd8c2abece804f806c068c51174a21e02536f"
+D1A_SHA="ff212c061f3bb9fb199c7afe4732b8aebb869080"
 APPLE_SILICON=0; [ "$(uname -s)" = Darwin ] && [ "$(uname -m)" = arm64 ] && APPLE_SILICON=1
 # the 8-bit MLX build on Apple Silicon (4.2 GB, no base download), the PyTorch checkpoint elsewhere
 if [ "$APPLE_SILICON" = 1 ]; then MODEL_RUN="${MODEL_RUN:-JohnP1/d1a-e2b-mlx-q8}"; else MODEL_RUN="${MODEL_RUN:-JohnP1/d1a-e2b}"; fi
@@ -174,10 +174,10 @@ start_kev() {
     if [ "$mem" -gt 0 ] && [ "$mem" -lt $((peak + 4)) ]; then
       warn "this machine has ${mem} GB of memory; the model server peaks around ${peak} GB. If it runs out, use --lmstudio instead."
     fi
-    say "Starting the model server (d1a.serve): $MODEL_RUN on $device, port $KEV_PORT (log: .demo/model-server.log)"
+    say "Starting the model server (d1a.serving.serve): $MODEL_RUN on $device, port $KEV_PORT (log: .demo/model-server.log)"
     if [ "$APPLE_SILICON" = 1 ]; then say "The first start downloads the 8-bit MLX model (about 4 GB); later starts take a few seconds."
     else say "The first start downloads Gemma 4 E2B (about 10 GB) and the adapter; later starts take about 20 s."; fi
-    "$VENV/bin/python" -m d1a.serve --run "$MODEL_RUN" --port "$KEV_PORT" >"$STATE/model-server.log" 2>&1 &
+    "$VENV/bin/python" -m d1a.serving.serve --run "$MODEL_RUN" --port "$KEV_PORT" >"$STATE/model-server.log" 2>&1 &
   fi
   echo $! >"$STATE/model-server.pid"; PIDS+=("$!")
 
@@ -202,9 +202,9 @@ media_up() { curl -fsS -m 3 "http://127.0.0.1:$MEDIA_PORT/v1/models" >/dev/null 
 start_media() {
   if media_up; then say "A media server is already answering on port $MEDIA_PORT; using it."; return; fi
   port_busy "$MEDIA_PORT" && die "port $MEDIA_PORT is taken; stop what uses it or set MEDIA_PORT"
-  say "Starting the photo and voice server (d1a.media): $MEDIA_RUN, port $MEDIA_PORT (log: .demo/media-server.log)"
+  say "Starting the photo and voice server (d1a.serving.media): $MEDIA_RUN, port $MEDIA_PORT (log: .demo/media-server.log)"
   say "It loads its model (Gemma 4 with its vision and audio encoders, about 10 GB) on the first photo or voice request."
-  "$VENV/bin/python" -m d1a.media --run "$MEDIA_RUN" --port "$MEDIA_PORT" >"$STATE/media-server.log" 2>&1 &
+  "$VENV/bin/python" -m d1a.serving.media --run "$MEDIA_RUN" --port "$MEDIA_PORT" >"$STATE/media-server.log" 2>&1 &
   echo $! >"$STATE/media-server.pid"; PIDS+=("$!")
   local t0=$SECONDS
   until media_up; do
@@ -216,7 +216,7 @@ start_media() {
 }
 
 if [ "$NO_SERVER" = 1 ]; then
-  kev_up || die "--no-server: nothing answers on http://127.0.0.1:$KEV_PORT/v1/models (start d1a.serve there, or drop --no-server)"
+  kev_up || die "--no-server: nothing answers on http://127.0.0.1:$KEV_PORT/v1/models (start d1a.serving.serve there, or drop --no-server)"
   say "Using the model server already running on port $KEV_PORT."
 else
   start_kev

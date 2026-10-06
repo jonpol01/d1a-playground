@@ -11,7 +11,7 @@ follow on GitHub:
   labels. Its type/* and review:blast-* labels after its review of the decision's head are that decision's outcome. It
   never sets P0-P4, so severity gets no reviewer outcome.
 - human: a person (any account that is not a bot) changing a type, blast-radius or severity label after the decision.
-  d1a.feedback ranks these above the reviewer's, whatever arrives last.
+  d1a.learning.feedback ranks these above the reviewer's, whatever arrives last.
 A decision's window closes at the next labeler call on the same pull request (a new head), so a later head's labels are
 never counted against it. Nothing is written to GitHub. Posted outcomes are remembered in --state, so each is sent once.
 """
@@ -106,7 +106,7 @@ def pr_history(repo, number):
 
 
 def post(url, decision_id, labels, src, group):
-    """group: the outcome's unit for d1a.feedback promote's clustered bootstrap, "<repo>#<number>", so a PR's
+    """group: the outcome's unit for d1a.learning.feedback promote's clustered bootstrap, "<repo>#<number>", so a PR's
     re-labelled decisions count as one piece of evidence (d1a#148)."""
     body = json.dumps({"decision_id": decision_id, "labels": labels, "src": src, "group": group}).encode()
     req = urllib.request.Request(url, body, {"Content-Type": "application/json"})
