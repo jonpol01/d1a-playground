@@ -9,7 +9,7 @@ import { Shimmer } from "@/components/uses/visuals";
 
 // Photo check, Voice triage and Video check: the same typed questions, asked about a photo, a voice clip or a video instead of text, proxied
 // under /media: on a Mac the model server itself (the same model, through Gemma 4's vision and audio encoders), on a
-// PyTorch machine the separate d1a.media server. The checkpoint
+// PyTorch machine the separate d1a.serving.media server. The checkpoint
 // is trained on text only, so these answers are zero-shot. Questions stay in English (see englishNote); labels are shown
 // in the UI language.
 

@@ -1,8 +1,8 @@
-# Start the D1A playground on Windows: the D1A model server (d1a.serve with a trained D1A checkpoint) and the web app.
+# Start the D1A playground on Windows: the D1A model server (d1a.serving.serve with a trained D1A checkpoint) and the web app.
 # macOS, Linux and WSL: demo.sh.
 #
 #   .\demo.ps1                      install what is missing, start both, open the browser; Ctrl+C stops both
-#   .\demo.ps1 --media              also start the photo and voice server (d1a.media) for Photo check and Voice triage;
+#   .\demo.ps1 --media              also start the photo and voice server (d1a.serving.media) for Photo check and Voice triage;
 #                                   it loads its model (~10 GB) on the first photo or voice request
 #   .\demo.ps1 --no-server          start only the web app, against a model server already running on $env:KEV_PORT
 #   .\demo.ps1 --lmstudio URL       no D1A weights: a prompted Gemma 4 chat model in LM Studio answers instead (NOT D1A)
@@ -19,7 +19,7 @@ $ErrorActionPreference = 'Stop'
 
 # The D1A model server this demo runs, pinned to a commit so every friend gets the same server (mini.sh pins the same one).
 $D1aRepo = 'https://github.com/jonpol01/d1a'
-$D1aSha = 'a84bd8c2abece804f806c068c51174a21e02536f'
+$D1aSha = 'ff212c061f3bb9fb199c7afe4732b8aebb869080'
 $MediaRun = 'JohnP1/d1a-e2b@v0.2.1-2epoch-calibrated'
 $PythonVersion = '3.13'       # torch has no wheels for 3.14 yet; uv downloads 3.13 if it is missing
 
@@ -141,7 +141,7 @@ $procs = @()
 try {
   # ---------------------------------------------------------------- the model server (or the LM Studio bridge)
   if ($NoServer) {
-    if (-not (Test-KevUp)) { Die "--no-server: nothing answers on http://127.0.0.1:$KevPort/v1/models (start d1a.serve there, or drop --no-server)" }
+    if (-not (Test-KevUp)) { Die "--no-server: nothing answers on http://127.0.0.1:$KevPort/v1/models (start d1a.serving.serve there, or drop --no-server)" }
     Say "Using the model server already running on port $KevPort."
   }
   elseif (Test-KevUp) {
@@ -188,10 +188,10 @@ try {
         $memGb = [math]::Floor((Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory / 1GB)
         if ($memGb -lt 16) { Warn "this PC has $memGb GB of memory; the model server peaks around 15 GB. If it runs out, use --lmstudio instead." }
       }
-      Say "Starting the model server (d1a.serve): $ModelRun on $device, port $KevPort (logs: .demo\model-server*.log)"
+      Say "Starting the model server (d1a.serving.serve): $ModelRun on $device, port $KevPort (logs: .demo\model-server*.log)"
       if ($AppleSilicon) { Say 'The first start downloads the 8-bit MLX model (about 4 GB); later starts take a few seconds.' }
       else { Say 'The first start downloads Gemma 4 E2B (about 10 GB) and the adapter; later starts take about 20 s.' }
-      $procs += Start-Logged 'model-server' $py @('-m', 'd1a.serve', '--run', $ModelRun, '--port', "$KevPort")
+      $procs += Start-Logged 'model-server' $py @('-m', 'd1a.serving.serve', '--run', $ModelRun, '--port', "$KevPort")
     }
 
     $t0 = Get-Date; $last = $t0
@@ -210,9 +210,9 @@ try {
       if (Test-MediaUp) { Say "A media server is already answering on port $MediaPort; using it." }
       else {
         if (Test-PortBusy $MediaPort) { Die "port $MediaPort is taken; stop what uses it or set `$env:MEDIA_PORT" }
-        Say "Starting the photo and voice server (d1a.media): $MediaRun, port $MediaPort (logs: .demo\media-server*.log)"
+        Say "Starting the photo and voice server (d1a.serving.media): $MediaRun, port $MediaPort (logs: .demo\media-server*.log)"
         Say 'It loads its model (Gemma 4 with its vision and audio encoders, about 10 GB) on the first photo or voice request.'
-        $procs += Start-Logged 'media-server' $py @('-m', 'd1a.media', '--run', $MediaRun, '--port', "$MediaPort")
+        $procs += Start-Logged 'media-server' $py @('-m', 'd1a.serving.media', '--run', $MediaRun, '--port', "$MediaPort")
         $t0 = Get-Date
         while (-not (Test-MediaUp)) {
           if ($procs[-1].HasExited) { Show-LogTail 'media-server'; Die 'the media server did not start (see .demo\media-server*.log)' }
