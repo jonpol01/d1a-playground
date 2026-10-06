@@ -31,6 +31,13 @@ for case in clean override; do   # every uv call sees the cache: .demo's by defa
   [ "$calls" -ge 2 ] && [ "$seen" = "$calls" ] || fail $case "uv did not use the cache $want"
 done
 
+printf 'PORT=3999\nLABEL_OUTCOMES=1\nFEEDBACK_LOG=%s\nOUTCOME_CALIBRATOR=%s\nMODEL_RUN=JohnP1/d1a-e4b-mlx-q8@v0.5\n' "$T/log.jsonl" "$T/cal.json" > "$T/app/.demo/mini.env"
+run promote FAIL_UV=   # the daily promote fits only on the decisions the served model made (d1a#186)
+agent="$T/home/Library/LaunchAgents/io.github.jonpol01.d1a-promote.plist"
+[ "$(cat "$T/promote.status")" = 0 ] && [ -f "$agent" ] || fail promote "did not write the promote agent"
+grep -A1 "<string>--run</string>" "$agent" | grep -qF "<string>JohnP1/d1a-e4b-mlx-q8@v0.5</string>" || fail promote "the promote agent does not pass --run MODEL_RUN"
+printf 'PORT=3999\n' > "$T/app/.demo/mini.env"
+
 run install FAIL_UV=1
 [ -n "$(last install "^uv pip install")" ] || fail install "never reached the install"
 [ "$(cat "$T/install.status")" != 0 ] || fail install "a failed install exited 0"

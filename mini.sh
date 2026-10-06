@@ -35,7 +35,7 @@ PROMOTE_LABEL="io.github.jonpol01.d1a-promote"     # LABEL_OUTCOMES=1 and OUTCOM
 # the default model: the MLX 8-bit build on Apple Silicon (4.2 GB, parity-checked), the PyTorch checkpoint elsewhere
 if [ "$(uname -sm)" = "Darwin arm64" ]; then DEFAULT_MODEL_RUN="JohnP1/d1a-e2b-mlx-q8"; else DEFAULT_MODEL_RUN="JohnP1/d1a-e2b"; fi
 D1A_REPO="https://github.com/jonpol01/d1a"
-D1A_SHA="ff212c061f3bb9fb199c7afe4732b8aebb869080"   # the D1A model server this playground is tested against
+D1A_SHA="140a3dea29f7bf57c9be5f70b8349382d363b0c1"   # the D1A model server this playground is tested against
 PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 
 say() { printf '\033[1m[mini]\033[0m %s\n' "$*"; }
@@ -181,7 +181,8 @@ EOF
   if [ "$LABEL_OUTCOMES" = 1 ] && [ -n "$OUTCOME_CALIBRATOR" ]; then
     # the promotion gate on the live decision log (d1a.learning.feedback promote, d1a#148): daily at 04:00 it fits a calibrator on
     # the outcomes so far and writes OUTCOME_CALIBRATOR only for the questions that pass; the server picks the file up
-    # without a restart. Nothing else ever writes that file.
+    # without a restart. Nothing else ever writes that file. --run: only the decisions MODEL_RUN made (d1a#186), since a
+    # calibrator corrects one model's probabilities and the log keeps every model's
     cat >"$AGENTS/$PROMOTE_LABEL.plist" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -197,6 +198,8 @@ EOF
     <string>$FEEDBACK_LOG</string>
     <string>--calibrator</string>
     <string>$OUTCOME_CALIBRATOR</string>
+    <string>--run</string>
+    <string>$MODEL_RUN</string>
   </array>
   <key>WorkingDirectory</key><string>$ROOT</string>
   <key>EnvironmentVariables</key>
