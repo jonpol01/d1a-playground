@@ -70,6 +70,24 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **The Mac mini serves D1A-E4B v0.5** (`JohnP1/d1a-e4b-mlx-q8@v0.5`, jonpol01/d1a#175), set as `MODEL_RUN` in
+  `.demo/mini.env`.
+  - v0.5 against v0.4 on held-out data, MLX 8-bit:
+    - better: hard decisions 55% → 71%, developer tools 64% → 70%, transfer +2.7, JGLUE +1.1, routing +1.5, decision
+      +0.6, documents +0.9, PR change type +2.0;
+    - worse: PR severity −2.2, and blast radius on the owner's repositories 87% → 74% (39 hand-checked PRs).
+  - The full scorecard is on jonpol01/d1a#175.
+  - `scripts/demo-baseline.json` is re-recorded on v0.5: the local MLX 8-bit build through the web app, 145 requests,
+    reproduced three times. 20 of 201 answers change:
+    - the evals demo's error flags and scores;
+    - inbox email 7, a rerank passage, a bulk row, the Japanese summary's route, one robot move;
+    - the CI-change PR's blast radius;
+    - the crushed-truck photo, now "damaged".
+  - Rollback:
+    1. Set `MODEL_RUN=JohnP1/d1a-e4b-mlx-q8@v0.4` in `.demo/mini.env`.
+    2. `git revert` this change, which restores the v0.4 baseline.
+    3. Run `./mini.sh reinstall`. No outcome calibrator has been promoted, so there is no file to restore.
+
 - The D1A model server pin moves to jonpol01/d1a@ff212c06 (from `a84bd8c`): D1A's package layout (#60), so the
   launchers start `d1a.serving.serve`, `d1a.serving.media` and `d1a.learning.feedback`; plus the skills-training recipe and
   checkpoint tools. Checked with D1A's `scripts/quality_gate.py` on real weights (`d1a-e4b-mlx-q8@v0.4`): every demo
