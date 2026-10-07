@@ -77,12 +77,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
       +0.6, documents +0.9, PR change type +2.0;
     - worse: PR severity −2.2, and blast radius on the owner's repositories 87% → 74% (39 hand-checked PRs).
   - The full scorecard is on jonpol01/d1a#175.
-  - `scripts/demo-baseline.json` is re-recorded on v0.5: the local MLX 8-bit build through the web app, 145 requests,
-    reproduced three times. 20 of 201 answers change:
-    - the evals demo's error flags and scores;
-    - inbox email 7, a rerank passage, a bulk row, the Japanese summary's route, one robot move;
-    - the CI-change PR's blast radius;
-    - the crushed-truck photo, now "damaged".
+  - `scripts/demo-baseline.json` is recorded on v0.5 on the Mac mini itself (M4, MLX 0.32.3), 145 requests, reproduced
+    exactly there. 17 of 201 answers change from v0.4:
+    - evals: quality scores move a little, and the wrong and partly correct answers are now flagged as errors;
+    - the crushed-truck photo is now "damaged";
+    - one each for inbox email 7, a rerank passage, a bulk row and the Japanese summary's route;
+    - the CI-change PR's blast radius changes too.
+    A first recording on an M1 Max (MLX 0.32.2) differed from the Mini's by up to 0.045 in probability, flipping three
+    answers near a boundary: MLX rounds 8-bit matrix products differently per chip, so a baseline is recorded on the
+    machine that serves it.
   - Rollback:
     1. Set `MODEL_RUN=JohnP1/d1a-e4b-mlx-q8@v0.4` in `.demo/mini.env`.
     2. `git revert` this change, which restores the v0.4 baseline.
