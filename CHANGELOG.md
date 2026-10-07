@@ -70,6 +70,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **The D1A model server pin moves to jonpol01/d1a@140a3dea** (from `ff212c06`, jonpol01/d1a#186). The daily promote job
+  now fits the outcome calibrator only on the decisions the served model made: `mini.sh` passes
+  `--run "$MODEL_RUN"`, so after a model switch v0.5 is never corrected by v0.4's errors. A calibrator file moved aside
+  now stops applying from the next answer. Checked with D1A's `scripts/quality_gate.py` on real weights
+  (`--base ff212c06 --head 140a3dea`, `d1a-e4b-mlx-q8@v0.4`): every demo example and the labeler replay, 237 requests,
+  0 changed answers, max |dp| 0, latency 1.004 against a 0.996 floor. `scripts/test_mini_update.sh` checks that the
+  promote agent passes `--run MODEL_RUN`.
 - **The Mac mini serves D1A-E4B v0.5** (`JohnP1/d1a-e4b-mlx-q8@v0.5`, jonpol01/d1a#175), set as `MODEL_RUN` in
   `.demo/mini.env`.
   - v0.5 against v0.4 on held-out data, MLX 8-bit:
