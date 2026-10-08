@@ -6,20 +6,20 @@ import { BULK_TEXT, INBOX_TEXT, LABEL_Q, RERANK_TEXT, splitBlocks, splitLines, s
 import { describe, MOVE_Q } from "@/components/uses/control";
 import { CLIPS, PHOTO_Q, PHOTOS, VIDEOS, VOICE_Q } from "@/components/uses/media";
 import { PR_Q, PRESETS, prState } from "@/components/uses/prlabel";
-import { EVAL_Q, EVAL_TEXT, evalState, GATE_TEXT, GUARD_Q, GUARD_TEXT, parseOptions, ROUTE_Q, ROUTE_TEXT, TOOL_Q, TOOL_TEXT, toolState } from "@/components/uses/single";
+import { EVAL_Q, EVAL_TEXT, evalState, GATE_TEXT, GUARD_Q, GUARD_TEXT, parseOptions, ROUTE_Q, ROUTE_TEXT, ROUTE_USE_CASE, TOOL_Q, TOOL_TEXT, toolState } from "@/components/uses/single";
 
 export type SmokeRequest =
-  | { demo: string; name: string; kind: "text"; body: { state: string; model: string; questions: Record<string, Question> } }
+  | { demo: string; name: string; kind: "text"; body: { state: string; model: string; questions: Record<string, Question>; use_case?: string } }
   | { demo: string; name: string; kind: "media"; file: string; mediaType: "image" | "audio" | "video"; questions: Record<string, Question> };
 
-const text = (demo: string, name: string, state: string, questions: Record<string, Question>): SmokeRequest =>
-  ({ demo, name, kind: "text", body: { state, model: MODEL, questions } });
+const text = (demo: string, name: string, state: string, questions: Record<string, Question>, useCase?: string): SmokeRequest =>
+  ({ demo, name, kind: "text", body: { state, model: MODEL, questions, ...(useCase ? { use_case: useCase } : {}) } });
 
 export function smokeRequests(langs: Lang[] = ["en", "ja"]): SmokeRequest[] {
   const out: SmokeRequest[] = [];
   for (const lang of langs) {
     const route = ROUTE_TEXT[lang], guard = GUARD_TEXT[lang], tool = TOOL_TEXT[lang], ev = EVAL_TEXT[lang], gate = GATE_TEXT[lang];
-    route.presets.forEach((p) => out.push(text("routing", `${lang}: ${p.name}`, p.prompt, ROUTE_Q)));
+    route.presets.forEach((p) => out.push(text("routing", `${lang}: ${p.name}`, p.prompt, ROUTE_Q, ROUTE_USE_CASE)));
     guard.presets.forEach((p) => out.push(text("guardrails", `${lang}: ${p.name}`, p.text, GUARD_Q)));
     tool.presets.forEach((p) => out.push(text("tool-gate", `${lang}: ${p.name}`, toolState(p.task, p.tool, p.args), TOOL_Q)));
     ev.presets.forEach((p) => out.push(text("evals", `${lang}: ${p.name}`, evalState(ev.question, ev.reference, p.answer), EVAL_Q(true))));

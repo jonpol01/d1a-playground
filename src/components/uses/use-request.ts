@@ -11,11 +11,11 @@ export function useKevRequest() {
   const [busy, setBusy] = useState(false);
   const seq = useRef(0);   // a newer run (or a reset) wins over an older response still in flight
 
-  async function run(state: JSONContent, questions: Record<string, Question>) {
+  async function run(state: JSONContent, questions: Record<string, Question>, useCase?: string) {
     const id = ++seq.current;
     setBusy(true); setError(null);
     try {
-      const r = await ask(state, questions);
+      const r = await ask(state, questions, useCase);
       if (id === seq.current) setResult(r);
     } catch (e) {
       if (id === seq.current) { setError(e); setResult(null); }

@@ -20,6 +20,8 @@ export const ROUTE_Q: Record<string, Question> = {
     },
   },
 };
+// The routing use case: the model serves these requests at the temperature calibrated for routing (D1A #214).
+export const ROUTE_USE_CASE = "routing";
 // Illustrative prices per 1,000 requests of about 1k tokens each, for the arithmetic only; plug in your own.
 const COST: Record<string, number> = { small: 0.1, medium: 1, large: 10 };
 // The questions stay in English in both languages: the prototype was trained on English, and Japanese prompts
@@ -73,7 +75,7 @@ export function RoutingDemo() {
         <Field label={t.field} htmlFor="route-prompt">
           <textarea id="route-prompt" className={`${textareaCls} min-h-40`} value={prompt} onChange={(e) => setPrompt(e.target.value)} />
         </Field>
-        <RunBar onRun={() => req.run(prompt, ROUTE_Q)} busy={req.busy} disabled={!prompt.trim()} label={t.run} busyLabel={t.busy} />
+        <RunBar onRun={() => req.run(prompt, ROUTE_Q, ROUTE_USE_CASE)} busy={req.busy} disabled={!prompt.trim()} label={t.run} busyLabel={t.busy} />
         <ErrorNote error={req.error} />
       </>}
       right={a && routed && req.result ? <>
