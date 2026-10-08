@@ -10,7 +10,9 @@ export type Question =
   | { type: "choice"; instructions: JSONContent; criteria: Record<string, JSONContent> }
   | { type: "score"; instructions: JSONContent; criteria: JSONContent[] };
 
-export type SystemOneRequest = { state: JSONContent; model: string; questions: Record<string, Question> };
+// use_case: a use case the model may hold its own calibration temperature for (D1A #214; d1a.agents.presets maps every
+// routing preset to "routing"). A server that has none for it, or predates it, answers exactly as without it.
+export type SystemOneRequest = { state: JSONContent; model: string; questions: Record<string, Question>; use_case?: string };
 
 export type Answer =
   | { type: "noul"; noul: number }

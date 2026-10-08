@@ -19,6 +19,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **The routing demo names its use case.** Its requests, in the UI and in the demo smoke test, send
+  `"use_case": "routing"` (D1A jonpol01/d1a#214). A D1A model with a routing temperature (`use_case_temperatures` in
+  `/v1/models`) answers them at that temperature, and the choice never moves. A model without one, or a D1A server older
+  than #214, answers exactly as before. Every other demo sends no use case.
 - **PR label check** (`/review`, #29). It is the human check of the PR labeler's labels, to measure how noisy the review
   bot's labels are; the outcome calibrator and outcome memory learn from them.
   - **What it shows:** 50 pull requests with a review-bot outcome, stratified half disagree, half agree. For each, D1A's
