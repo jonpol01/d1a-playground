@@ -25,6 +25,7 @@ if (!base && !list) { console.error("usage: node scripts/demo_smoke.mjs <web app
 globalThis.React = (await import("react")).default;   // the demos' modules hold JSX text (classic runtime: React.createElement)
 const jiti = createJiti(import.meta.url, { jsx: true, alias: { "@": join(ROOT, "src") } });
 const { smokeRequests } = await jiti.import(join(ROOT, "src/components/uses/smoke.ts"));
+const { NOT_FOR_LEARNING } = await jiti.import(join(ROOT, "src/lib/kev.ts"));   // sent as the UI sends it: kept out of the decision log
 
 const key = (r) => `${r.demo} | ${r.name}`;
 const side = (a) => (a.type === "noul" ? (a.noul >= 0.5 ? "true" : "false") : a.type === "choice" ? a.choice : String(a.score));
@@ -36,7 +37,7 @@ async function send(r) {
     : [`${base}/media/v1/systemone/media`, { model: "d1a-latest", questions: r.questions,
         media: { type: r.mediaType, data: readFileSync(join(ROOT, "public/samples", r.file)).toString("base64") } }];
   const t0 = performance.now();
-  const res = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+  const res = await fetch(url, { method: "POST", headers: { "content-type": "application/json", ...NOT_FOR_LEARNING }, body: JSON.stringify(body) });
   const ms = performance.now() - t0;
   if (!res.ok) return { error: `HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`, ms };
   return { answers: (await res.json()).answers, ms };

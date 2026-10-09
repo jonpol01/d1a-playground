@@ -148,7 +148,8 @@ write_agents() {
   plutil -lint "$AGENTS/$MODEL_LABEL.plist" "$AGENTS/$WEB_LABEL.plist" >/dev/null
   if [ "$LABEL_OUTCOMES" = 1 ]; then
     [ -n "$FEEDBACK_LOG" ] || die "LABEL_OUTCOMES=1 needs FEEDBACK_LOG: the outcomes go to the model server's decision log"
-    # the PR labeler's outcomes (review bot and human label changes) posted to /v1/feedback; runs at load, then every 900 s
+    # the PR and issue labeler's outcomes (review bot and human label changes) posted to /v1/feedback; runs at load, then every
+    # 900 s. --log: the issue labeler's calls are only in the decision log
     cat >"$AGENTS/$OUTCOMES_LABEL.plist" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -161,6 +162,8 @@ write_agents() {
     <string>$ROOT/scripts/pr_outcomes.py</string>
     <string>--feedback</string>
     <string>http://127.0.0.1:$KEV_PORT/v1/feedback</string>
+    <string>--log</string>
+    <string>$FEEDBACK_LOG</string>
   </array>
   <key>WorkingDirectory</key><string>$ROOT</string>
   <key>EnvironmentVariables</key>

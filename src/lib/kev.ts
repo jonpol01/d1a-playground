@@ -37,8 +37,12 @@ const MEDIA = `${BASE_PATH}/media`;   // the same questions about a photo, a voi
 
 export type MediaRequest = Omit<SystemOneRequest, "state"> & { state?: JSONContent; media: { type: "image" | "audio" | "video"; data: string } };
 
+// Demo traffic: no outcome ever follows it, so the model server keeps it out of its decision log (d1a.serving.serve, with
+// D1A_FEEDBACK_LOG set), whose pending decisions are then the PR labeler's alone. Servers without the switch ignore it.
+export const NOT_FOR_LEARNING = { "x-d1a-decision-log": "off" };
+
 async function post<T>(path: string, body: unknown, base = KEV): Promise<T> {
-  const r = await fetch(`${base}${path}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+  const r = await fetch(`${base}${path}`, { method: "POST", headers: { "content-type": "application/json", ...NOT_FOR_LEARNING }, body: JSON.stringify(body) });
   if (!r.ok) throw new Error(`${r.status}: ${await r.text()}`);
   return r.json();
 }

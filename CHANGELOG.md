@@ -19,6 +19,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Issue-label outcomes.** The CTO bot's labeler also labels issues (type and severity); `scripts/pr_outcomes.py` now
+  collects those decisions' outcomes too. They are not in the labeler's mirror, so they are read from the model server's
+  decision log (`--log`, which `mini.sh` sets to `FEEDBACK_LOG`) by their state's `kind: github-issue`, and matched to
+  the one issue with that exact title and author in the labeled repositories' owners (one GitHub search per owner per
+  run). Issues get no review, so their outcome is a person's type or severity labels between the call and the next one
+  on the same issue, posted as `src` human with group `<repo>#<number>`. On the Mac mini's log (2026-10-09) 120 of 121
+  labelled issues match; one of the 301 issue decisions has a person's labels in its window so far.
 - **PR label check** (`/review`, #29). It is the human check of the PR labeler's labels, to measure how noisy the review
   bot's labels are; the outcome calibrator and outcome memory learn from them.
   - **What it shows:** 50 pull requests with a review-bot outcome, stratified half disagree, half agree. For each, D1A's
@@ -70,6 +77,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **Demo and smoke-test requests stay out of the learning log.** The demos (`src/lib/kev.ts`) and
+  `scripts/demo_smoke.mjs` send `x-d1a-decision-log: off`, which a D1A model server that honours it answers without
+  writing a decision; older servers ignore it, so on the Mac mini it takes effect when the D1A pin moves to the server
+  change (jonpol01/d1a branch `decision-log-src`). On the Mac mini's log (2026-10-09) 1,879 of 2,290 decisions were demo
+  and smoke traffic (726 of v0.5's 855), each one pending forever: `d1a.learning.feedback status` reported 2,181 pending
+  decisions, 302 without them (v0.5: 818, 92). A local server on the tiny test checkpoint logged 131 decisions for one
+  `--no-media` smoke run before the change and 0 after.
+- **The outcome collector polls GitHub less.** Each run re-read every pull request of the last 14 days until a person
+  relabelled it, which most never are: 67 reads per run on the Mac mini. A decision is now checked every run in its first
+  day, hourly until its third, then every 6 hours, staggered per pull request, and a window that closed more than a day
+  ago is not polled for a person's labels any more: 14 reads per run on average (5 to 23), plus about 20 for issues.
 - **The D1A model server pin moves to jonpol01/d1a@140a3dea** (from `ff212c06`, jonpol01/d1a#186). The daily promote job
   now fits the outcome calibrator only on the decisions the served model made: `mini.sh` passes
   `--run "$MODEL_RUN"`, so after a model switch v0.5 is never corrected by v0.4's errors. A calibrator file moved aside
