@@ -80,7 +80,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Demo and smoke-test requests stay out of the learning log.** The demos (`src/lib/kev.ts`) and
   `scripts/demo_smoke.mjs` send `x-d1a-decision-log: off`, which a D1A model server that honours it answers without
   writing a decision; older servers ignore it, so on the Mac mini it takes effect when the D1A pin moves to the server
-  change (jonpol01/d1a branch `decision-log-src`). On the Mac mini's log (2026-10-09) 1,879 of 2,290 decisions were demo
+  change (jonpol01/d1a#221). On the Mac mini's log (2026-10-09) 1,879 of 2,290 decisions were demo
   and smoke traffic (726 of v0.5's 855), each one pending forever: `d1a.learning.feedback status` reported 2,181 pending
   decisions, 302 without them (v0.5: 818, 92). A local server on the tiny test checkpoint logged 131 decisions for one
   `--no-media` smoke run before the change and 0 after.
