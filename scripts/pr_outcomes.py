@@ -27,6 +27,7 @@ not polled for a person's labels any more.
 """
 import argparse
 import json
+import os
 import subprocess
 import sys
 import urllib.error
@@ -137,6 +138,7 @@ def issue_calls(log_path):
         if ISSUE_KIND not in line: continue                 # most of the log is the PR labeler's and the demos'
         e = json.loads(line); state = e.get("state")
         if e.get("kind") != "decision" or not isinstance(state, str): continue
+        if e.get("replay_of"): continue                     # a replay (d1a#233) re-scores a call; it is never a call itself
         head = dict(l.split(": ", 1) for l in state.split("\nbody:", 1)[0].splitlines() if ": " in l)
         if head.get("kind") != ISSUE_KIND.split(": ")[1] or not head.get("title"): continue
         out.append({"ts": datetime.fromtimestamp(e["ts"], timezone.utc).isoformat(), "decision_id": e["id"], "head_sha": None,
@@ -178,6 +180,16 @@ def post(url, decision_id, labels, src, group):
     with urllib.request.urlopen(req, timeout=30) as r: return r.status
 
 
+def outcomes_enabled(path):
+    """outcomes.enabled from the self-learning settings: the last valid file d1a.learning.settings kept, else the file
+    itself; a missing, unreadable or broken file leaves collection on, as it was before the settings existed."""
+    if not path: return True
+    for f in (Path(path).with_name(Path(path).name + ".last-valid.json"), Path(path)):
+        try: return json.loads(f.read_text(encoding="utf-8")).get("outcomes", {}).get("enabled", True) is not False
+        except (OSError, ValueError, AttributeError): continue
+    return True
+
+
 def main(argv=None, now=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--decisions", default="/Users/Shared/d1a/labeler-decisions.jsonl")
@@ -187,7 +199,11 @@ def main(argv=None, now=None):
     ap.add_argument("--state", default=str(Path(__file__).resolve().parents[1] / ".demo/feedback/outcomes-posted.json"))
     ap.add_argument("--days", type=float, default=14, help="decisions older than this are no longer checked")
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--learning", default=os.environ.get("D1A_LEARNING"), help="the self-learning settings file (d1a.learning.settings); "
+                    "outcomes.enabled false there stops this run")
     a = ap.parse_args(argv)
+    if not outcomes_enabled(a.learning):
+        print("outcomes.enabled is false in the self-learning settings: no outcomes collected"); return 0
     calls = [json.loads(l) for l in Path(a.decisions).read_text(encoding="utf-8").splitlines() if l.strip()]
     state_path = Path(a.state); posted = json.loads(state_path.read_text()) if state_path.exists() else {}
     now = now or datetime.now(timezone.utc); since = now - timedelta(days=a.days)

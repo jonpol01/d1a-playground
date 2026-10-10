@@ -31,11 +31,11 @@ MODEL_LABEL="io.github.jonpol01.d1a-model"
 MEDIA_LABEL="io.github.jonpol01.d1a-media"   # the separate media server older versions ran; removed on install
 WEB_LABEL="io.github.jonpol01.d1a-web"
 OUTCOMES_LABEL="io.github.jonpol01.d1a-outcomes"   # LABEL_OUTCOMES=1: scripts/pr_outcomes.py every 15 minutes
-PROMOTE_LABEL="io.github.jonpol01.d1a-promote"     # LABEL_OUTCOMES=1 and OUTCOME_CALIBRATOR: d1a.learning.feedback promote daily at 04:00
+PROMOTE_LABEL="io.github.jonpol01.d1a-promote"     # LABEL_OUTCOMES=1 and OUTCOME_CALIBRATOR: the self-learning tick every 15 minutes (d1a#233; the label of the 04:00 promote it replaces)
 # the default model: the MLX 8-bit build on Apple Silicon (4.2 GB, parity-checked), the PyTorch checkpoint elsewhere
 if [ "$(uname -sm)" = "Darwin arm64" ]; then DEFAULT_MODEL_RUN="JohnP1/d1a-e2b-mlx-q8"; else DEFAULT_MODEL_RUN="JohnP1/d1a-e2b"; fi
 D1A_REPO="https://github.com/jonpol01/d1a"
-D1A_SHA="2a90e61f5a58bcbfbbcdfdfa34870b20b027b94f"   # the D1A model server this playground is tested against
+D1A_SHA="71d1bb81adf6ef5609350d9ca784e9716e607997"   # the D1A model server this playground is tested against
 PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 
 say() { printf '\033[1m[mini]\033[0m %s\n' "$*"; }
@@ -50,6 +50,18 @@ load_env() {
   KEV_PREFIX_CACHE="${KEV_PREFIX_CACHE:-4}"; KEV_PREFIX_MAX_TOKENS="${KEV_PREFIX_MAX_TOKENS:-65536}"
   MEDIA="${MEDIA:-0}"; IDLE_UNLOAD="${IDLE_UNLOAD:-600}"
   FEEDBACK_LOG="${FEEDBACK_LOG:-}"; OUTCOME_CALIBRATOR="${OUTCOME_CALIBRATOR:-}"; LABEL_OUTCOMES="${LABEL_OUTCOMES:-0}"
+  LEARNING="$STATE/learning.json"; TRAINED_DIR="$STATE/trained"   # the self-learning settings and the trained manifests (d1a#233)
+}
+
+learning_init() {   # the self-learning settings, created once with this deployment's choices; later edits are John's (page or CLI)
+  [ "$LABEL_OUTCOMES" = 1 ] && [ -n "$OUTCOME_CALIBRATOR" ] || return 0
+  mkdir -p "$TRAINED_DIR"
+  [ -f "$LEARNING" ] && return 0
+  local py="$STATE/d1a-venv/bin/python"
+  "$py" -m d1a.learning.feedback config init --file "$LEARNING" >/dev/null || die "could not create $LEARNING"
+  "$py" -m d1a.learning.feedback config set --file "$LEARNING" 'outcomes.sources=["reviewer","human"]' \
+    'promotion.questions=["type","blast","sev"]' "reports.webhook_file=$STATE/learning-webhook" >/dev/null || die "could not set up $LEARNING"
+  say "self-learning settings: $LEARNING (edit on the Learning page or with: $py -m d1a.learning.feedback config set --file $LEARNING key=value)"
 }
 
 save_env() {
@@ -145,6 +157,11 @@ write_agents() {
   # the PR label check (/review, d1a-playground#29) reads the decision log; off unless the labeler's outcomes are on
   [ "$LABEL_OUTCOMES" = 1 ] && [ -n "$FEEDBACK_LOG" ] && ENV_XML+="    <key>REVIEW_FEEDBACK_LOG</key><string>$FEEDBACK_LOG</string>
 "
+  # the Learning page (/learning, d1a#233) shows and edits the self-learning settings and shows the tick's status
+  [ "$LABEL_OUTCOMES" = 1 ] && [ -n "$OUTCOME_CALIBRATOR" ] && ENV_XML+="    <key>LEARNING_FILE</key><string>$LEARNING</string>
+    <key>LEARNING_STATUS</key><string>$(dirname "$FEEDBACK_LOG")/learning-status.json</string>
+    <key>LEARNING_PY</key><string>$STATE/d1a-venv/bin/python</string>
+"
   plist "$WEB_LABEL" "$(command -v node)" "$ROOT/node_modules/next/dist/bin/next" start -p "$PORT" -H "$HOST" >"$AGENTS/$WEB_LABEL.plist"
   plutil -lint "$AGENTS/$MODEL_LABEL.plist" "$AGENTS/$WEB_LABEL.plist" >/dev/null
   if [ "$LABEL_OUTCOMES" = 1 ]; then
@@ -170,6 +187,7 @@ write_agents() {
   <key>EnvironmentVariables</key>
   <dict>
     <key>PATH</key><string>$path</string>
+    <key>D1A_LEARNING</key><string>$LEARNING</string>
   </dict>
   <key>RunAtLoad</key><true/>
   <key>StartInterval</key><integer>900</integer>
@@ -183,10 +201,11 @@ EOF
     launchctl bootout "$(domain)/$OUTCOMES_LABEL" 2>/dev/null || true; rm -f "$AGENTS/$OUTCOMES_LABEL.plist"
   fi
   if [ "$LABEL_OUTCOMES" = 1 ] && [ -n "$OUTCOME_CALIBRATOR" ]; then
-    # the promotion gate on the live decision log (d1a.learning.feedback promote, d1a#148): daily at 04:00 it fits a calibrator on
-    # the outcomes so far and writes OUTCOME_CALIBRATOR only for the questions that pass; the server picks the file up
-    # without a restart. Nothing else ever writes that file. --run: only the decisions MODEL_RUN made (d1a#186), since a
-    # calibrator corrects one model's probabilities and the log keeps every model's
+    # the self-learning tick (d1a.learning.feedback tick, d1a#233) every 15 minutes: after a model switch it replays the earlier
+    # models' decisions that have outcomes through the model server (fail closed: never without the served model's complete
+    # trained manifest in $TRAINED_DIR), and it runs the promotion gate when $LEARNING's schedule says so, writing
+    # OUTCOME_CALIBRATOR only for the questions that pass (the server picks the file up without a restart). Nothing else
+    # ever writes that file; the tick asks the server which model it serves, so a calibrator only corrects that model
     cat >"$AGENTS/$PROMOTE_LABEL.plist" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -198,23 +217,22 @@ EOF
     <string>$STATE/d1a-venv/bin/python</string>
     <string>-m</string>
     <string>d1a.learning.feedback</string>
-    <string>promote</string>
+    <string>tick</string>
     <string>$FEEDBACK_LOG</string>
     <string>--calibrator</string>
     <string>$OUTCOME_CALIBRATOR</string>
-    <string>--run</string>
-    <string>$MODEL_RUN</string>
+    <string>--server</string>
+    <string>http://127.0.0.1:$KEV_PORT</string>
+    <string>--trained-dir</string>
+    <string>$TRAINED_DIR</string>
   </array>
   <key>WorkingDirectory</key><string>$ROOT</string>
   <key>EnvironmentVariables</key>
   <dict>
     <key>PATH</key><string>$path</string>
+    <key>D1A_LEARNING</key><string>$LEARNING</string>
   </dict>
-  <key>StartCalendarInterval</key>
-  <dict>
-    <key>Hour</key><integer>4</integer>
-    <key>Minute</key><integer>0</integer>
-  </dict>
+  <key>StartInterval</key><integer>900</integer>
   <key>StandardOutPath</key><string>$LOGS/d1a-promote.log</string>
   <key>StandardErrorPath</key><string>$LOGS/d1a-promote.log</string>
 </dict>
@@ -276,7 +294,7 @@ status() {
 
 load_env
 case "${1:-status}" in
-  install) save_env; install_server; build_web; write_agents; start; smoke ;;
+  install) save_env; install_server; learning_init; build_web; write_agents; start; smoke ;;
   start) [ -f "$AGENTS/$MODEL_LABEL.plist" ] || die "run ./mini.sh install first"; start ;;
   stop) stop ;;
   status) status ;;
@@ -284,7 +302,7 @@ case "${1:-status}" in
     git -C "$ROOT" pull --ff-only
     exec "$ROOT/mini.sh" reinstall ;;   # the pulled script, not the functions this process read before the pull
   reinstall)
-    install_server; write_agents; stop
+    install_server; learning_init; write_agents; stop
     trap restart_after_failure EXIT; build_web; start; trap - EXIT
     smoke ;;
   smoke) smoke ;;

@@ -12,8 +12,21 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- **D1A pinned to `71d1bb81`** (d1a 0.4.0 + d1a#240, self-learning v2: the settings file, replay across versions, the
+  data-triggered gate, `--show-config`); the served model stays D1A-E4B v0.6.
+
 ### Added
 
+- **The Learning page** (`/learning`, d1a#233): the self-learning settings with an edit form (validated by D1A; a value
+  out of range is refused), each question's outcomes and how many it still needs, the last runs of the loop with the
+  smallest log-loss gain each gate could detect, and every settings change.
+- **The self-learning tick replaces the 04:00 promote.** Every 15 minutes `io.github.jonpol01.d1a-promote` runs
+  `d1a.learning.feedback tick`. It reads `.demo/learning.json` (created once by `install`), replays earlier models'
+  outcomes after a model switch, and runs the gate after 10 new outcomes or daily at 04:00.
+  - Replays are invisible to `scripts/pr_outcomes.py` (a replay of an issue call is never a call) and to `/review`.
+  - `outcomes.enabled` false stops the outcome poster.
 - **`mini.sh` install, reinstall and update run D1A's disk and RAM preflight first**, when the Mac mini has it
   (`~/d1a-guard/preflight.sh`; elsewhere the line is skipped). It refuses unless free disk covers the ~2 GB install plus
   5 GB headroom and the RAM headroom holds, so an update can't fill the disk. It warns below the Mini's 10 GB target. On
