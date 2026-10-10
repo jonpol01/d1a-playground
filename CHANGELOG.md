@@ -18,7 +18,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   explicit exception to D1A's veto, chosen for the Mini's live job of labelling current pull requests: on 487 PRs newer than
   all its training it labels severity 79.1% (v0.5: 74.7%) and type 90.6% (86.7%) (jonpol01/d1a#198, #225). Rollback:
   `MODEL_RUN=JohnP1/d1a-e4b-mlx-q8@v0.5`.
-  - The demo baseline is re-recorded on the Mini. 11 demo answers change. Six look better: the evals demo ×4, the
+  - The demo baseline is re-recorded on the Mini: 145/145 PASS against it. Against the v0.5 baseline, 16 entries
+    changed (several are score values only). The gate on this Mac listed 11 changed answers, and the Mini's M4 adds three
+    borderline ones: the Control demo's "robot 3, target 10, no hint" now moves right (correct), Japanese rerank passage 5
+    is now "not relevant", and the English evals "Good answer" now carries error = true (worse). Of the 11: Six look better: the evals demo ×4, the
     crushed-truck video now "damaged", and one English bulk row. Three are borderline: Japanese "as described", the CI
     PR's blast radius now "broad", and the Japanese Dependabot email now "later". Two are worse and known: the HR
     training-reminder email (English and Japanese) is now triaged "archive".
