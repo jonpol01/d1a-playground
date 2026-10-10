@@ -5,7 +5,8 @@ This product includes software from Kev (https://github.com/jaredpalmer/kev),
 Copyright 2026 Jared Palmer, licensed under the Apache License, Version 2.0.
 
 Files carried over from Kev's playground and modified by John Soliva for the D1A
-playground carry a "Modified from Kev" header: src/lib/kev.ts,
+playground carry a "Modified from Kev" header: src/lib/d1a.ts (Kev's src/lib/kev.ts,
+renamed),
 src/components/answer-card.tsx, src/app/layout.tsx and next.config.ts. Carried
 over unchanged: src/app/globals.css, src/app/favicon.ico,
 src/components/ui/button.tsx, src/lib/utils.ts and the TypeScript, ESLint,

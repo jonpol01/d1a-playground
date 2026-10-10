@@ -1,6 +1,6 @@
 // Every demo's built-in examples as the requests the UI sends, for scripts/demo_smoke.mjs. Built from the demos' own
 // questions, presets and state builders (exported from their modules), so the smoke test cannot drift from the UI.
-import { MODEL, type Question } from "@/lib/kev";
+import { MODEL, type Question } from "@/lib/d1a";
 import type { Lang } from "@/lib/i18n";
 import { BULK_TEXT, INBOX_TEXT, LABEL_Q, RERANK_TEXT, splitBlocks, splitLines, splitPassages, TRIAGE_Q } from "@/components/uses/batch";
 import { describe, MOVE_Q } from "@/components/uses/control";

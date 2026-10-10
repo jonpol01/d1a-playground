@@ -25,7 +25,7 @@ if (!base && !list) { console.error("usage: node scripts/demo_smoke.mjs <web app
 globalThis.React = (await import("react")).default;   // the demos' modules hold JSX text (classic runtime: React.createElement)
 const jiti = createJiti(import.meta.url, { jsx: true, alias: { "@": join(ROOT, "src") } });
 const { smokeRequests } = await jiti.import(join(ROOT, "src/components/uses/smoke.ts"));
-const { NOT_FOR_LEARNING } = await jiti.import(join(ROOT, "src/lib/kev.ts"));   // sent as the UI sends it: kept out of the decision log
+const { NOT_FOR_LEARNING } = await jiti.import(join(ROOT, "src/lib/d1a.ts"));   // sent as the UI sends it: kept out of the decision log
 
 const key = (r) => `${r.demo} | ${r.name}`;
 const side = (a) => (a.type === "noul" ? (a.noul >= 0.5 ? "true" : "false") : a.type === "choice" ? a.choice : String(a.score));

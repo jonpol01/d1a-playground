@@ -3,7 +3,7 @@
 import { useEffect, useState, useSyncExternalStore, type ComponentType, type CSSProperties, type ReactNode } from "react";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, Camera, Clapperboard, Gamepad2, GitPullRequest, Mic, Gauge, Inbox, ListOrdered, Route, ShieldCheck, Star, Tags, Wrench, type LucideIcon } from "lucide-react";
-import { api, START_HINT } from "@/lib/kev";
+import { api, START_HINT } from "@/lib/d1a";
 import { LANGS, setLang, useHtmlLang, useLang, useText, type Lang } from "@/lib/i18n";
 import { HwMonitor, type ModelMeta } from "@/components/hw-monitor";
 import { BulkDemo, InboxDemo, RerankDemo } from "@/components/uses/batch";

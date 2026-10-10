@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { Answer, Question } from "@/lib/kev";
+import type { Answer, Question } from "@/lib/d1a";
 import { Button } from "@/components/ui/button";
 import { accentButton, AnswerBars, ask, ErrorNote, ResultCard } from "@/components/uses/shared";
 import { useText, type Lang } from "@/lib/i18n";

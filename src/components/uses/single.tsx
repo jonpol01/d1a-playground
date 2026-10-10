@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { Question } from "@/lib/kev";
+import type { Question } from "@/lib/d1a";
 import { useText, type Lang } from "@/lib/i18n";
 import { AnswerBars, DemoGrid, Empty, ErrorNote, Field, inputCls, Latency, pretty, Presets, ResultCard, RunBar, textareaCls, Verdict } from "@/components/uses/shared";
 import { useKevRequest } from "@/components/uses/use-request";

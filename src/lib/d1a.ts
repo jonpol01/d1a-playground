@@ -69,7 +69,7 @@ export const api = {
   },
 };
 
-export const MODEL = "kev-latest";
+export const MODEL = "d1a-latest";
 
 export const MEDIA_START_HINT = {
   en: "Photo check and Voice triage need Gemma 4's vision and audio encoders: start with ./demo.sh --media (Windows: .\\demo.ps1 --media). On a Mac the model server answers them with the same model (about 1 GB more); on a PyTorch machine they run on a second server, d1a.serving.media (about 10 GB).",

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import type { JSONContent, Question, SystemOneResponse } from "@/lib/kev";
+import type { JSONContent, Question, SystemOneResponse } from "@/lib/d1a";
 import { ask } from "@/components/uses/shared";
 
 /** One-shot Kev request state for a demo: the latest response, the latest error, and whether a request is in flight. */
