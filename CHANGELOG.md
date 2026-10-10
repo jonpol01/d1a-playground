@@ -12,6 +12,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- **`mini.sh` install, reinstall and update run D1A's disk and RAM preflight first**, when the Mac mini has it
+  (`~/d1a-guard/preflight.sh`; elsewhere the line is skipped). It refuses unless free disk covers the ~2 GB install plus
+  5 GB headroom and the RAM headroom holds, so an update can't fill the disk. It warns below the Mini's 10 GB target. On
+  2026-10-10 both machines' disks filled. The Mini also runs a disk guard LaunchAgent: it pauses D1A's own jobs below 6 GB
+  free or on fast swap growth and stops them below 3 GB, and never touches the live server on :8009, the bots, Docker or
+  LM Studio.
+
 ### Security
 
 - Next.js 16.3.6, which fixes a remote code execution in `next/og` ImageResponse (GHSA-vcvr-r3jv-pc5j). The
