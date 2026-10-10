@@ -12,6 +12,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- **D1A pinned to `71d1bb81`** (d1a 0.4.0 + d1a#240, self-learning v2: the settings file, replay across versions, the
+  data-triggered gate, `--show-config`); the served model stays D1A-E4B v0.6.
+
 ### Added
 
 - **The Learning page** (`/learning`, d1a#233): the self-learning settings with an edit form (validated by D1A; a value
