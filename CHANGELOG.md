@@ -35,6 +35,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
     crushed-truck video now "damaged", and one English bulk row. Three are borderline: Japanese "as described", the CI
     PR's blast radius now "broad", and the Japanese Dependabot email now "later". Two are worse and known: the HR
     training-reminder email (English and Japanese) is now triaged "archive".
+- **Only `d1a-latest`.** The demos send `d1a-latest` (was `kev-latest`), and the LM Studio bridge lists only `d1a-latest`
+  on `/v1/models`. `src/lib/kev.ts` is now `src/lib/d1a.ts`.
 
 ### Security
 

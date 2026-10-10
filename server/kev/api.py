@@ -44,7 +44,7 @@ Question = Union[Noul, Choice, Score]
 
 class SystemOneRequest(BaseModel):
     state: JSONContent
-    model: str = "d1a-latest"
+    model: str = "kev-latest"
     questions: dict[str, Question] = Field(min_length=1)
 
 
