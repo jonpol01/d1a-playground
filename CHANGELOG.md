@@ -14,7 +14,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
-- **The Mac mini serves D1A-E4B v0.6** (`MODEL_RUN=JohnP1/d1a-e4b-mlx-q8@v0.6`; D1A pinned to `affa93f8`). v0.6 is an
+- **The Mac mini serves D1A-E4B v0.6** (`MODEL_RUN=JohnP1/d1a-e4b-mlx-q8@v0.6`; D1A pinned to `affa93f8` in
+  `mini.sh`, `demo.sh` and `demo.ps1`). v0.6 is an
   explicit exception to D1A's veto, chosen for the Mini's live job of labelling current pull requests: on 487 PRs newer than
   all its training it labels severity 79.1% (v0.5: 74.7%) and type 90.6% (86.7%) (jonpol01/d1a#198, #225). Rollback:
   `MODEL_RUN=JohnP1/d1a-e4b-mlx-q8@v0.5`.
