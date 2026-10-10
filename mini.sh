@@ -75,6 +75,7 @@ EOF
 domain() { if launchctl print "gui/$(id -u)" >/dev/null 2>&1; then echo "gui/$(id -u)"; else echo "user/$(id -u)"; fi; }
 
 install_server() {   # reinstall runs it before stop: a failed download or install leaves the old server serving
+  [ ! -f "$HOME/d1a-guard/preflight.sh" ] || { . "$HOME/d1a-guard/preflight.sh"; d1a_preflight mini-install 2 3 || die "preflight refused: free must cover the ~2 GB install + 5 GB headroom (line above)"; }
   command -v uv >/dev/null || die "uv is missing (brew install uv)"
   # uv's cache under .demo, which this user owns, unless UV_CACHE_DIR says otherwise: a global ~/.cache/uv that a `sudo`
   # run left owned by root failed the Mac mini's install (#33)
