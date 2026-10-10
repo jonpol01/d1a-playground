@@ -1,4 +1,4 @@
-"""Outcomes for the PR labeler's D1A decisions, posted to the model server's POST /v1/feedback.
+"""Outcomes for the PR and issue labeler's D1A decisions, posted to the model server's POST /v1/feedback.
 
     python3 scripts/pr_outcomes.py                       # once; mini.sh runs it every 15 minutes when LABEL_OUTCOMES=1
     python3 scripts/pr_outcomes.py --dry-run             # print what it would post
@@ -14,14 +14,26 @@ follow on GitHub:
   d1a.learning.feedback ranks these above the reviewer's, whatever arrives last.
 A decision's window closes at the next labeler call on the same pull request (a new head), so a later head's labels are
 never counted against it. Nothing is written to GitHub. Posted outcomes are remembered in --state, so each is sent once.
+
+The same job labels issues (type and severity), as hermes-prbot[bot] too. Those calls are not in the mirror: they are
+the decisions in the model server's log (--log) whose state says `kind: github-issue`, and that state names the issue
+only by title and author, so each is matched to the one issue with that exact title and author in the labeled
+repositories' owners (an issue renamed since, or a title two issues share, is skipped). Issues get no review, so their
+outcomes are the human ones, under the same rules, with the window closing at the next call on the same issue.
+
+Polling backs off: a decision is checked on every run in its first day, on every 4th run (hourly) until its third, then
+every 24th (6-hourly) until --days. A window that closed more than a day ago was read whole by the runs since, so it is
+not polled for a person's labels any more.
 """
 import argparse
 import json
 import subprocess
 import sys
 import urllib.error
+import urllib.parse
 import urllib.request
-from datetime import datetime, timedelta
+import zlib
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 FAMILIES = {"type": lambda l: l.startswith("type/"), "blast": lambda l: l.startswith("review:blast-"),
@@ -31,6 +43,11 @@ REVIEWER = "hermes-prbot[bot]"
 SETTLE = timedelta(minutes=2)        # the review bot sets its labels within seconds of posting its review
 REVIEW_LEAD = timedelta(minutes=10)  # ... or while writing it
 CALL_LEAD = timedelta(seconds=20)    # the labeler writes its labels in the seconds before it logs the call
+RUN = timedelta(minutes=15)          # mini.sh runs this every 15 minutes
+BACKOFF = ((timedelta(days=1), 1), (timedelta(days=3), 4))   # (decision younger than, poll every Nth run); older: OLD_EVERY
+OLD_EVERY = 24
+CLOSED = timedelta(days=1)           # a window closed this long ago has been read whole: no person's label can land in it
+ISSUE_KIND = "kind: github-issue"    # the issue labeler's state header line
 
 
 def ts(s):
@@ -91,18 +108,66 @@ def outcomes(decision, next_ts, events, reviews, call_times=()):
     return out
 
 
-def gh(path):
-    r = subprocess.run(["gh", "api", "--paginate", path, "--jq", ".[]"], capture_output=True, text=True, timeout=120)
+def gh(path, jq=".[]"):
+    r = subprocess.run(["gh", "api", "--paginate", path, "--jq", jq], capture_output=True, text=True, timeout=120)
     if r.returncode != 0: raise RuntimeError(f"gh api {path}: {r.stderr.strip()[:200]}")
     return [json.loads(l) for l in r.stdout.splitlines() if l.strip()]   # one item per line across all pages
 
 
+def label_events(repo, number):
+    return [{"event": e["event"], "label": e["label"]["name"], "actor": (e.get("actor") or {}).get("login", ""), "created_at": e["created_at"]}
+            for e in gh(f"repos/{repo}/issues/{number}/events?per_page=100") if e["event"] in ("labeled", "unlabeled")]
+
+
 def pr_history(repo, number):
-    events = [{"event": e["event"], "label": e["label"]["name"], "actor": (e.get("actor") or {}).get("login", ""), "created_at": e["created_at"]}
-              for e in gh(f"repos/{repo}/issues/{number}/events?per_page=100") if e["event"] in ("labeled", "unlabeled")]
     reviews = [{"user": (r.get("user") or {}).get("login", ""), "commit_id": r.get("commit_id"), "submitted_at": r.get("submitted_at")}
                for r in gh(f"repos/{repo}/pulls/{number}/reviews?per_page=100")]
-    return events, reviews
+    return label_events(repo, number), reviews
+
+
+def issue_history(repo, number):
+    return label_events(repo, number), []
+
+
+def issue_calls(log_path):
+    """The issue labeler's calls in the model server's decision log: [{ts, decision_id, title, author}]."""
+    path = Path(log_path); out = []
+    if not path.exists(): return out
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if ISSUE_KIND not in line: continue                 # most of the log is the PR labeler's and the demos'
+        e = json.loads(line); state = e.get("state")
+        if e.get("kind") != "decision" or not isinstance(state, str): continue
+        head = dict(l.split(": ", 1) for l in state.split("\nbody:", 1)[0].splitlines() if ": " in l)
+        if head.get("kind") != ISSUE_KIND.split(": ")[1] or not head.get("title"): continue
+        out.append({"ts": datetime.fromtimestamp(e["ts"], timezone.utc).isoformat(), "decision_id": e["id"], "head_sha": None,
+                    "title": head["title"], "author": head.get("author", "")})
+    return out
+
+
+def find_issues(owners, since):
+    """{(title, author): [(repo, number), ...]} for the issues in `owners`' repositories updated since `since` (a labeler
+    call labels its issue, so every call since then is on one of them)."""
+    found = {}
+    for owner in owners:
+        q = urllib.parse.quote(f"user:{owner} is:issue updated:>={since:%Y-%m-%d}")
+        for it in gh(f"search/issues?q={q}&per_page=100", ".items[]"):
+            found.setdefault((it["title"], (it.get("user") or {}).get("login", "")), []).append((it["repository_url"].split("/repos/", 1)[1], it["number"]))
+    return found
+
+
+def wanted(c, next_ts, done, now, srcs):
+    """The sources decision `c` may still get an outcome from: the reviewer until it has one, a person while the window is
+    open or closed less than CLOSED ago."""
+    return [src for src in srcs if src not in done
+            and not (src == "human" and next_ts is not None and now - ts(next_ts) > CLOSED)]
+
+
+def due(c, now, key):
+    """Whether this run polls decision `c` of pull request or issue `key` (BACKOFF by its age). Runs are counted in RUN
+    slots of the clock, offset per `key` so the backed-off reads spread over the runs instead of landing on one."""
+    age = now - ts(c["ts"])
+    every = next((n for younger, n in BACKOFF if age < younger), OLD_EVERY)
+    return (int(now.timestamp() // RUN.total_seconds()) + zlib.crc32(key.encode())) % every == 0
 
 
 def post(url, decision_id, labels, src, group):
@@ -113,9 +178,11 @@ def post(url, decision_id, labels, src, group):
     with urllib.request.urlopen(req, timeout=30) as r: return r.status
 
 
-def main(argv=None):
+def main(argv=None, now=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--decisions", default="/Users/Shared/d1a/labeler-decisions.jsonl")
+    ap.add_argument("--log", default=str(Path(__file__).resolve().parents[1] / ".demo/feedback/decisions.jsonl"),
+                    help="the model server's decision log (D1A_FEEDBACK_LOG), for the issue labeler's calls")
     ap.add_argument("--feedback", default="http://127.0.0.1:8009/v1/feedback")
     ap.add_argument("--state", default=str(Path(__file__).resolve().parents[1] / ".demo/feedback/outcomes-posted.json"))
     ap.add_argument("--days", type=float, default=14, help="decisions older than this are no longer checked")
@@ -123,22 +190,31 @@ def main(argv=None):
     a = ap.parse_args(argv)
     calls = [json.loads(l) for l in Path(a.decisions).read_text(encoding="utf-8").splitlines() if l.strip()]
     state_path = Path(a.state); posted = json.loads(state_path.read_text()) if state_path.exists() else {}
-    by_pr = {}
-    for c in sorted(calls, key=lambda c: c["ts"]): by_pr.setdefault((c["repo"], c["number"]), []).append(c)
-    since = (datetime.now().astimezone() - timedelta(days=a.days)).isoformat()
+    now = now or datetime.now(timezone.utc); since = now - timedelta(days=a.days)
+    items = {}   # (repo, number) -> (history, sources, calls oldest first)
+    for c in sorted(calls, key=lambda c: c["ts"]): items.setdefault((c["repo"], c["number"]), (pr_history, ("reviewer", "human"), []))[2].append(c)
+    asked = [c for c in issue_calls(a.log) if ts(c["ts"]) >= since]
+    if asked:
+        try: found = find_issues(sorted({c["repo"].split("/")[0] for c in calls}), since)
+        except (RuntimeError, subprocess.TimeoutExpired, json.JSONDecodeError) as e:
+            print(f"skip the issue labeler's calls: {e}", file=sys.stderr); found = {}
+        for c in sorted(asked, key=lambda c: c["ts"]):
+            hits = found.get((c["title"], c["author"]), [])
+            if len(hits) == 1: items.setdefault(hits[0], (issue_history, ("human",), []))[2].append(c)
     sent = 0
-    for (repo, number), seq in by_pr.items():
-        todo = [(c, seq[i + 1]["ts"] if i + 1 < len(seq) else None) for i, c in enumerate(seq)
-                if c.get("decision_id") and ts(c["ts"]) >= ts(since) and any(src not in posted.get(c["decision_id"], {}) for src in ("reviewer", "human"))]
-        if not todo: continue
-        try: events, reviews = pr_history(repo, number)
+    for (repo, number), (history, srcs, seq) in items.items():
+        todo = [(c, seq[i + 1]["ts"] if i + 1 < len(seq) else None) for i, c in enumerate(seq)]
+        todo = [(c, next_ts) for c, next_ts in todo if c.get("decision_id") and ts(c["ts"]) >= since
+                and wanted(c, next_ts, posted.get(c["decision_id"], {}), now, srcs)]
+        if not any(due(c, now, f"{repo}#{number}") for c, _ in todo): continue
+        try: events, reviews = history(repo, number)
         except (RuntimeError, subprocess.TimeoutExpired, json.JSONDecodeError) as e:
             print(f"skip {repo}#{number}: {e}", file=sys.stderr); continue
         for c, next_ts in todo:
             done = posted.setdefault(c["decision_id"], {})
             for src, labels in outcomes(c, next_ts, events, reviews, [x["ts"] for x in seq]):
                 if done.get(src) == labels: continue
-                print(f"{repo}#{number} {c['head_sha'][:8]} {src}: {labels}")
+                print(f"{repo}#{number} {(c['head_sha'] or 'issue')[:8]} {src}: {labels}")
                 if not a.dry_run:
                     try: post(a.feedback, c["decision_id"], labels, src, f"{repo}#{number}")
                     except (urllib.error.URLError, OSError) as e:
