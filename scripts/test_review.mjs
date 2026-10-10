@@ -96,3 +96,22 @@ test("a posted answer: only sampled decisions and their own options; unsure left
 test("a log line still being written is skipped", () => {
   assert.deepEqual(parseJsonl('{"a":1}\n\n{"b":'), [{ a: 1 }]);
 });
+
+test("a replay (d1a#233) is never a decision to check, even though its original's outcomes reach it", () => {
+  const ev = [
+    decision("a", 1, pick("type/bug", "review:blast-contained")), outcome("a", 2, { type: "type/docs" }, "reviewer", "o/r#1"),
+    decision("r", 3, pick("type/docs", "review:blast-contained"), { replay_of: "a", run: "r@v0.6" }),
+    outcome("r", 4, { type: "type/docs" }, "reviewer", "o/r#1"),   // even if something posted to the replay, it is not shown
+  ];
+  assert.deepEqual(candidates(ev).map((i) => i.decision_id), ["a"]);
+});
+
+test("the Learning page reads `config show` and keeps only what it shows of a tick report", async () => {
+  const { parseShow, summarize } = await import("../src/lib/learning.ts");
+  const shown = parseShow('# from: /x/learning.json\n{\n  "version": 1,\n  "promotion": {"auto": false}\n}\n# 2026-10-11 03:27 page: promotion.auto true -> false\n');
+  assert.deepEqual(shown, { source: "/x/learning.json", error: null, settings: { version: 1, promotion: { auto: false } } });
+  assert.equal(parseShow("# from: f\n# ERROR in the file: promotion.held_out: 0.9 is not allowed\n{\n}\n").error, "promotion.held_out: 0.9 is not allowed");
+  const r = summarize({ ts: 1, gate: { reason: "daily at 04:00", report: { type: { fit: 9 } }, power: "type: kept", promoted: [] }, replay: { replayed: 3, left: 0, excluded: {}, candidates: 3 } });
+  assert.deepEqual(r.gate, { reason: "daily at 04:00", skipped: undefined, outcomes: undefined, replayed: undefined, promoted: [], written: undefined, auto: undefined, power: "type: kept" });
+  assert.equal(r.replay.replayed, 3); assert.equal("report" in r.gate, false);
+});

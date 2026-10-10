@@ -32,10 +32,24 @@ for case in clean override; do   # every uv call sees the cache: .demo's by defa
 done
 
 printf 'PORT=3999\nLABEL_OUTCOMES=1\nFEEDBACK_LOG=%s\nOUTCOME_CALIBRATOR=%s\nMODEL_RUN=JohnP1/d1a-e4b-mlx-q8@v0.5\n' "$T/log.jsonl" "$T/cal.json" > "$T/app/.demo/mini.env"
-run promote FAIL_UV=   # the daily promote fits only on the decisions the served model made (d1a#186)
+mkdir -p "$T/app/.demo/d1a-venv/bin"   # the model server's venv: its python logs the learning commands and writes the file
+cat > "$T/app/.demo/d1a-venv/bin/python" <<'PY'
+#!/bin/bash
+echo "python $*" >> "$CALLS"; for a in "$@"; do [ "$prev" = --file ] && [ "$3" = config ] && [ "$4" = init ] && echo '{}' > "$a"; prev=$a; done; exit 0
+PY
+chmod +x "$T/app/.demo/d1a-venv/bin/python"
+run promote FAIL_UV=   # the 15-minute self-learning tick replaces the 04:00 promote (d1a#233)
 agent="$T/home/Library/LaunchAgents/io.github.jonpol01.d1a-promote.plist"
-[ "$(cat "$T/promote.status")" = 0 ] && [ -f "$agent" ] || fail promote "did not write the promote agent"
-grep -A1 "<string>--run</string>" "$agent" | grep -qF "<string>JohnP1/d1a-e4b-mlx-q8@v0.5</string>" || fail promote "the promote agent does not pass --run MODEL_RUN"
+[ "$(cat "$T/promote.status")" = 0 ] && [ -f "$agent" ] || fail promote "did not write the learning agent"
+grep -A1 "<string>d1a.learning.feedback</string>" "$agent" | grep -qF "<string>tick</string>" || fail promote "the agent does not run the tick"
+grep -A1 "<string>--server</string>" "$agent" | grep -qF "<string>http://127.0.0.1:8009</string>" || fail promote "the tick does not ask the model server which model it serves"
+grep -A1 "<string>--trained-dir</string>" "$agent" | grep -qF "<string>$T/app/.demo/trained</string>" || fail promote "the tick has no trained manifests folder"
+grep -A1 "<key>D1A_LEARNING</key>" "$agent" | grep -qF "<string>$T/app/.demo/learning.json</string>" || fail promote "the tick does not read the settings file"
+grep -q "StartInterval" "$agent" && ! grep -q "StartCalendarInterval" "$agent" || fail promote "the tick is not every 15 minutes"
+grep -qF "config init --file $T/app/.demo/learning.json" "$T/promote" || fail promote "did not create the settings file"
+grep -qF 'promotion.questions=["type","blast","sev"]' "$T/promote" || fail promote "did not set the questions that learn"
+run promote2 FAIL_UV=   # a reinstall never overwrites John's settings
+! grep -q "config init" "$T/promote2" || fail promote2 "re-created the settings file on reinstall"
 printf 'PORT=3999\n' > "$T/app/.demo/mini.env"
 
 run install FAIL_UV=1

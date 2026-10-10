@@ -10,7 +10,7 @@ const BODY_CHARS = 6000;   // the labeler's states run to about 4,500 characters
 const FILES_CHARS = 3000;
 
 export type Question = (typeof QUESTIONS)[number];
-type Event = { kind: string; id: string; ts: number; state?: unknown; questions?: Record<string, { criteria?: Record<string, unknown> }>;
+type Event = { kind: string; id: string; ts: number; replay_of?: string; state?: unknown; questions?: Record<string, { criteria?: Record<string, unknown> }>;
   answers?: Record<string, { choice?: string }>; labels?: Record<string, unknown>; meta?: { src?: string; group?: string } };
 type Call = { decision_id?: string; repo?: string; number?: number };
 
@@ -62,7 +62,7 @@ function rank(id: string) {
 export function candidates(decisionLog: Event[], calls: Call[] = []): Item[] {
   const decisions = new Map<string, Event>(), outcomes = new Map<string, Event[]>();
   for (const e of decisionLog) {
-    if (e.kind === "decision") decisions.set(e.id, e);
+    if (e.kind === "decision" && !e.replay_of) decisions.set(e.id, e);   // a replay (d1a#233) is the model re-scoring a decision, not a decision to check
     else if (e.kind === "outcome") outcomes.set(e.id, [...(outcomes.get(e.id) ?? []), e]);
   }
   const prOf = new Map(calls.filter((c) => c.decision_id && c.repo && c.number).map((c) => [c.decision_id!, `${c.repo}#${c.number}`]));

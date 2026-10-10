@@ -94,10 +94,12 @@ def decision_log(path, extra=()):
 
 
 class Issues(unittest.TestCase):
-    def run_main(self, events, found):
+    def run_main(self, events, found, extra=(), learning=None):
         with tempfile.TemporaryDirectory() as tmp:
             log, calls = Path(tmp) / "decisions.jsonl", Path(tmp) / "calls.jsonl"
-            decision_log(log)
+            decision_log(log, extra)
+            args = ["--learning", str(Path(tmp) / "learning.json")] if learning is not None else []
+            if learning is not None: (Path(tmp) / "learning.json").write_text(learning, encoding="utf-8")
             calls.write_text(json.dumps({"ts": "2026-10-05T12:20:17Z", "repo": "owner1/other", "number": 1, "head_sha": "a", "decision_id": None}) + "\n")
             sent = []
             fake_open = lambda req, timeout: (sent.append(json.loads(req.data)), mock.MagicMock(status=200, __enter__=lambda s: s, __exit__=lambda *a: None))[1]
@@ -105,10 +107,10 @@ class Issues(unittest.TestCase):
                  mock.patch.object(pr_outcomes, "issue_history", return_value=(events, [])), \
                  mock.patch.object(pr_outcomes, "pr_history", side_effect=AssertionError("no PR call to check")), \
                  mock.patch("urllib.request.urlopen", fake_open):
-                code = pr_outcomes.main(["--decisions", str(calls), "--log", str(log), "--state", str(Path(tmp) / "posted.json")],
+                code = pr_outcomes.main(["--decisions", str(calls), "--log", str(log), "--state", str(Path(tmp) / "posted.json"), *args],
                                         now=pr_outcomes.ts("2026-10-05T16:00:00Z"))
         self.assertEqual(code, 0)
-        self.assertEqual(find.call_args.args[0], ["owner1"])   # the owners of the labeler's repositories
+        if find.called: self.assertEqual(find.call_args.args[0], ["owner1"])   # the owners of the labeler's repositories
         return sent
 
     def test_a_person_setting_an_issues_labels_after_the_call_is_its_outcome(self):
@@ -119,6 +121,23 @@ class Issues(unittest.TestCase):
         corrected = ISSUE_EVENTS + [ev("15:52:00", "unlabeled", "P3", "owner1"), ev("15:52:01", "labeled", "P1", "owner1")]   # after the 2nd call
         self.assertEqual([(b["decision_id"], b["labels"]) for b in self.run_main(corrected, found)],
                          [("i0", {"type": "type/feature", "sev": "P3"}), ("i1", {"sev": "P1"})])
+
+    def test_a_replay_of_an_issue_call_is_never_a_call(self):
+        """d1a#233: the model server logs a replay of a decision as a decision with replay_of. It takes the original's
+        outcomes; posting outcomes to it as well would count the same issue twice."""
+        found = {("Ship the daily job", "owner1"): [("owner1/repo", 24)]}
+        # logged at 15:47:00, after its original (15:46:03) and before the person's labels (15:47:32): taken for a call, it
+        # would close i0's window and take the person's labels
+        replay = {"kind": "decision", "id": "replay-of-i0", "ts": ISSUE_CALLS[0] + 57, "run": "r@v0.6", "state": ISSUE_STATE,
+                  "answers": {"type": {"choice": "type/feature"}}, "meta": {}, "replay_of": "i0"}
+        self.assertEqual(self.run_main(ISSUE_EVENTS, found, extra=[replay]), self.run_main(ISSUE_EVENTS, found))
+        self.assertNotIn("replay-of-i0", [b["decision_id"] for b in self.run_main(ISSUE_EVENTS, found, extra=[replay])])
+
+    def test_outcomes_enabled_false_stops_the_run_and_a_broken_file_does_not(self):
+        found = {("Ship the daily job", "owner1"): [("owner1/repo", 24)]}
+        self.assertEqual(self.run_main(ISSUE_EVENTS, found, learning='{"outcomes": {"enabled": false}}'), [])
+        self.assertEqual(len(self.run_main(ISSUE_EVENTS, found, learning="{not json")), 1)   # broken: collection stays on
+        self.assertEqual(len(self.run_main(ISSUE_EVENTS, found, learning='{"outcomes": {"enabled": true}}')), 1)
 
     def test_an_issue_title_that_names_no_single_issue_is_skipped(self):
         two = {("Ship the daily job", "owner1"): [("owner1/repo", 24), ("owner1/fork", 3)]}
