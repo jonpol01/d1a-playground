@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { Question } from "@/lib/kev";
+import type { Question } from "@/lib/d1a";
 import { Button } from "@/components/ui/button";
 import { Archive, Clock, Reply } from "lucide-react";
 import { accentButton, ask, DemoGrid, Empty, ErrorNote, Field, inputCls, pool, textareaCls } from "@/components/uses/shared";

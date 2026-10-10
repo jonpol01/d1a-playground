@@ -3,7 +3,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Activity, ChevronDown, Cpu, Gpu, MemoryStick, Server, Zap, type LucideIcon } from "lucide-react";
 import type { Hw } from "@/lib/hw";
-import { BASE_PATH } from "@/lib/kev";
+import { BASE_PATH } from "@/lib/d1a";
 import { useText, type Lang } from "@/lib/i18n";
 import { useSamples, type Sample } from "@/lib/metrics";
 

@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { Bar } from "@/components/answer-card";
 import { Button } from "@/components/ui/button";
-import { api, describeError, MODEL, type Answer, type JSONContent, type Question, type SystemOneResponse } from "@/lib/kev";
+import { api, describeError, MODEL, type Answer, type JSONContent, type Question, type SystemOneResponse } from "@/lib/d1a";
 import { useLang, useText } from "@/lib/i18n";
 
 export const pretty = (v: unknown) => JSON.stringify(v, null, 2);

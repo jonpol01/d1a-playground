@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Mic, Square, Upload } from "lucide-react";
-import { api, BASE_PATH, MEDIA_START_HINT, type Question, type SystemOneResponse } from "@/lib/kev";
+import { api, BASE_PATH, MEDIA_START_HINT, type Question, type SystemOneResponse } from "@/lib/d1a";
 import { useLang, useText } from "@/lib/i18n";
 import { AnswerBars, DemoGrid, Empty, Field, Latency, Presets, ResultCard, RunBar, Verdict, inputCls } from "@/components/uses/shared";
 import { Shimmer } from "@/components/uses/visuals";

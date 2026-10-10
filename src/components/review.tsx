@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
-import { BASE_PATH } from "@/lib/kev";
+import { BASE_PATH } from "@/lib/d1a";
 import { QUESTIONS, UNSURE, type Item, type Question } from "@/lib/review";
 
 // The human check of the PR labeler's labels (d1a-playground#29): one pull request at a time, D1A's and the reviewer's

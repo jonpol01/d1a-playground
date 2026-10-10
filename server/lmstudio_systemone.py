@@ -124,9 +124,9 @@ async def systemone_permute(r: PermuteSystemOne):
 
 @app.get("/v1/models")
 def models():
-    card = {"description": f"{CFG['model']} in LM Studio at {CFG['lmstudio']}, prompted zero-shot (not a trained Kev checkpoint)",
+    card = {"description": f"{CFG['model']} in LM Studio at {CFG['lmstudio']}, prompted zero-shot (not a trained D1A checkpoint)",
             "release_date": time.strftime("%Y-%m-%d"), "run": f"lmstudio:{CFG['model']}", "base": CFG["model"], "backend": "lmstudio"}
-    return {"models": [{"name": name, **card} for name in ("kev-latest", "jev-latest")]}
+    return {"models": [{"name": name, **card} for name in ("d1a-latest",)]}
 
 
 def main():
