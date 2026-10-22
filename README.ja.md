@@ -127,7 +127,7 @@ UI は既定で日本語で、ヘッダーの JA / EN で切り替えられま�
 
 ## Mac で常時稼働させる
 
-`mini.sh` はプレイグラウンドを常時稼働のサービスとして動かします。モデルサーバーと Web アプリの本番ビルドを2つのユーザー LaunchAgent（`io.github.jonpol01.d1a-model` と `io.github.jonpol01.d1a-web`）として登録し、ログイン時に起動し、クラッシュしても再起動します。Apple Silicon ではモデルサーバーが MLX で [JohnP1/d1a-e2b-mlx-q8](https://huggingface.co/JohnP1/d1a-e2b-mlx-q8) を動かし（メモリ約 4 GB）、それ以外では PyTorch のチェックポイント JohnP1/d1a-e2b を動かします。より大きく正確な E4B（約 6.5 GB）を使うには、`.demo/mini.env` に `MODEL_RUN=JohnP1/d1a-e4b-mlx-q8` を設定して `./mini.sh reinstall` を実行します。[Homebrew](https://brew.sh) の `node` と `uv` が必要です。
+`mini.sh` はプレイグラウンドを常時稼働のサービスとして動かします。モデルサーバーと Web アプリの本番ビルドを2つのユーザー LaunchAgent（`io.github.jonpol01.d1a-model` と `io.github.jonpol01.d1a-web`）として登録し、ログイン時に起動し、クラッシュしても再起動します。Apple Silicon ではモデルサーバーが MLX で [JohnP1/d1a-e2b-mlx-q8](https://huggingface.co/JohnP1/d1a-e2b-mlx-q8) を動かし（メモリ約 4 GB）、それ以外では PyTorch のチェックポイント JohnP1/d1a-e2b を動かします。より大きく正確な E4B（約 6.5 GB）を使うには、`.demo/mini.env` に `MODEL_RUN=JohnP1/d1a-e4b-mlx-q8` を設定して `./mini.sh reinstall` を実行します。[Homebrew](https://brew.sh) の `node`（Next.js 16 が必要とする 20.9 以降。古い版なら、インストールや停止の前に止まります）と `uv` が必要です。
 
 ```bash
 git clone https://github.com/jonpol01/d1a-playground.git ~/d1a-playground && cd ~/d1a-playground

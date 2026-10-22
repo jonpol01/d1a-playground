@@ -106,6 +106,8 @@ install_server() {   # reinstall runs it before stop: a failed download or insta
   # run left owned by root failed the Mac mini's install (#33)
   : "${UV_CACHE_DIR:=$STATE/uv-cache}"; export UV_CACHE_DIR
   command -v node >/dev/null || die "node is missing (brew install node)"
+  local nv nmaj nmin; nv="$(node -p 'process.versions.node')"; IFS=. read -r nmaj nmin _ <<<"$nv"   # before the stop, like the install
+  [ "${nmaj:-0}" -gt 20 ] || { [ "${nmaj:-0}" -eq 20 ] && [ "${nmin:-0}" -ge 9 ]; } || die "Node.js $nv is too old; Next.js 16 needs 20.9 or newer (brew upgrade node)"
   local extras="serve"; [ "$MEDIA" = 1 ] && extras="serve,media"
   [ -n "$EMBED_GGUF" ] && extras="$extras,embed"   # llama.cpp for the GGUF embedder
   say "model server: d1a[$extras] from $D1A_REPO@${D1A_SHA:0:7} into .demo/d1a-venv ($MODEL_RUN)"
