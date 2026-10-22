@@ -1,10 +1,12 @@
 """python3 -m unittest scripts/test_pr_outcomes.py: outcomes() on the label timeline of jonpol01/d1a#136 (2026-10-05), an
 issue's (anonymised), and how often main() polls."""
 import collections
+import io
 import json
 import sys
 import tempfile
 import unittest
+import urllib.error
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest import mock
@@ -135,6 +137,44 @@ class Posting(unittest.TestCase):
                                                   now=pr_outcomes.ts("2026-10-05T13:00:00Z")), 0)
         self.assertTrue(sent)
         self.assertTrue(all(body["group"] == "jonpol01/d1a#136" and body["decision_id"] == "d-1" for body in sent), sent)
+
+    def run_two(self, fail):
+        """Two PRs' decisions, d-1 before d-2; `fail(body)` raises for the posts the server should not take. Returns the exit
+        status, the bodies it took and the state file."""
+        with tempfile.TemporaryDirectory() as tmp:
+            decisions, state = Path(tmp) / "decisions.jsonl", Path(tmp) / "posted.json"
+            decisions.write_text("".join(json.dumps({"ts": t, "repo": "jonpol01/d1a", "number": n, "head_sha": "155bb4ad", "decision_id": d,
+                                                     "applied_labels": D1A}) + "\n" for t, n, d in
+                                         (("2026-10-05T12:20:17Z", 136, "d-1"), ("2026-10-05T12:20:18Z", 137, "d-2"))), encoding="utf-8")
+            took = []
+
+            def fake_open(req, timeout):
+                body = json.loads(req.data); fail(body); took.append(body)
+                return mock.MagicMock(status=200, __enter__=lambda s: s, __exit__=lambda *a: None)
+            with mock.patch.object(pr_outcomes, "pr_history", return_value=(EVENTS, REVIEWS, PERSON)), \
+                 mock.patch("urllib.request.urlopen", fake_open):
+                code = pr_outcomes.main(["--decisions", str(decisions), "--state", str(state), "--log", str(Path(tmp) / "none.jsonl")],
+                                        now=pr_outcomes.ts("2026-10-05T13:00:00Z"))
+            return code, took, json.loads(state.read_text()) if state.exists() else None
+
+    def test_an_outcome_the_server_refuses_is_skipped_and_the_rest_still_go(self):
+        """d1a#320: a decision_id the decision log no longer has (log rotated, FEEDBACK_LOG moved) is a 422, not an outage."""
+        def fail(body):
+            if body["decision_id"] == "d-1":
+                raise urllib.error.HTTPError("http://x/v1/feedback", 422, "Unprocessable Entity", {}, io.BytesIO(b'{"detail":"unknown decision_id"}'))
+        code, took, state = self.run_two(fail)
+        self.assertEqual(code, 0)
+        self.assertEqual({b["decision_id"] for b in took}, {"d-2"})
+        self.assertNotIn("d-1", {d for d, got in state.items() if got})   # refused: not recorded as posted
+        self.assertTrue(state["d-2"])
+
+    def test_a_stop_keeps_what_this_run_already_posted(self):
+        def fail(body):
+            if body["decision_id"] == "d-2": raise urllib.error.URLError("connection refused")
+        code, took, state = self.run_two(fail)
+        self.assertEqual(code, 1)
+        self.assertEqual({b["decision_id"] for b in took}, {"d-1"})
+        self.assertEqual(state["d-1"], {src: labels for src, labels in ((b["src"], b["labels"]) for b in took)})
 
 
 
