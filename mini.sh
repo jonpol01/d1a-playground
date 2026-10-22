@@ -51,9 +51,24 @@ PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 say() { printf '\033[1m[mini]\033[0m %s\n' "$*"; }
 die() { printf '\033[31m[mini] error:\033[0m %s\n' "$*" >&2; exit 1; }
 
+# the settings .demo/mini.env holds, in the order save_env writes them
+ENV_KEYS="MODEL_RUN KEV_PORT PORT HOST D1A_BASE_PATH PYTORCH_MPS_HIGH_WATERMARK_RATIO PYTORCH_MPS_LOW_WATERMARK_RATIO KEV_PREFIX_CACHE
+KEV_PREFIX_MAX_TOKENS MEDIA IDLE_UNLOAD FEEDBACK_LOG OUTCOME_CALIBRATOR LABEL_OUTCOMES OPENAI_PORT OPENAI_HOST EMBED_GGUF EMBED_REF CHAT_CONTEXT"
+
 load_env() {
-  # shellcheck disable=SC1090
-  [ -f "$ENVFILE" ] && . "$ENVFILE"
+  local k cli file
+  if [ -f "$ENVFILE" ]; then
+    # the file is this deployment's record and wins: a setting given on the command line that it sets otherwise is
+    # ignored, and said so (an exported PORT or HOST must not move the Mini silently on the next update)
+    for k in $ENV_KEYS; do eval "if [ -n \"\${$k+x}\" ]; then _cli_$k=\"\$$k\"; fi"; done
+    # shellcheck disable=SC1090
+    . "$ENVFILE"
+    for k in $ENV_KEYS; do
+      eval "[ -n \"\${_cli_$k+x}\" ]" || continue
+      eval "cli=\"\$_cli_$k\"; file=\"\${$k-}\""
+      [ "$cli" = "$file" ] || say "warning: $k=$cli from the command line is ignored: $ENVFILE sets $k=$file (edit it, then ./mini.sh update)"
+    done
+  fi
   MODEL_RUN="${MODEL_RUN:-$DEFAULT_MODEL_RUN}"; KEV_PORT="${KEV_PORT:-8009}"; PORT="${PORT:-3031}"; HOST="${HOST:-127.0.0.1}"; D1A_BASE_PATH="${D1A_BASE_PATH:-}"
   PYTORCH_MPS_HIGH_WATERMARK_RATIO="${PYTORCH_MPS_HIGH_WATERMARK_RATIO:-0.7}"
   PYTORCH_MPS_LOW_WATERMARK_RATIO="${PYTORCH_MPS_LOW_WATERMARK_RATIO:-0.6}"
@@ -76,29 +91,10 @@ learning_init() {   # the self-learning settings, created once with this deploym
   say "self-learning settings: $LEARNING (edit on the Learning page or with: $py -m d1a.learning.feedback config set --file $LEARNING key=value)"
 }
 
-save_env() {
+save_env() {   # one KEY=value line per setting, the value shell-quoted (%q), so a space or a $( in it reads back as itself
+  local k
   mkdir -p "$STATE"
-  cat >"$ENVFILE" <<EOF
-MODEL_RUN=$MODEL_RUN
-KEV_PORT=$KEV_PORT
-PORT=$PORT
-HOST=$HOST
-D1A_BASE_PATH=$D1A_BASE_PATH
-PYTORCH_MPS_HIGH_WATERMARK_RATIO=$PYTORCH_MPS_HIGH_WATERMARK_RATIO
-PYTORCH_MPS_LOW_WATERMARK_RATIO=$PYTORCH_MPS_LOW_WATERMARK_RATIO
-KEV_PREFIX_CACHE=$KEV_PREFIX_CACHE
-KEV_PREFIX_MAX_TOKENS=$KEV_PREFIX_MAX_TOKENS
-MEDIA=$MEDIA
-IDLE_UNLOAD=$IDLE_UNLOAD
-FEEDBACK_LOG=$FEEDBACK_LOG
-OUTCOME_CALIBRATOR=$OUTCOME_CALIBRATOR
-LABEL_OUTCOMES=$LABEL_OUTCOMES
-OPENAI_PORT=$OPENAI_PORT
-OPENAI_HOST=$OPENAI_HOST
-EMBED_GGUF=$EMBED_GGUF
-EMBED_REF=$EMBED_REF
-CHAT_CONTEXT=$CHAT_CONTEXT
-EOF
+  for k in $ENV_KEYS; do eval "printf '%s=%q\\n' $k \"\${$k-}\""; done >"$ENVFILE"
 }
 
 domain() { if launchctl print "gui/$(id -u)" >/dev/null 2>&1; then echo "gui/$(id -u)"; else echo "user/$(id -u)"; fi; }

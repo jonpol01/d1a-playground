@@ -69,6 +69,8 @@ jobs:
       - run: bash scripts/test_demo_port.sh
       # a stale pid file (a reboot, a crash) can name an unrelated process: the launchers kill only what they started
       - run: bash scripts/test_demo_pidfile.sh
+      # mini.env: values read back as written (a space or a $( never runs), and an ignored command-line value is said
+      - run: bash scripts/test_mini_env.sh
       - name: demo.ps1's port picker and pid-file cleanup (PowerShell)
         shell: pwsh
         run: ./scripts/test_demo_ps1.ps1
@@ -97,3 +99,4 @@ jobs:
       - run: bash scripts/test_mini_update.sh
       - run: bash scripts/test_demo_port.sh   # the same check under macOS's bash 3.2
       - run: bash scripts/test_demo_pidfile.sh
+      - run: bash scripts/test_mini_env.sh
