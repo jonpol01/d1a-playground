@@ -3,9 +3,9 @@
 # macOS, Linux and WSL. Windows PowerShell: demo.ps1.
 #
 #   ./demo.sh                      install what is missing, start both, open the browser; Ctrl+C stops both
-#   ./demo.sh --media              Photo check and Voice triage too: on Apple Silicon the model server answers them with
-#                                  the same model (Gemma 4's vision and audio encoders, ~1 GB, fetched on the first photo
-#                                  or voice request); elsewhere a second server, d1a.serving.media (~10 GB, loaded on that request)
+#   ./demo.sh --media              Photo check, Voice triage and Video check too: on Apple Silicon the model server answers
+#                                  them with the same model (Gemma 4's vision and audio encoders, ~1 GB, fetched on the first
+#                                  photo or voice request); elsewhere a second server, d1a.serving.media (~10 GB, loaded on that request)
 #   ./demo.sh --no-server          start only the web app, against a model server already running on $KEV_PORT
 #   ./demo.sh --lmstudio URL       no D1A weights: a prompted Gemma 4 chat model in LM Studio answers instead (NOT D1A)
 #             [--lmstudio-model ID]   the LM Studio model id (default gemma-4-e4b-it-mlx)
@@ -255,9 +255,9 @@ curl -fsS -m 5 "http://localhost:$WEB_PORT/kev/v1/models" >/dev/null || warn "th
 URL="http://localhost:$WEB_PORT"
 say ""
 say "D1A playground is running:"
-if [ "$MEDIA" = 1 ]; then say "  $URL                all twelve demos"
-else say "  $URL                the demos (Photo check and Voice triage need --media)"; fi
-say "  $URL/#inbox         jump to one (#routing #guardrails #tools #inbox #rerank #evals #labeling #control #gate #photo #voice)"
+if [ "$MEDIA" = 1 ]; then say "  $URL                all thirteen demos"
+else say "  $URL                the demos (Photo check, Voice triage and Video check need --media)"; fi
+say "  $URL/#inbox         jump to one (#routing #guardrails #tools #inbox #rerank #evals #labeling #control #gate #photo #voice #prlabel #video)"
 say "  http://127.0.0.1:$KEV_PORT/v1/models   the server's model card"
 [ -n "$LMSTUDIO" ] && say "  (LM Studio mode: a prompted chat model answers, NOT the trained D1A checkpoint)"
 say "Press Ctrl+C to stop (or run ./demo.sh stop from another terminal)."

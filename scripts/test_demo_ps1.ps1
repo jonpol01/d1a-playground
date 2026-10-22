@@ -35,6 +35,14 @@ try {
   if (Test-PortBusy $picked) { Fail "no PORT: picked $picked, which is in use" }
 } finally { $busy.Stop() }
 
+# --lmstudio=URL, as demo.sh takes it, both from a prompt and through pwsh -File (which splits it at the first colon): the
+# conflict check runs right after parsing, and in LM Studio mode the banner names the URL
+$demo = Join-Path $Root 'demo.ps1'
+foreach ($out in @((& pwsh -NoProfile -File $demo '--lmstudio=http://127.0.0.1:1/' '--no-server' 2>&1 | Out-String),
+                   (& pwsh -NoProfile -Command "& '$demo' --lmstudio=http://127.0.0.1:1/ --no-server" 2>&1 | Out-String))) {
+  if ($out -notmatch 'do not go together') { Fail "--lmstudio=URL was not taken: $out" }
+}
+
 # the pid-file cleanup
 $tmp = Join-Path ([System.IO.Path]::GetTempPath()) ("d1a-ps1-" + [guid]::NewGuid()); $script:State = Join-Path $tmp 'state'
 New-Item -ItemType Directory -Force -Path $State, (Join-Path $tmp 'node_modules/next/dist/bin') | Out-Null

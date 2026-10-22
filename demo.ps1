@@ -2,7 +2,7 @@
 # macOS, Linux and WSL: demo.sh.
 #
 #   .\demo.ps1                      install what is missing, start both, open the browser; Ctrl+C stops both
-#   .\demo.ps1 --media              also start the photo and voice server (d1a.serving.media) for Photo check and Voice triage;
+#   .\demo.ps1 --media              also start the photo and voice server (d1a.serving.media) for Photo check, Voice triage and Video check;
 #                                   it loads its model (~10 GB) on the first photo or voice request
 #   .\demo.ps1 --no-server          start only the web app, against a model server already running on $env:KEV_PORT
 #   .\demo.ps1 --lmstudio URL       no D1A weights: a prompted Gemma 4 chat model in LM Studio answers instead (NOT D1A)
@@ -32,6 +32,7 @@ $AppleSilicon = (-not $OnWindows) -and ((& uname -s) -eq 'Darwin') -and ((& unam
 # the 8-bit MLX build on Apple Silicon (4.2 GB, no base download), the PyTorch checkpoint elsewhere
 $ModelRun = if ($env:MODEL_RUN) { $env:MODEL_RUN } elseif ($AppleSilicon) { 'JohnP1/d1a-e2b-mlx-q8' } else { 'JohnP1/d1a-e2b' }
 $MediaPort = if ($env:MEDIA_PORT) { [int]$env:MEDIA_PORT } else { 8010 }
+if ($AppleSilicon) { $MediaPort = $KevPort }   # the model server answers photos and voice itself (MLX)
 
 function Say([string]$m) { Write-Host $m }
 function Warn([string]$m) { Write-Host "warning: $m" -ForegroundColor Yellow }
@@ -50,6 +51,13 @@ for ($i = 0; $i -lt $args.Count; $i++) {
     '^--?media$' { $Media = $true; break }
     '^--?no-?browser$' { $OpenBrowser = $false; break }
     '^--?lmstudio-?model$' { if ($i + 1 -ge $args.Count) { Die '--lmstudio-model needs a model id' }; $i++; $LMStudioModel = [string]$args[$i]; break }
+    # pwsh -File splits an argument that starts with - at its first colon and drops it (-name:value), so
+    # --lmstudio=http://host:1234 arrives as '--lmstudio=http' and '//host:1234'; a URL always has a colon
+    '^--?lmstudio=(.+)$' {
+      $LMStudio = $Matches[1]
+      if (-not $LMStudio.Contains(':') -and $i + 1 -lt $args.Count -and -not ([string]$args[$i + 1]).StartsWith('-')) { $i++; $LMStudio += ':' + [string]$args[$i] }
+      $LMStudio = $LMStudio.TrimEnd('/'); break
+    }
     '^--?lmstudio$' { if ($i + 1 -ge $args.Count) { Die '--lmstudio needs a URL, e.g. --lmstudio http://127.0.0.1:1234' }; $i++; $LMStudio = ([string]$args[$i]).TrimEnd('/'); break }
     '^(-h|--help|-help|/\?)$' { Show-Usage; exit 0 }
     default { Show-Usage; Die "unknown argument: $a" }
@@ -204,10 +212,10 @@ try {
       }
       elseif (Get-Command nvidia-smi -ErrorAction SilentlyContinue) { $device = 'NVIDIA GPU (CUDA)' }
       else { $device = 'CPU (works, but slow: several seconds per request)' }
-      if ($OnWindows) {
-        $memGb = [math]::Floor((Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory / 1GB)
-        if ($memGb -lt 16) { Warn "this PC has $memGb GB of memory; the model server peaks around 15 GB. If it runs out, use --lmstudio instead." }
-      }
+      $memGb = if ($OnWindows) { [math]::Floor((Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory / 1GB) }
+               elseif ((& uname -s) -eq 'Darwin') { [math]::Floor([double](& sysctl -n hw.memsize) / 1GB) } else { 0 }
+      $peak = if ($AppleSilicon) { 5 } else { 15 }
+      if ($memGb -gt 0 -and $memGb -lt $peak + 4) { Warn "this machine has $memGb GB of memory; the model server peaks around $peak GB. If it runs out, use --lmstudio instead." }
       Say "Starting the model server (d1a.serving.serve): $ModelRun on $device, port $KevPort (logs: .demo\model-server*.log)"
       if ($AppleSilicon) { Say 'The first start downloads the 8-bit MLX model (about 4 GB); later starts take a few seconds.' }
       else { Say 'The first start downloads Gemma 4 E2B (about 10 GB) and the adapter; later starts take about 20 s.' }
@@ -226,7 +234,7 @@ try {
     Say ("Server ready on http://127.0.0.1:{0} after {1:N0} s." -f $KevPort, ((Get-Date) - $t0).TotalSeconds)
 
     # ---------------------------------------------------------------- the photo and voice server (--media)
-    if ($Media) {
+    if ($Media -and -not $AppleSilicon) {
       if (Test-MediaUp) { Say "A media server is already answering on port $MediaPort; using it." }
       else {
         if (Test-PortBusy $MediaPort) { Die "port $MediaPort is taken; stop what uses it or set `$env:MEDIA_PORT" }
@@ -266,9 +274,9 @@ try {
 
   Say ''
   Say 'D1A playground is running:'
-  if ($Media) { Say "  $url                the eleven demos" }
-  else { Say "  $url                the demos (Photo check and Voice triage need --media)" }
-  Say "  $url/#inbox         jump to one (#routing #guardrails #tools #inbox #rerank #evals #labeling #control #gate #photo #voice)"
+  if ($Media) { Say "  $url                all thirteen demos" }
+  else { Say "  $url                the demos (Photo check, Voice triage and Video check need --media)" }
+  Say "  $url/#inbox         jump to one (#routing #guardrails #tools #inbox #rerank #evals #labeling #control #gate #photo #voice #prlabel #video)"
   Say "  http://127.0.0.1:$KevPort/v1/models   the server's model card"
   if ($LMStudio) { Say '  (LM Studio mode: a prompted chat model answers, NOT the trained D1A checkpoint)' }
   Say 'Press Ctrl+C to stop (or run .\demo.ps1 stop from another window).'
