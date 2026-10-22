@@ -8,20 +8,36 @@ on:
     tags: ["v*.*.*"]
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  release:
+  # npm ci runs the dependencies' install scripts, and lint and the build run the project's code: none of it holds a token
+  # that can write
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
       - run: python3 scripts/release_notes.py --check "$GITHUB_REF_NAME"
       - run: npm ci && npm run lint && npm run build
+
+  # the only job that can write runs nothing but the standard-library release_notes.py and gh, after the build passed; it
+  # writes the notes itself, so nothing the build ran can change them
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - run: python3 scripts/release_notes.py "$GITHUB_REF_NAME" > release-notes.md
-      - run: gh release create "$GITHUB_REF_NAME" --verify-tag --title "D1A playground ${GITHUB_REF_NAME#v}" --notes-file release-notes.md
+      - run: gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --verify-tag --title "D1A playground ${GITHUB_REF_NAME#v}" --notes-file release-notes.md
         env:
           GH_TOKEN: ${{ github.token }}
