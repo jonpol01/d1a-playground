@@ -236,7 +236,7 @@ node --test scripts/test_review.mjs scripts/test_openai_port.mjs scripts/test_op
 bash scripts/test_demo_port.sh && bash scripts/test_demo_pidfile.sh && bash scripts/test_mini_env.sh
 bash scripts/test_mini_smoke.sh && bash scripts/test_mini_update.sh   # stand-in uv, npm and launchctl; CI runs them on macOS
 pwsh scripts/test_demo_ps1.ps1
-python3 -m unittest scripts/test_pr_outcomes.py scripts/test_check_hygiene.py
+python3 -m unittest scripts/test_pr_outcomes.py scripts/test_check_hygiene.py scripts/test_launcher_drift.py
 python3 -m unittest scripts/test_lmstudio_letters.py   # needs fastapi, uvicorn and httpx
 ```
 
