@@ -59,7 +59,7 @@ run promote2 FAIL_UV=   # a reinstall never overwrites John's settings
 ! grep -q "config init" "$T/promote2" || fail promote2 "re-created the settings file on reinstall"
 printf 'PORT=3999\n' > "$T/app/.demo/mini.env"
 
-printf 'PORT=3999\nOPENAI_PORT=1234\nEMBED_GGUF=/models/nomic.gguf\n' > "$T/app/.demo/mini.env"
+printf 'PORT=3999\nOPENAI_PORT=1234\nEMBED_GGUF=/models/nomic.gguf\nCHAT_CONTEXT=32768\n' > "$T/app/.demo/mini.env"
 run openai FAIL_UV=   # OPENAI_PORT and EMBED_GGUF: the OpenAI routes on the LAN and the embedder (d1a#274)
 agent="$T/home/Library/LaunchAgents/io.github.jonpol01.d1a-openai.plist"
 [ "$(cat "$T/openai.status")" = 0 ] && [ -f "$agent" ] || fail openai "did not write the OpenAI port agent"
@@ -67,10 +67,12 @@ tr -d ' \n' < "$agent" | grep -qF "openai_port.mjs</string><string>::</string><s
 [ -n "$(last openai "bootstrap .*io.github.jonpol01.d1a-openai.plist")" ] || fail openai "did not start the OpenAI port"
 grep -A1 "<key>D1A_EMBED_GGUF</key>" "$T/home/Library/LaunchAgents/io.github.jonpol01.d1a-model.plist" | grep -qF "<string>/models/nomic.gguf</string>" || fail openai "the model server has no embedder"
 grep -q '^uv pip install .*d1a\[serve,embed\]' "$T/openai" || fail openai "did not install the embed extra"
+grep -A1 "<key>D1A_CHAT_CONTEXT</key>" "$T/home/Library/LaunchAgents/io.github.jonpol01.d1a-model.plist" | grep -qF "<string>32768</string>" || fail openai "the model server has no chat context cap"   # d1a#318
 printf 'PORT=3999\n' > "$T/app/.demo/mini.env"
 run openai_off FAIL_UV=   # without OPENAI_PORT the agent goes, and nothing listens on the LAN
 [ ! -f "$agent" ] && [ -n "$(last openai_off "bootout .*/io.github.jonpol01.d1a-openai$")" ] || fail openai_off "left the OpenAI port agent"
 ! grep -q 'embed\]' "$T/openai_off" || fail openai_off "installed the embed extra without EMBED_GGUF"
+! grep -q "D1A_CHAT_CONTEXT" "$T/home/Library/LaunchAgents/io.github.jonpol01.d1a-model.plist" || fail openai_off "set a chat context cap nobody asked for"
 
 run bootstrap FAIL_UV= FAIL_BOOTSTRAP=2   # launchd refuses the first two bootstraps: start waits and tries again (2026-10-15)
 [ "$(cat "$T/bootstrap.status")" = 0 ] || fail bootstrap "a refused bootstrap ended the start"

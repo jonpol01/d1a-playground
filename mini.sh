@@ -24,6 +24,9 @@
 #   "::" by default: every IPv4 and IPv6 address, as LM Studio listened, with no key, for apps that used LM Studio; MODEL_RUN must be an unmerged chat build, d1a docs/USAGE.md
 #   "Chat with D1A". The System One routes stay on 127.0.0.1)
 #   EMBED_GGUF= (a GGUF embedding model, e.g. nomic-embed-text-v1.5.Q4_K_M.gguf, for POST /v1/embeddings)
+#   CHAT_CONTEXT= (D1A_CHAT_CONTEXT, e.g. 32768: the longest prompt + max_tokens one chat may ask for; a longer one gets a
+#   400 at once, which Hermes answers by compressing. Unset: the model's context, 131,072 for D1A-E4B-it, where one
+#   prompt holds the model ~9 minutes and every other chat waits; d1a#318)
 #   EMBED_REF= (reference vectors, {"texts": [...], "vectors": [...]}, e.g. LM Studio's for the same GGUF: the smoke test's
 #   OpenAI check then requires the served embeddings to match them, cosine >= 0.999)
 set -euo pipefail
@@ -42,7 +45,7 @@ PROMOTE_LABEL="io.github.jonpol01.d1a-promote"     # LABEL_OUTCOMES=1 and OUTCOM
 # the default model: the MLX 8-bit build on Apple Silicon (4.2 GB, parity-checked), the PyTorch checkpoint elsewhere
 if [ "$(uname -sm)" = "Darwin arm64" ]; then DEFAULT_MODEL_RUN="JohnP1/d1a-e2b-mlx-q8"; else DEFAULT_MODEL_RUN="JohnP1/d1a-e2b"; fi
 D1A_REPO="https://github.com/jonpol01/d1a"
-D1A_SHA="d998c9ef45476a776ff98a254a7a82b7d46ecf0d"   # the D1A model server this playground is tested against
+D1A_SHA="e32cfeb1b0ed7de67903480f070bf8daa238d1ad"   # the D1A model server this playground is tested against
 PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 
 say() { printf '\033[1m[mini]\033[0m %s\n' "$*"; }
@@ -57,6 +60,7 @@ load_env() {
   KEV_PREFIX_CACHE="${KEV_PREFIX_CACHE:-4}"; KEV_PREFIX_MAX_TOKENS="${KEV_PREFIX_MAX_TOKENS:-65536}"
   MEDIA="${MEDIA:-0}"; IDLE_UNLOAD="${IDLE_UNLOAD:-600}"
   OPENAI_PORT="${OPENAI_PORT:-}"; OPENAI_HOST="${OPENAI_HOST:-::}"; EMBED_GGUF="${EMBED_GGUF:-}"; EMBED_REF="${EMBED_REF:-}"
+  CHAT_CONTEXT="${CHAT_CONTEXT:-}"
   FEEDBACK_LOG="${FEEDBACK_LOG:-}"; OUTCOME_CALIBRATOR="${OUTCOME_CALIBRATOR:-}"; LABEL_OUTCOMES="${LABEL_OUTCOMES:-0}"
   LEARNING="$STATE/learning.json"; TRAINED_DIR="$STATE/trained"   # the self-learning settings and the trained manifests (d1a#233)
 }
@@ -93,6 +97,7 @@ OPENAI_PORT=$OPENAI_PORT
 OPENAI_HOST=$OPENAI_HOST
 EMBED_GGUF=$EMBED_GGUF
 EMBED_REF=$EMBED_REF
+CHAT_CONTEXT=$CHAT_CONTEXT
 EOF
 }
 
@@ -163,6 +168,8 @@ write_agents() {
   [ "$LABEL_OUTCOMES" = 1 ] && [ -n "$OUTCOME_CALIBRATOR" ] && ENV_XML+="    <key>D1A_LEARNING</key><string>$LEARNING</string>
 "
   [ -n "$EMBED_GGUF" ] && ENV_XML+="    <key>D1A_EMBED_GGUF</key><string>$EMBED_GGUF</string>
+"
+  [ -n "$CHAT_CONTEXT" ] && ENV_XML+="    <key>D1A_CHAT_CONTEXT</key><string>$CHAT_CONTEXT</string>
 "
   plist "$MODEL_LABEL" "$STATE/d1a-venv/bin/python" -m d1a.serving.serve --run "$MODEL_RUN" --port "$KEV_PORT" --host 127.0.0.1 --idle-unload "$IDLE_UNLOAD" >"$AGENTS/$MODEL_LABEL.plist"
   launchctl bootout "$(domain)/$MEDIA_LABEL" 2>/dev/null || true; rm -f "$AGENTS/$MEDIA_LABEL.plist"   # photos and voice now go to the model server
