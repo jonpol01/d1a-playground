@@ -131,13 +131,13 @@ UI は既定で日本語で、ヘッダーの JA / EN で切り替えられま�
 
 ```bash
 git clone https://github.com/jonpol01/d1a-playground.git ~/d1a-playground && cd ~/d1a-playground
-./mini.sh install    # モデルサーバーを .demo/d1a-venv に入れ、npm ci とビルドをして、LaunchAgent を書いて読み込む
+./mini.sh install    # モデルサーバーを .demo/d1a-venvs に入れ、npm ci とビルドをして、LaunchAgent を書いて読み込む
 ./mini.sh status     # 読み込まれているか、両方のポートが応答するか
 ./mini.sh stop       # 両方を止める。./mini.sh start で再開
 ./mini.sh update     # git pull、再インストール、再ビルド、再起動
 ```
 
-`reinstall`（および pull の後にそれを実行する `update`）は、古い版が動いたままモデルサーバーをインストールして LaunchAgent を書き、両方が成功してから LaunchAgent を止めます。そのため、ダウンロードやインストールに失敗しても、動いている版はそのまま残ります。停止の後で Web のビルドや起動に失敗した場合は、インストール済みのもので LaunchAgent を起動し直します。
+`reinstall`（および pull の後にそれを実行する `update`）は、古い版が動いたままモデルサーバーをインストールして LaunchAgent を書き、両方が成功してから LaunchAgent を止めます。そのため、ダウンロードやインストールに失敗しても、動いている版はそのまま残ります。D1A のピンごとに `.demo/d1a-venvs` に別の venv を作るので（`current` が LaunchAgent が使うもの、`previous` がその前のもの）、インストールが動いているサーバーの venv に書き込むことはありません。停止の後で何かが失敗した場合（Web のビルド、起動、答えないデモがあるスモークテスト）は、前の venv と、以前の LaunchAgent（`MODEL_RUN` など `mini.env` の設定も以前のまま）に戻し、モデルサーバーが判定に答えることを確かめてから、0 以外で終了します。答えがベースラインと違うだけの場合（スモークテストの終了コード 3）は戻しません。全デモが答えたので新しい版のまま動かし、記録のしかたを表示します。成功した実行は `current` と `previous` を残し、それより古い venv を消します。LaunchAgent がすでに動いている Mac での `install` は `reinstall` と同じです。
 
 `install`・`reinstall`・`update` の後と `./mini.sh smoke` では、デモのスモークテスト（`scripts/demo_smoke.mjs`）が全デモの例を Web アプリ経由で送り、答えなくなったデモや `scripts/demo-baseline.json` と違う答えを返すデモがあれば止まります。ベースラインは実際に提供するマシンで記録してください。MLX は 8 ビットの行列積の丸めがチップごとに異なり、確率が 0.05 動いて境界近くの答えが入れ替わることがあるためです。そのマシンで `node scripts/demo_smoke.mjs <url> --baseline=.demo/demo-baseline.json --record` を実行すると、その Mac 自身のベースラインが書かれ、スモークテストはコミットされたファイルの代わりにそれを使います。そのためチェックアウトは変更なしのままで、`update` の `git pull` が止まりません。全デモが答えたのに一部の答えがベースラインと違う場合は終了コード 3 で失敗し、このコマンドを表示します。答えないデモがある場合は終了コード 1 で失敗します。デモと同じく、スモークテストのリクエストはヘッダー `x-d1a-decision-log: off` を送ります。これに従う D1A サーバーはそのリクエストを記録せずに答えるので、判定ログの保留中の判定はラベラーのものだけになります（古いサーバーはヘッダーを無視して記録します）。
 
