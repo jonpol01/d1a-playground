@@ -1,5 +1,6 @@
 // Modified from Kev (https://github.com/jaredpalmer/kev), Copyright 2026 Jared Palmer, Apache-2.0.
 // Changes for the D1A playground by John Soliva, 2026.
+import { proxyRewrites } from "./src/lib/guard";
 import type { NextConfig } from "next";
 
 // FastAPI (kev.serve) is proxied under /kev so the browser never deals with CORS or ports.
@@ -22,11 +23,9 @@ const nextConfig: NextConfig = {
   // opening the app via 127.0.0.1 renders the SSR HTML but never hydrates (no errors, buttons dead).
   allowedDevOrigins: ["127.0.0.1"],
   async rewrites() {
-    // With a basePath, Next prefixes the source (/d1a/kev/...) and leaves the external destination alone.
-    return [
-      { source: "/kev/:path*", destination: `${KEV_API}/:path*` },
-      { source: "/media/:path*", destination: `${MEDIA_API}/:path*` },
-    ];
+    // With a basePath, Next prefixes the source (/d1a/kev/...) and leaves the external destination alone. Only the routes
+    // the pages call (src/lib/guard.ts): never the model server's POST /v1/feedback.
+    return proxyRewrites(KEV_API, MEDIA_API);
   },
 };
 

@@ -1,3 +1,4 @@
+import { crossSiteRefusal } from "@/lib/guard";
 import { execFile } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import { parseShow, summarize } from "@/lib/learning";
@@ -49,6 +50,8 @@ export async function GET() {
 
 export async function POST(req: Request) {
   if (!FILE) return off();
+  const refused = crossSiteRefusal(req);
+  if (refused) return refused;
   let body: { set?: Record<string, unknown> };
   try { body = await req.json(); } catch { return Response.json({ error: "body must be JSON" }, { status: 400 }); }
   const pairs = Object.entries(body.set ?? {});
