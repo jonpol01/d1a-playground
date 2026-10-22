@@ -16,6 +16,7 @@ Every change is checked by the test suites, with the numbers in the PR. Nothing 
   choices in `scripts/demo-baseline.json`. `mini.sh update` runs it after every deploy, against the serving Mac's own
   `.demo/demo-baseline.json` when it has one. A change of answers is recorded on purpose (`--record`) in the same PR, with
   the reason and the numbers. Exit 3 means every demo answered but answers differ from the baseline; exit 1, a demo failed.
+  An answer a newly promoted outcome calibrator moved (on a question it calibrates) is reported, not failed (#93).
 - A demo, example, endpoint or setting is never dropped silently: the smoke test fails on a removed example. Remove it
   in the same PR that re-records the baseline, and say why.
 - A new demo or example ships with its smoke requests (`src/components/uses/smoke.ts`) and an updated baseline.

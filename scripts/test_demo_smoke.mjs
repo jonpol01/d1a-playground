@@ -3,7 +3,7 @@
 // file both --record and the check use. Run: node --test scripts/test_demo_smoke.mjs
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import http from "node:http";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -20,7 +20,8 @@ function answer(q, flip) {   // a well-formed answer; flip picks the other side
     : { type: "score", score: top + 1, confidence: 0.7, legend: {}, probabilities };
 }
 
-// mode: "" answers, "flip" answers every question the other way, "fail" answers the first request with a 500
+// mode: "" answers, "flip" answers every question the other way, "fail" answers the first request with a 500; with "cal"
+// in it, the audit block (asked for with x-d1a-audit: on) says every question was calibrated
 async function standIn(mode) {
   let n = 0;
   const srv = http.createServer((req, res) => {
@@ -32,7 +33,8 @@ async function standIn(mode) {
       if (req.url !== "/kev/v1/systemone") return json(404, { error: "not here" });
       if (mode === "fail" && n++ === 0) return json(500, { error: "model server down" });
       const { questions } = JSON.parse(raw);
-      json(200, { answers: Object.fromEntries(Object.entries(questions).map(([id, q]) => [id, answer(q, mode === "flip")])) });
+      const audit = req.headers["x-d1a-audit"] === "on" ? { audit: { outcome_calibrator: mode.includes("cal") ? Object.keys(questions) : [] } } : {};
+      json(200, { answers: Object.fromEntries(Object.entries(questions).map(([id, q]) => [id, answer(q, mode.startsWith("flip"))])), ...audit });
     });
   });
   await new Promise((ok) => srv.listen(0, "127.0.0.1", ok));
@@ -64,4 +66,29 @@ test("a moved answer exits 3, a failed demo 1, both against the --baseline file"
   const failed = await smoke("fail", `--baseline=${file}`);
   assert.equal(failed.code, 1, failed.out);
   assert.match(failed.out, /FAIL: 1\n.*HTTP 500/);
+});
+
+test("answers a newer calibrator moved are reported, not failed; other moves still exit 3", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "smoke-cal-")), file = join(dir, "baseline.json"), cal = join(dir, "calibrator.json");
+  writeFileSync(cal, '{"params": {}}');
+  const rec = await smoke("cal", "--record", `--baseline=${file}`, `--calibrator=${cal}`);
+  assert.equal(rec.code, 0, rec.out);
+  assert.equal(JSON.parse(readFileSync(`${file}.calibrator`, "utf8")).sha256.length, 64);
+
+  const same = await smoke("flip cal", `--baseline=${file}`, `--calibrator=${cal}`);   // the calibrator did not change
+  assert.equal(same.code, 3, same.out);
+
+  writeFileSync(cal, '{"params": {"blast": {"s": 1.7}}}');   // a promotion rewrote it
+  const promoted = await smoke("flip cal", `--baseline=${file}`, `--calibrator=${cal}`);
+  assert.equal(promoted.code, 0, promoted.out);
+  assert.match(promoted.out, /MOVED BY THE CALIBRATOR: \d+/);
+  assert.match(promoted.out, /PASS: \d+ requests, every answer the baseline's or moved by a newer calibrator/);
+
+  // a baseline recorded while no question was calibrated: the calibrator changes, the questions are still not calibrated
+  const plain = join(dir, "plain.json");
+  assert.equal((await smoke("", "--record", `--baseline=${plain}`, `--calibrator=${cal}`)).code, 0);
+  writeFileSync(cal, '{"params": {"type": {"s": 0.9}}}');
+  const uncalibrated = await smoke("flip", `--baseline=${plain}`, `--calibrator=${cal}`);
+  assert.equal(uncalibrated.code, 3, uncalibrated.out);
+  assert.doesNotMatch(uncalibrated.out, /MOVED BY THE CALIBRATOR/);
 });

@@ -8,12 +8,19 @@
 //   node scripts/demo_smoke.mjs --list                                # no server: the examples must be the baseline's (CI)
 //   ... --no-media                                                    # skip photo, voice and video (a server without media)
 //   ... --baseline=FILE                                               # another baseline, e.g. the serving machine's own
+//   ... --calibrator=FILE                                             # the served outcome calibrator (mini.sh passes it)
+//
+// With --calibrator, --record also writes <baseline>.calibrator: the file's sha256 and, per request, the questions the
+// server says it calibrated (x-d1a-audit). A check whose calibrator changed since then reports an answer that moved on one
+// of those questions as moved by the calibrator, and does not fail on it: the self-learning loop promoted a calibration on
+// held-out outcomes, so the served answer moved on purpose (d1a-playground#93). Any other move still exits 3.
 //
 // A request passes when it answers (HTTP 200), every question gets an answer of its type with probabilities that sum to
 // 1, and every choice (a choice's option, a score's level, a yes/no answer's side of 0.5) is the baseline's. Probability
 // moves are reported, not failed. Photos and voice clips go as the sample files: the UI re-encodes them in the browser
 // (canvas, WebAudio), which Node cannot, so their answers can differ slightly from the page's, never from the baseline's.
-import { readFileSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createJiti } from "jiti";
@@ -23,6 +30,11 @@ const args = process.argv.slice(2), flags = args.filter((a) => a.startsWith("--"
 const record = flags.includes("--record"), list = flags.includes("--list"), noMedia = flags.includes("--no-media");
 const BASELINE = resolve(flags.find((f) => f.startsWith("--baseline="))?.slice(11) || join(ROOT, "scripts/demo-baseline.json"));
 const NAME = relative(process.cwd(), BASELINE) || BASELINE;
+const CAL = flags.find((f) => f.startsWith("--calibrator="))?.slice(13);
+const calSha = CAL ? (existsSync(CAL) ? createHash("sha256").update(readFileSync(CAL)).digest("hex") : "none") : null;
+const SIDECAR = `${BASELINE}.calibrator`;
+const then = CAL && !record && existsSync(SIDECAR) ? JSON.parse(readFileSync(SIDECAR, "utf8")) : null;
+const calChanged = then !== null && then.sha256 !== calSha;
 if (!base && !list) { console.error("usage: node scripts/demo_smoke.mjs <web app URL, with its base path> [--record] [--no-media] [--baseline=FILE] | --list"); process.exit(2); }
 
 globalThis.React = (await import("react")).default;   // the demos' modules hold JSX text (classic runtime: React.createElement)
@@ -40,10 +52,11 @@ async function send(r) {
     : [`${base}/media/v1/systemone/media`, { model: "d1a-latest", questions: r.questions,
         media: { type: r.mediaType, data: readFileSync(join(ROOT, "public/samples", r.file)).toString("base64") } }];
   const t0 = performance.now();
-  const res = await fetch(url, { method: "POST", headers: { "content-type": "application/json", ...NOT_FOR_LEARNING }, body: JSON.stringify(body) });
+  const res = await fetch(url, { method: "POST", headers: { "content-type": "application/json", ...NOT_FOR_LEARNING, "x-d1a-audit": "on" }, body: JSON.stringify(body) });
   const ms = performance.now() - t0;
   if (!res.ok) return { error: `HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`, ms };
-  return { answers: (await res.json()).answers, ms };
+  const j = await res.json();
+  return { answers: j.answers, calibrated: j.audit?.outcome_calibrator ?? [], ms };
 }
 
 function check(r, got) {
@@ -74,10 +87,12 @@ if (list) {   // the examples the UI ships against the baseline's: a removed or 
   }
   console.log("PASS: every example is in the baseline, and every baseline entry is still sent"); process.exit(0);
 }
-const rows = {}, out = {}, failures = [], moved = [];   // moved: the server answered properly, the baseline says otherwise
+const rows = {}, out = {}, failures = [], moved = [], byCalibrator = [], calibrated = {};   // moved: the server answered properly, the baseline says otherwise
 let maxDp = 0;
 for (const r of reqs) {
-  const got = await send(r), k = key(r), errs = check(r, got), diff = [];
+  const got = await send(r), k = key(r), errs = check(r, got), diff = [], calDiff = [];
+  calibrated[k] = got.calibrated ?? [];
+  const byCal = (q) => calChanged && (calibrated[k].includes(q) || (then.calibrated?.[k] ?? []).includes(q));
   const row = (rows[r.demo] ??= { n: 0, pass: 0, ms: [] }); row.n++; row.ms.push(got.ms);
   if (!errs.length) {
     out[k] = Object.fromEntries(Object.entries(got.answers).map(([q, a]) => [q, { side: side(a), probs: probs(a) }]));
@@ -85,10 +100,11 @@ for (const r of reqs) {
     if (!record && !was) diff.push("not in the baseline (a new example: record it on purpose)");
     for (const [q, a] of Object.entries(was && !record ? out[k] : {})) {
       if (!was[q]) { diff.push(`${q}: not in the baseline`); continue; }
-      if (was[q].side !== a.side) diff.push(`${q}: ${was[q].side} -> ${a.side}`);
+      if (was[q].side !== a.side) (byCal(q) ? calDiff : diff).push(`${q}: ${was[q].side} -> ${a.side}`);
       for (const [o, p] of Object.entries(a.probs)) maxDp = Math.max(maxDp, Math.abs(p - (was[q].probs[o] ?? 0)));
     }
   }
+  if (calDiff.length) byCalibrator.push(`${k}: ${calDiff.join("; ")}`);
   if (errs.length) failures.push(`${k}: ${errs.join("; ")}`); else if (diff.length) moved.push(`${k}: ${diff.join("; ")}`); else row.pass++;
 }
 if (!record) for (const k of Object.keys(baseline)) if (!reqs.some((r) => key(r) === k)) moved.push(`${k}: in the baseline but no longer sent (an example was removed)`);
@@ -114,10 +130,12 @@ for (const [d, s] of Object.entries(rows)) console.log(`${d.padEnd(13)} ${String
 if (record) {
   if (failures.length) { console.error(`not recorded: ${failures.length} failed\n  ${failures.join("\n  ")}`); process.exit(1); }
   writeFileSync(BASELINE, JSON.stringify(out, null, 1) + "\n"); console.log(`recorded ${Object.keys(out).length} requests in ${NAME}`);
+  if (CAL) writeFileSync(SIDECAR, JSON.stringify({ sha256: calSha, calibrated }, null, 1) + "\n");
 } else {
   console.log(`max probability change vs the baseline: ${maxDp.toFixed(4)}`);
+  if (byCalibrator.length) console.log(`MOVED BY THE CALIBRATOR: ${byCalibrator.length} (the served calibrator changed since the baseline was recorded; not a failure)\n  ${byCalibrator.join("\n  ")}`);
   if (failures.length) { console.log(`FAIL: ${failures.length}\n  ${[...failures, ...moved].join("\n  ")}`); process.exit(1); }
   // every demo answered, as a server that works does; only the baseline disagrees: a new model or MLX may move a near tie
   if (moved.length) { console.log(`CHANGED: ${moved.length} differ from ${NAME} (every demo answered)\n  ${moved.join("\n  ")}`); process.exit(3); }
-  console.log(`PASS: ${reqs.length} requests, every answer the baseline's`);
+  console.log(`PASS: ${reqs.length} requests, every answer the baseline's${byCalibrator.length ? ` or moved by a newer calibrator` : ""}`);
 }

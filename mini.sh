@@ -354,8 +354,9 @@ smoke() {   # every demo's examples through the web app, checked against the bas
   until curl -fsS -m 5 -o /dev/null "$url/kev/v1/models"; do n=$((n + 1)); [ $n -gt 120 ] && die "the web app or the model server did not come up; see $LOGS"; sleep 5; done
   local media=""; [ "$MEDIA" = 1 ] || media="--no-media"   # a string, not an array: bash 3.2 under set -u calls an empty array unbound
   local baseline=""; [ ! -f "$STATE/demo-baseline.json" ] || baseline="--baseline=$STATE/demo-baseline.json"
-  node "$ROOT/scripts/demo_smoke.mjs" "$url" $media $baseline || rc=$?
-  [ "$rc" != 3 ] || { SMOKE_MOVED=1; die "demo smoke test: every demo answers, but some answers differ from the baseline; if the change is expected, record it: node scripts/demo_smoke.mjs $url $media --baseline=$STATE/demo-baseline.json --record"; }
+  local cal=""; [ -z "$OUTCOME_CALIBRATOR" ] || cal="--calibrator=$OUTCOME_CALIBRATOR"   # answers a newer calibrator moved are reported, not failed (#93)
+  node "$ROOT/scripts/demo_smoke.mjs" "$url" $media $baseline $cal || rc=$?
+  [ "$rc" != 3 ] || { SMOKE_MOVED=1; die "demo smoke test: every demo answers, but some answers differ from the baseline; if the change is expected, record it: node scripts/demo_smoke.mjs $url $media --baseline=$STATE/demo-baseline.json${cal:+ $cal} --record"; }
   [ "$rc" = 0 ] || die "demo smoke test FAILED: a demo no longer answers (scripts/demo_smoke.mjs)"
   [ -n "$OPENAI_PORT" ] || return 0
   # the OpenAI port as apps see it (chat, streaming, tools, JSON, embeddings, the closed System One routes), and decisions
