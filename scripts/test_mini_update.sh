@@ -7,6 +7,8 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"; T="$(mktemp -d)"; trap 'rm -rf "$T"' EXIT
 mkdir -p "$T/app/.demo" "$T/home"; cp "$ROOT/mini.sh" "$T/app/"; printf 'PORT=3999\n' > "$T/app/.demo/mini.env"
 APP="$T/app"; V="$APP/.demo/d1a-venvs"; PIN="$(sed -n 's/^D1A_SHA="\([0-9a-f]*\)".*/\1/p' "$ROOT/mini.sh")"; export APP
+mkdir -p "$APP/scripts"; cp "$ROOT/scripts/d1a-constraints.txt" "$APP/scripts/"   # the tested environment install_server pins
+CH() { shasum -a 256 "$APP/scripts/d1a-constraints.txt" | cut -c1-8; }   # its hash, in every venv's name
 pin() { sed "s/^D1A_SHA=\"[0-9a-f]*\"/D1A_SHA=\"$1\"/" "$ROOT/mini.sh" > "$APP/mini.sh"; }   # the copy, pinned to another D1A commit
 # a venv's python: it logs its calls, and writes the settings file config init names
 PYSTUB="$T/python"; export PYSTUB
@@ -49,15 +51,16 @@ run clean FAIL_UV=
 [ "$(cat "$T/clean.status")" = 0 ] && [ -n "$(last clean "bootstrap .*$SERVICE.plist")" ] || fail clean "did not reinstall and restart"
 # venvs per pin: the first one is installed while the old venv serves, and current points at it only after the model stopped;
 # the old venv stays where it is, as previous
-installed=$(last clean "^uv pip install .*d1a-venvs/${PIN:0:12}-serve/"); stopped=$(last clean "bootout .*/io.github.jonpol01.d1a-model$")
+installed=$(last clean "^uv pip install .*d1a-venvs/${PIN:0:12}-serve-$(CH)/"); stopped=$(last clean "bootout .*/io.github.jonpol01.d1a-model$")
 [ -n "$installed" ] && [ -n "$stopped" ] && [ "$installed" -lt "$stopped" ] || fail clean "did not install into a venv of its own before the stop"
 grep -qx "current at the model's bootout: none" "$T/clean" || fail clean "switched the venv before the model stopped"
-[ "$(readlink "$V/current")" = "${PIN:0:12}-serve" ] && [ "$(readlink "$V/previous")" = "$APP/.demo/d1a-venv" ] && [ -x "$APP/.demo/d1a-venv/bin/python" ] \
+[ "$(readlink "$V/current")" = "${PIN:0:12}-serve-$(CH)" ] && [ "$(readlink "$V/previous")" = "$APP/.demo/d1a-venv" ] && [ -x "$APP/.demo/d1a-venv/bin/python" ] \
   || fail clean "current/previous: $(readlink "$V/current") / $(readlink "$V/previous")"
 grep -qF "<string>$V/current/bin/python</string>" "$T/home/Library/LaunchAgents/io.github.jonpol01.d1a-model.plist" || fail clean "the model agent does not run current's python"
+grep -q "^uv pip install .* -c $APP/scripts/d1a-constraints.txt d1a\[serve\] @ git+" "$T/clean" || fail clean "did not install with the tested environment's constraints"
 run same FAIL_UV=   # the pin it runs: nothing to install
-[ "$(cat "$T/same.status")" = 0 ] && [ -z "$(last same "^uv pip install")" ] && [ "$(readlink "$V/current")" = "${PIN:0:12}-serve" ] || fail same "reinstalled the pin it runs"
-rm "$V/${PIN:0:12}-serve/.complete"   # an install that did not finish is installed again (here: to see the cache it uses)
+[ "$(cat "$T/same.status")" = 0 ] && [ -z "$(last same "^uv pip install")" ] && [ "$(readlink "$V/current")" = "${PIN:0:12}-serve-$(CH)" ] || fail same "reinstalled the pin it runs"
+rm "$V/${PIN:0:12}-serve-$(CH)/.complete"   # an install that did not finish is installed again (here: to see the cache it uses)
 run override FAIL_UV= UV_CACHE_DIR="$T/elsewhere"
 [ "$(cat "$T/override.status")" = 0 ] || fail override "did not reinstall"
 for case in clean override; do   # every uv call sees the cache: .demo's by default, UV_CACHE_DIR's when it is set
@@ -132,21 +135,21 @@ model="$T/home/Library/LaunchAgents/io.github.jonpol01.d1a-model.plist"; cp "$mo
 NEW=2222222222222222222222222222222222222222; pin $NEW; printf 'PORT=3999\nCHAT_CONTEXT=1\n' > "$APP/.demo/mini.env"
 run rollback FAIL_UV= SMOKE_EXIT=1
 [ "$(cat "$T/rollback.status")" != 0 ] || fail rollback "a failed smoke test exited 0"
-[ "$(readlink "$V/current")" = "${PIN:0:12}-serve" ] || fail rollback "current is $(readlink "$V/current"), not the venv that ran before"
+[ "$(readlink "$V/current")" = "${PIN:0:12}-serve-$(CH)" ] || fail rollback "current is $(readlink "$V/current"), not the venv that ran before"
 cmp -s "$model" "$T/model-before.plist" || fail rollback "did not restore the model agent that ran before"
-grep -q "back on the version that ran before" "$T/rollback.out" && [ -f "$V/${NEW:0:12}-serve/.complete" ] || fail rollback "did not say it went back"
+grep -q "back on the version that ran before" "$T/rollback.out" && [ -f "$V/${NEW:0:12}-serve-$(CH)/.complete" ] || fail rollback "did not say it went back"
 [ "$(last rollback "bootstrap .*io.github.jonpol01.d1a-model.plist")" -gt "$(last rollback "^npm ci")" ] || fail rollback "left the model server down"
 run rollback_dead FAIL_UV= SMOKE_EXIT=1 ANSWER_EXIT=7   # the version before does not answer either: said, with both venvs
-grep -q "does not answer either.*${NEW:0:12}-serve" "$T/rollback_dead.out" && [ "$(cat "$T/rollback_dead.status")" != 0 ] || fail rollback_dead "did not say the rollback failed too"
+grep -q "does not answer either.*${NEW:0:12}-serve-$(CH)" "$T/rollback_dead.out" && [ "$(cat "$T/rollback_dead.status")" != 0 ] || fail rollback_dead "did not say the rollback failed too"
 # answers that only differ from the baseline (smoke exit 3): every demo answered, so the new version stays, and the run fails
 run moved FAIL_UV= SMOKE_EXIT=3
-[ "$(cat "$T/moved.status")" != 0 ] && [ "$(readlink "$V/current")" = "${NEW:0:12}-serve" ] && ! grep -q "going back" "$T/moved.out" \
+[ "$(cat "$T/moved.status")" != 0 ] && [ "$(readlink "$V/current")" = "${NEW:0:12}-serve-$(CH)" ] && ! grep -q "going back" "$T/moved.out" \
   || fail moved "rolled back a server that answers every demo"
 # a pass keeps current and previous and removes the rest, the old one-venv directory included once it is not previous
 run passed FAIL_UV=
-[ "$(cat "$T/passed.status")" = 0 ] && [ "$(readlink "$V/previous")" = "${PIN:0:12}-serve" ] && [ ! -e "$APP/.demo/d1a-venv" ] || fail passed "kept the old venv"
+[ "$(cat "$T/passed.status")" = 0 ] && [ "$(readlink "$V/previous")" = "${PIN:0:12}-serve-$(CH)" ] && [ ! -e "$APP/.demo/d1a-venv" ] || fail passed "kept the old venv"
 pin 3333333333333333333333333333333333333333; run third FAIL_UV=
-[ "$(cat "$T/third.status")" = 0 ] && [ "$(readlink "$V/previous")" = "${NEW:0:12}-serve" ] && [ ! -e "$V/${PIN:0:12}-serve" ] && [ -d "$V/${NEW:0:12}-serve" ] \
+[ "$(cat "$T/third.status")" = 0 ] && [ "$(readlink "$V/previous")" = "${NEW:0:12}-serve-$(CH)" ] && [ ! -e "$V/${PIN:0:12}-serve-$(CH)" ] && [ -d "$V/${NEW:0:12}-serve-$(CH)" ] \
   || fail third "pruned the wrong venvs: $(ls "$V")"
 # install on a Mac that runs it takes the reinstall path: install first, stop after
 CMD=install run installed FAIL_UV=
@@ -156,4 +159,9 @@ mv "$V/current" "$T/current-link"; mkdir "$V/current"
 run notalink FAIL_UV=
 grep -q "is not a link" "$T/notalink.out" && [ -z "$(last notalink "bootout")" ] || fail notalink "went on with a current directory"
 rmdir "$V/current"; mv "$T/current-link" "$V/current"
+# a changed constraints file (a pin move regenerates it) is a new venv, even for the same pin
+was=$(readlink "$V/current"); echo "# changed" >> "$APP/scripts/d1a-constraints.txt"
+run constraints FAIL_UV=
+[ "$(cat "$T/constraints.status")" = 0 ] && [ -n "$(last constraints "^uv pip install")" ] && [ "$(readlink "$V/current")" != "$was" ] \
+  && [ "$(readlink "$V/current")" = "333333333333-serve-$(CH)" ] || fail constraints "kept the venv of the old constraints: $(readlink "$V/current")"
 echo "mini.sh reinstall: OK under $(/bin/bash --version | head -1)"

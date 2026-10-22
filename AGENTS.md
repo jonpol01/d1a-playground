@@ -20,3 +20,5 @@ Every change is checked by the test suites, with the numbers in the PR. Nothing 
   in the same PR that re-records the baseline, and say why.
 - A new demo or example ships with its smoke requests (`src/components/uses/smoke.ts`) and an updated baseline.
 - A D1A pin move also replays the PR labeler's states (`d1a/runs/labeler-replay`): identical answers, and interleaved latency within noise.
+- A D1A pin move regenerates `scripts/d1a-constraints.txt` from the venv that passed the quality gate (its header says how);
+  the launchers install exactly that environment, and CI resolves it for macOS, Linux and Windows.

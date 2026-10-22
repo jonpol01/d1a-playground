@@ -33,6 +33,19 @@ class LauncherBanners(unittest.TestCase):
             media.add(re.search(r"the demos \(([^)]*) need --media\)", text).group(1))
         self.assertEqual(len(media), 1, media)
 
+    def test_the_launchers_install_the_tested_environment(self):
+        """d1a#322: a fresh resolve of the same D1A pin pulled a transformers that broke video. Every install takes
+        scripts/d1a-constraints.txt, and its hash is part of the install marker, so a changed file installs again."""
+        lines = [l for l in (ROOT / "scripts/d1a-constraints.txt").read_text(encoding="utf-8").splitlines() if l and not l.startswith("#")]
+        self.assertTrue(lines and all(re.fullmatch(r"[A-Za-z0-9._-]+==[^\s=]+", l) for l in lines), [l for l in lines if "==" not in l])
+        self.assertFalse([l for l in lines if l.lower().startswith("d1a==")])   # d1a itself comes from the pin
+        for name, marker in (("demo.sh", "$chash"), ("demo.ps1", "$chash"), ("mini.sh", "shasum -a 256 \"$cons\"")):
+            text = (ROOT / name).read_text(encoding="utf-8")
+            installs = re.findall(r"uv pip install [^\n]*", text)
+            self.assertTrue(installs and all(re.search(r" -c \"?\$cons\"? ", i) for i in installs), (name, installs))
+            self.assertIn("scripts/d1a-constraints.txt", text, name)
+            self.assertIn(marker, text, name)
+
     def test_demo_sh_takes_lmstudio_equals_url(self):
         # the conflict check runs right after parsing: reaching it means --lmstudio=URL was taken, not refused as unknown
         r = subprocess.run(["bash", str(ROOT / "demo.sh"), "--lmstudio=http://127.0.0.1:1", "--no-server"],

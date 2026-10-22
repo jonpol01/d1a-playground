@@ -167,12 +167,14 @@ start_kev() {
         >"$STATE/kev-server.log" 2>&1 &
   else
     local extras="serve"; [ "$MEDIA" = 1 ] && extras="serve,media"
-    if [ ! -f "$VENV/.d1a-$D1A_SHA-$extras" ]; then
+    # the tested environment (d1a#322: a fresh resolve of the same pin broke video); a changed file installs again
+    local cons="$ROOT/scripts/d1a-constraints.txt" chash; chash="$( (sha256sum "$cons" 2>/dev/null || shasum -a 256 "$cons") | cut -c1-8)"
+    if [ ! -f "$VENV/.d1a-$D1A_SHA-$extras-$chash" ]; then
       say "Installing the D1A server (d1a[$extras]) from $D1A_REPO@${D1A_SHA:0:7} into .demo/venv (first run: about 1 GB of Python packages)"
       uv venv --quiet --allow-existing --python "$PYTHON_VERSION" "$VENV"
       # --torch-backend auto picks the CUDA build of torch when an NVIDIA driver is present (PyPI's default is CPU-only on Windows)
-      uv pip install --quiet --python "$VENV/bin/python" --torch-backend auto "d1a[$extras] @ git+$D1A_REPO@$D1A_SHA"
-      rm -f "$VENV"/.kev-* "$VENV"/.d1a-*; touch "$VENV/.d1a-$D1A_SHA-$extras"
+      uv pip install --quiet --python "$VENV/bin/python" --torch-backend auto -c "$cons" "d1a[$extras] @ git+$D1A_REPO@$D1A_SHA"
+      rm -f "$VENV"/.kev-* "$VENV"/.d1a-*; touch "$VENV/.d1a-$D1A_SHA-$extras-$chash"
     fi
     if [ "$APPLE_SILICON" = 1 ]; then
       # Cap PyTorch's share of unified memory (both are needed: a high cap below the default low of 1.4 is refused).

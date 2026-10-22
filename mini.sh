@@ -119,12 +119,15 @@ install_server() {   # reinstall runs it before stop: a failed download or insta
   local extras="serve"; [ "$MEDIA" = 1 ] && extras="serve,media"
   [ -n "$EMBED_GGUF" ] && extras="$extras,embed"   # llama.cpp for the GGUF embedder
   [ ! -e "$VENVS/current" ] || [ -L "$VENVS/current" ] || die "$VENVS/current is not a link (move it away): ln would put the link inside it"
-  VENV_ID="${D1A_SHA:0:12}-$(printf '%s' "$extras" | tr , -)"
+  # the tested environment (scripts/d1a-constraints.txt): a fresh resolve of the same pin pulled a transformers that broke
+  # video (d1a#322); a changed file is a new venv
+  local cons="$ROOT/scripts/d1a-constraints.txt"
+  VENV_ID="${D1A_SHA:0:12}-$(printf '%s' "$extras" | tr , -)-$(shasum -a 256 "$cons" | cut -c1-8)"
   local dir="$VENVS/$VENV_ID"
   if [ -f "$dir/.complete" ]; then say "model server: d1a[$extras] at ${D1A_SHA:0:7} is installed (.demo/d1a-venvs/$VENV_ID)"; return 0; fi
   say "model server: d1a[$extras] from $D1A_REPO@${D1A_SHA:0:7} into .demo/d1a-venvs/$VENV_ID ($MODEL_RUN)"
   uv venv --quiet --allow-existing --python 3.12 "$dir"
-  uv pip install --quiet --python "$dir/bin/python" --torch-backend auto "d1a[$extras] @ git+$D1A_REPO@$D1A_SHA"
+  uv pip install --quiet --python "$dir/bin/python" --torch-backend auto -c "$cons" "d1a[$extras] @ git+$D1A_REPO@$D1A_SHA"
   touch "$dir/.complete"   # last: current never points at a venv whose install did not finish
 }
 

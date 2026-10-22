@@ -193,13 +193,16 @@ try {
     else {
       $py = if ($OnWindows) { Join-Path $Venv 'Scripts\python.exe' } else { Join-Path $Venv 'bin/python' }
       $extras = if ($Media) { 'serve,media' } else { 'serve' }
-      $marker = Join-Path $Venv ".d1a-$D1aSha-$($extras -replace ',', '-')"
+      # the tested environment (d1a#322: a fresh resolve of the same pin broke video); a changed file installs again
+      $cons = Join-Path $Root 'scripts/d1a-constraints.txt'
+      $chash = (Get-FileHash $cons -Algorithm SHA256).Hash.Substring(0, 8).ToLower()
+      $marker = Join-Path $Venv ".d1a-$D1aSha-$($extras -replace ',', '-')-$chash"
       if (-not (Test-Path $marker)) {
         Say "Installing the D1A server (d1a[$extras]) from $D1aRepo@$($D1aSha.Substring(0, 7)) into .demo\venv (first run: about 1 GB of Python packages, more with CUDA)"
         & uv venv --quiet --allow-existing --python $PythonVersion $Venv
         if ($LASTEXITCODE -ne 0) { Die 'uv venv failed' }
         # --torch-backend auto picks the CUDA build of torch when an NVIDIA driver is present (PyPI's Windows torch is CPU-only)
-        & uv pip install --quiet --python $py --torch-backend auto "d1a[$extras] @ git+$D1aRepo@$D1aSha"
+        & uv pip install --quiet --python $py --torch-backend auto -c $cons "d1a[$extras] @ git+$D1aRepo@$D1aSha"
         if ($LASTEXITCODE -ne 0) { Die 'installing the D1A server failed (see the messages above)' }
         Get-ChildItem -Path $Venv -Force | Where-Object { $_.Name -like '.kev-*' -or $_.Name -like '.d1a-*' } | Remove-Item -Force
         New-Item -ItemType File -Path $marker | Out-Null
