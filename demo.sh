@@ -60,7 +60,8 @@ MEDIA_PORT="${MEDIA_PORT:-8010}"
 [ "$APPLE_SILICON" = 1 ] && MEDIA_PORT="$KEV_PORT"   # the model server answers photos and voice itself (MLX)
 
 # ---------------------------------------------------------------- helpers
-port_busy() { (exec 3<>"/dev/tcp/127.0.0.1/$1") 2>/dev/null; }     # something accepts connections on 127.0.0.1:$1
+# something accepts connections on 127.0.0.1:$1 or [::1]:$1: localhost, which the browser opens, can be either
+port_busy() { (exec 3<>"/dev/tcp/127.0.0.1/$1") 2>/dev/null || (exec 3<>"/dev/tcp/::1/$1") 2>/dev/null; }
 kev_up()    { curl -fsS -m 3 "http://127.0.0.1:$KEV_PORT/v1/models" >/dev/null 2>&1; }
 
 pick_port() {

@@ -21,6 +21,12 @@ $busy = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback, 
 try {
   $env:PORT = "$busyPort"
   try { $null = Select-WebPort; Fail "PORT=$busyPort (in use) was accepted" } catch { if ("$_" -notmatch "PORT=$busyPort is already in use") { Fail "unexpected: $_" } }
+  # so is one in use on ::1 only: the browser's localhost can resolve to it
+  $busy6 = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::IPv6Loopback, 0); $busy6.Start(); $busy6Port = $busy6.LocalEndpoint.Port
+  try {
+    $env:PORT = "$busy6Port"
+    try { $null = Select-WebPort; Fail "PORT=$busy6Port (in use on ::1) was accepted" } catch { if ("$_" -notmatch "PORT=$busy6Port is already in use") { Fail "unexpected: $_" } }
+  } finally { $busy6.Stop() }
   $free = Free-Port; $env:PORT = "$free"
   if ((Select-WebPort) -ne $free) { Fail "PORT=$free (free) was not used" }
   Remove-Item Env:PORT
