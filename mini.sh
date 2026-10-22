@@ -18,8 +18,8 @@
 #   KEV_PREFIX_CACHE=4  KEV_PREFIX_MAX_TOKENS=65536  (the model server's cache of long states; lower them to save memory)
 #   IDLE_UNLOAD=600 (seconds without a request before the model server frees the model; it loads again in a few seconds
 #   on the next one; 0 keeps it loaded)
-#   MEDIA=0 (1 = demos 10-11 too: the model server answers photos and voice with the same model, through Gemma 4's vision
-#   and audio encoders, ~1 GB more while loaded; MODEL_RUN must carry them, e.g. JohnP1/d1a-e4b-mlx-q8@v0.3)
+#   MEDIA=0 (1 = demos 10, 11 and 13 too: the model server answers photos, voice and video with the same model, through
+#   Gemma 4's vision and audio encoders, ~1 GB more while loaded; MODEL_RUN must carry them, e.g. JohnP1/d1a-e4b-mlx-q8@v0.3)
 #   OPENAI_PORT= (e.g. 1234, LM Studio's port: the model server's OpenAI chat, embeddings and model list on OPENAI_HOST,
 #   "::" by default: every IPv4 and IPv6 address, as LM Studio listened, with no key, for apps that used LM Studio; MODEL_RUN must be an unmerged chat build, d1a docs/USAGE.md
 #   "Chat with D1A". The System One routes stay on 127.0.0.1)
@@ -304,7 +304,7 @@ start() {
   for l in $(labels); do
     launchctl bootout "$d/$l" 2>/dev/null || true
     bootstrap "$d" "$AGENTS/$l.plist" || die "launchd refused $l six times; see launchctl print $d/$l"
-    [ "$l" = "$PROMOTE_LABEL" ] && continue   # a calendar job: it runs at 04:00, not at start
+    [ "$l" = "$PROMOTE_LABEL" ] && continue   # the self-learning tick runs every 15 minutes, not at start
     launchctl kickstart "$d/$l"   # a bootstrap right after a bootout can leave the agent loaded but not running
     if [ "$l" = "$MODEL_LABEL" ]; then wait_for_model; fi
   done

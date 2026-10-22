@@ -211,7 +211,7 @@ After `install`, `reinstall` and `update`, and on `./mini.sh smoke`, the demo sm
 
 **The model loads on demand.** The model server frees the model after `IDLE_UNLOAD` seconds without a request (600; `0` keeps it loaded) and loads it again on the next one, in a few seconds; `./mini.sh status` says whether it is in memory.
 
-**Photo check and Voice triage.** Set `MEDIA=1` in `.demo/mini.env`, with a `MODEL_RUN` that carries the vision and audio encoders (`JohnP1/d1a-e4b-mlx-q8@v0.3`, or `JohnP1/d1a-e2b-mlx-q8`), and run `./mini.sh reinstall`. The same model server and the same model answer them: the encoders (about 1 GB) load on the first photo or voice request and are freed with the model. `MEDIA=0` leaves them out. (Earlier versions ran a third LaunchAgent, `io.github.jonpol01.d1a-media`, with a second model; `install` and `reinstall` remove it.)
+**Photo check, Voice triage and Video check.** Set `MEDIA=1` in `.demo/mini.env`, with a `MODEL_RUN` that carries the vision and audio encoders (`JohnP1/d1a-e4b-mlx-q8@v0.3`, or `JohnP1/d1a-e2b-mlx-q8`), and run `./mini.sh reinstall`. The same model server and the same model answer them: the encoders (about 1 GB) load on the first photo, voice or video request and are freed with the model. `MEDIA=0` leaves them out. (Earlier versions ran a third LaunchAgent, `io.github.jonpol01.d1a-media`, with a second model; `install` and `reinstall` remove it.)
 
 **OpenAI apps on LM Studio's port.** Set `OPENAI_PORT=1234` in `.demo/mini.env` (and `./mini.sh reinstall`) and a third LaunchAgent, `io.github.jonpol01.d1a-openai` (`scripts/openai_port.mjs`), serves the model server's OpenAI routes on `OPENAI_HOST:OPENAI_PORT` (`::` by default: every IPv4 and IPv6 address, as LM Studio listened), so apps that used LM Studio's server there (mem0, n8n, chat UIs) reach D1A with no change: `POST /v1/chat/completions` (streaming too), `POST /v1/embeddings` and `GET /v1/models`, with no key, like LM Studio. Nothing else passes: the System One routes and `/v1/feedback` stay on the model server's 127.0.0.1 port. `GET /v1/models` shows the LAN the served model's `run` and calibrator file, which can be local paths. Chat needs a `MODEL_RUN` that is an unmerged chat build on an instruction-tuned base (D1A's [docs/USAGE.md, "Chat with D1A"](https://github.com/jonpol01/d1a/blob/main/docs/USAGE.md#chat-with-d1a)); every model name a client asks for gets that one model. Embeddings need `EMBED_GGUF=<a GGUF embedding model>` (for example `nomic-embed-text-v1.5.Q4_K_M.gguf`, the file LM Studio serves, so vectors stored earlier stay comparable), which also installs D1A's `embed` extra. Stop LM Studio's own server first: the port is LM Studio's or this agent's, not both. With `OPENAI_PORT` set, the smoke test (`./mini.sh smoke`, and after `install`, `reinstall` and `update`) also runs `scripts/openai_smoke.mjs` against the port. It checks what those apps rely on, with real requests: the model list; chat that follows an instruction and answers a sum; stop strings; streaming in pieces ending with `[DONE]`; a tool call naming the tool and the city; a tool call cut off by `max_tokens` leaving no markup in the text; JSON mode; and embeddings that are unit length, repeatable, closer for similar sentences, and the same in base64 (what Node clients such as n8n ask for). With `--decide`, a decision sent while a chat runs must still answer within `--wait-limit-ms` (30 s). The System One and feedback routes must answer 404 there, and a decision on the model server must be identical before and after the chats. `EMBED_REF=<file>` (`{"texts": [...], "vectors": [...]}`, for example LM Studio's vectors for the same GGUF) adds a check that the served embeddings match it (cosine at least 0.999). Run it by hand with `node scripts/openai_smoke.mjs http://127.0.0.1:1234 --decide http://127.0.0.1:8009`.
 
@@ -227,6 +227,17 @@ After `install`, `reinstall` and `update`, and on `./mini.sh smoke`, the demo sm
 npm ci
 KEV_API=http://127.0.0.1:8009 npm run dev      # with a model server already running
 npm run lint && npx next typegen && npx tsc --noEmit -p .
+```
+
+The launchers, `mini.sh` and the scripts have tests that need no model; CI runs them on every pull request:
+
+```bash
+node --test scripts/test_review.mjs scripts/test_openai_port.mjs scripts/test_openai_smoke.mjs
+bash scripts/test_demo_port.sh && bash scripts/test_demo_pidfile.sh && bash scripts/test_mini_env.sh
+bash scripts/test_mini_smoke.sh && bash scripts/test_mini_update.sh   # stand-in uv, npm and launchctl; CI runs them on macOS
+pwsh scripts/test_demo_ps1.ps1
+python3 -m unittest scripts/test_pr_outcomes.py scripts/test_check_hygiene.py
+python3 -m unittest scripts/test_lmstudio_letters.py   # needs fastapi, uvicorn and httpx
 ```
 
 ## Releases
