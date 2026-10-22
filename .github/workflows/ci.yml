@@ -67,6 +67,11 @@ jobs:
       - run: bash -n demo.sh && bash -n mini.sh
       # demo.sh's pick_port refuses a PORT something already listens on, so the browser never opens another service's page
       - run: bash scripts/test_demo_port.sh
+      # a stale pid file (a reboot, a crash) can name an unrelated process: the launchers kill only what they started
+      - run: bash scripts/test_demo_pidfile.sh
+      - name: demo.ps1's port picker and pid-file cleanup (PowerShell)
+        shell: pwsh
+        run: ./scripts/test_demo_ps1.ps1
       - name: demo.ps1 parses (PowerShell)
         shell: pwsh
         run: |
@@ -91,3 +96,4 @@ jobs:
       # owned by root once failed the install after the stop and left the Mac mini down (stand-in uv, npm and launchctl)
       - run: bash scripts/test_mini_update.sh
       - run: bash scripts/test_demo_port.sh   # the same check under macOS's bash 3.2
+      - run: bash scripts/test_demo_pidfile.sh

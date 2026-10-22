@@ -85,11 +85,26 @@ function Stop-Tree([int]$procId) {
     if (Get-Process -Id $procId -ErrorAction SilentlyContinue) { & /bin/kill -9 $procId 2>$null }
   }
 }
+function Test-Ours([int]$procId, [string]$name) {
+  # is the process still what this script started as $name (its pid file's name)? A pid file left by a run that ended
+  # without stop (a reboot, a crash) can name any process by now, and Stop-Tree kills its whole tree
+  if ($OnWindows) { $cmd = (Get-CimInstance Win32_Process -Filter "ProcessId = $procId" -ErrorAction SilentlyContinue).CommandLine }
+  else { $cmd = (& ps -o command= -p $procId 2>$null) -join ' ' }
+  if (-not $cmd) { return $false }
+  switch ($name) {
+    'model-server' { return $cmd -match 'd1a\.serving\.serve|lmstudio_systemone\.py' }
+    'media-server' { return $cmd -match 'd1a\.serving\.media' }
+    'web' { return $cmd -match 'next[/\\]dist[/\\]bin[/\\]next' }
+  }
+  return $false
+}
 function Stop-All {
   Get-ChildItem -Path $State -Filter '*.pid' -ErrorAction SilentlyContinue | ForEach-Object {
-    $procId = [int](Get-Content $_.FullName -Raw).Trim()
-    Stop-Tree $procId
-    Say "stopped $($_.BaseName)"
+    $procId = 0
+    if ([int]::TryParse((Get-Content $_.FullName -Raw).Trim(), [ref]$procId)) {
+      if (Test-Ours $procId $_.BaseName) { Stop-Tree $procId; Say "stopped $($_.BaseName)" }
+      elseif (Get-Process -Id $procId -ErrorAction SilentlyContinue) { Warn "$($_.BaseName): process $procId is not the one this script started; left running" }
+    }
     Remove-Item $_.FullName -Force
   }
 }

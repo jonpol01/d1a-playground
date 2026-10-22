@@ -86,12 +86,23 @@ stop_pid() {   # TERM, then KILL after 10 s
   kill -9 "$pid" 2>/dev/null || true
 }
 
+ours() {   # is process $1 still what this script started as $2 (its pid file's name)? A pid file left by a run that ended
+  local cmd   # without stop (a reboot, a crash) can name any process by now
+  cmd="$(ps -o command= -p "$1" 2>/dev/null)" || return 1
+  case "$2:$cmd" in
+    model-server:*d1a.serving.serve*|model-server:*lmstudio_systemone.py*|media-server:*d1a.serving.media*|web:*next/dist/bin/next*) return 0 ;;
+  esac
+  return 1
+}
+
 stop_all() {
-  local f name
+  local f name pid
   for f in "$STATE"/*.pid; do
     [ -e "$f" ] || continue
-    name="$(basename "$f" .pid)"
-    stop_pid "$(cat "$f")" && say "stopped $name"
+    name="$(basename "$f" .pid)"; pid="$(cat "$f")"
+    if ours "$pid" "$name"; then stop_pid "$pid" && say "stopped $name"
+    elif kill -0 "$pid" 2>/dev/null; then warn "$name: process $pid is not the one this script started; left running"
+    fi
     rm -f "$f"
   done
 }
