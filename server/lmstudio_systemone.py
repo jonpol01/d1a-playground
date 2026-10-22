@@ -38,9 +38,12 @@ def prompt(state, q):
 
 def letter_probs(choice, k):
     """Probability per option letter from the first content token that is an option letter: its top logprobs, summed per
-    letter (' B', 'B', 'b' all count), renormalized over the k offered letters. Uniform when no letter appears."""
+    letter (' B', 'B', 'b' all count), renormalized over the k offered letters. A 502 when no letter appears: an even split
+    would read as a real, unsure answer (and as option A, where the choice breaks ties)."""
     valid = LETTERS[:k]
-    for t in (choice.get("logprobs") or {}).get("content") or []:
+    content = (choice.get("logprobs") or {}).get("content") or []
+    if not content: raise HTTPException(502, "LM Studio returned no logprobs; the option probabilities are read from them")
+    for t in content:
         if t["token"].strip().upper() not in valid:
             continue
         mass = [0.0] * k
@@ -49,7 +52,8 @@ def letter_probs(choice, k):
             if s in valid: mass[valid.index(s)] += math.exp(alt["logprob"])
         total = sum(mass)
         if total > 0: return [m / total for m in mass]
-    return [1 / k] * k
+    text = "".join(t["token"] for t in content)
+    raise HTTPException(502, f"LM Studio's answer has no option letter {valid[0]}-{valid[-1]}: {text[:200]!r}")
 
 
 async def ask(client, state, q):

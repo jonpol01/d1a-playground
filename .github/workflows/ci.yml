@@ -83,6 +83,8 @@ jobs:
       - run: python3 -m py_compile server/lmstudio_systemone.py server/kev/api.py scripts/pr_outcomes.py
       - run: python3 -m unittest scripts/test_pr_outcomes.py
       - run: python3 -m unittest scripts/test_check_hygiene.py
+      # --lmstudio mode: a reply without an option letter is a 502, not an even split that reads as a real answer
+      - run: python3 -m venv /tmp/lm && /tmp/lm/bin/pip install -q fastapi uvicorn httpx && /tmp/lm/bin/python -m unittest scripts/test_lmstudio_letters.py
       - run: python3 scripts/release_notes.py --check "v$(python3 -c "import json; print(json.load(open('package.json'))['version'])")"
 
   mini-macos:
