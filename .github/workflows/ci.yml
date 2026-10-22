@@ -30,6 +30,8 @@ jobs:
       - run: node --test scripts/test_openai_port.mjs
       # the live OpenAI check passes a stand-in that answers as D1A does and fails each kind of broken one (scripts/openai_smoke.mjs)
       - run: node --test scripts/test_openai_smoke.mjs
+      # demo_smoke.mjs: exit 3 when every demo answers but answers differ from the baseline, 1 when a demo fails (mini.sh)
+      - run: node --test scripts/test_demo_smoke.mjs
       # the demo examples the UI ships must be the ones scripts/demo-baseline.json pins (scripts/demo_smoke.mjs)
       - run: node scripts/demo_smoke.mjs --list
       - run: npx next typegen && npx tsc --noEmit -p .

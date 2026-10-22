@@ -312,11 +312,15 @@ start() {
   done
   say "started; logs in $LOGS/d1a-model.log and $LOGS/d1a-web.log (the model takes a minute or two to load the first time)"
 }
-smoke() {   # every demo's examples through the web app, checked against scripts/demo-baseline.json (scripts/demo_smoke.mjs)
-  local url="http://127.0.0.1:$PORT$D1A_BASE_PATH" n=0
+smoke() {   # every demo's examples through the web app, checked against the baseline (scripts/demo_smoke.mjs): this Mac's own
+  # in .demo when it has one (recorded here: MLX rounds per chip), so the checkout stays clean for update's git pull
+  local url="http://127.0.0.1:$PORT$D1A_BASE_PATH" n=0 rc=0
   until curl -fsS -m 5 -o /dev/null "$url/kev/v1/models"; do n=$((n + 1)); [ $n -gt 120 ] && die "the web app or the model server did not come up; see $LOGS"; sleep 5; done
   local media=""; [ "$MEDIA" = 1 ] || media="--no-media"   # a string, not an array: bash 3.2 under set -u calls an empty array unbound
-  node "$ROOT/scripts/demo_smoke.mjs" "$url" $media || die "demo smoke test FAILED: a demo no longer answers, or answers differently (scripts/demo_smoke.mjs)"
+  local baseline=""; [ ! -f "$STATE/demo-baseline.json" ] || baseline="--baseline=$STATE/demo-baseline.json"
+  node "$ROOT/scripts/demo_smoke.mjs" "$url" $media $baseline || rc=$?
+  [ "$rc" != 3 ] || die "demo smoke test: every demo answers, but some answers differ from the baseline; if the change is expected, record it: node scripts/demo_smoke.mjs $url $media --baseline=$STATE/demo-baseline.json --record"
+  [ "$rc" = 0 ] || die "demo smoke test FAILED: a demo no longer answers (scripts/demo_smoke.mjs)"
   [ -n "$OPENAI_PORT" ] || return 0
   # the OpenAI port as apps see it (chat, streaming, tools, JSON, embeddings, the closed System One routes), and decisions
   # unchanged after the chats (scripts/openai_smoke.mjs)
