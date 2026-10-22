@@ -65,6 +65,8 @@ jobs:
           PY
           if [ "$EVENT" = pull_request ]; then git diff -U0 "origin/$BASE...HEAD" | python3 /tmp/trusted/scripts/check_hygiene.py paths; fi
       - run: bash -n demo.sh && bash -n mini.sh
+      # demo.sh's pick_port refuses a PORT something already listens on, so the browser never opens another service's page
+      - run: bash scripts/test_demo_port.sh
       - name: demo.ps1 parses (PowerShell)
         shell: pwsh
         run: |
@@ -88,3 +90,4 @@ jobs:
       # a failed install must leave the running services up, and a failure after the stop must start them again: a uv cache
       # owned by root once failed the install after the stop and left the Mac mini down (stand-in uv, npm and launchctl)
       - run: bash scripts/test_mini_update.sh
+      - run: bash scripts/test_demo_port.sh   # the same check under macOS's bash 3.2
