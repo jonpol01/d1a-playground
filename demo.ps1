@@ -59,10 +59,15 @@ if ($LMStudio -and $NoServer) { Die '--lmstudio and --no-server do not go togeth
 if ($Media -and ($LMStudio -or $NoServer)) { Die '--media starts a D1A server; it does not go with --lmstudio or --no-server' }
 
 # ---------------------------------------------------------------- helpers
-function Test-PortBusy([int]$port) {
-  $c = New-Object System.Net.Sockets.TcpClient
-  try { $ar = $c.BeginConnect('127.0.0.1', $port, $null, $null); $ok = $ar.AsyncWaitHandle.WaitOne(300) -and $c.Connected; return $ok }
-  catch { return $false } finally { $c.Close() }
+function Test-PortBusy([int]$port) {   # 127.0.0.1 or ::1: localhost, which the browser opens, can be either
+  foreach ($ip in [System.Net.IPAddress]::Loopback, [System.Net.IPAddress]::IPv6Loopback) {
+    $c = $null
+    try {
+      $c = New-Object System.Net.Sockets.TcpClient($ip.AddressFamily)
+      $ar = $c.BeginConnect($ip, $port, $null, $null); if ($ar.AsyncWaitHandle.WaitOne(300) -and $c.Connected) { return $true }
+    } catch { } finally { if ($c) { $c.Close() } }
+  }
+  return $false
 }
 function Test-Url([string]$url, [int]$timeout = 3) {
   try { $null = Invoke-WebRequest -UseBasicParsing -Uri $url -TimeoutSec $timeout; return $true } catch { return $false }
