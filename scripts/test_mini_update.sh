@@ -16,7 +16,7 @@ launchctl() {   # FAIL_BOOTSTRAP=n: the first n bootstraps fail as launchd does 
   [ "$n" -ge "$FAIL_BOOTSTRAP" ] || { echo "Bootstrap failed: 5: Input/output error" >&2; return 5; }
 }
 sleep() { :; }
-node() { :; }; curl() { :; }; plutil() { :; }
+node() { [ "${1:-}" != -p ] || echo "${NODE_VERSION:-22.11.0}"; }; curl() { :; }; plutil() { :; }   # NODE_VERSION: what node -p reports
 export -f uv npm launchctl node curl plutil sleep
 run() {   # case name, then its environment: the calls go to $T/<name>, mini.sh's output and exit status next to them
   CALLS="$T/$1"; export CALLS; : > "$CALLS"; shift
@@ -86,6 +86,12 @@ run install FAIL_UV=1
 [ -n "$(last install "^uv pip install")" ] || fail install "never reached the install"
 [ "$(cat "$T/install.status")" != 0 ] || fail install "a failed install exited 0"
 [ -z "$(last install "bootout .*/$SERVICE$")" ] || fail install "stopped the services, then the install failed"
+
+run oldnode FAIL_UV= NODE_VERSION=20.8.1   # Next.js 16 needs Node 20.9: refused before anything is installed or stopped
+[ "$(cat "$T/oldnode.status")" != 0 ] && grep -qF "Node.js 20.8.1 is too old" "$T/oldnode.out" || fail oldnode "took Node 20.8.1"
+[ -z "$(last oldnode "^uv pip install|^npm ci|bootout")" ] || fail oldnode "installed, built or stopped before refusing Node 20.8.1"
+run newnode FAIL_UV= NODE_VERSION=26.10.0
+[ "$(cat "$T/newnode.status")" = 0 ] || fail newnode "refused Node 26.10.0"
 
 run build FAIL_NPM=1
 built=$(last build "^npm ci"); [ -n "$built" ] || fail build "never reached the web build"
