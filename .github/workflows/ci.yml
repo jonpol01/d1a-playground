@@ -67,6 +67,21 @@ jobs:
           PY
           if [ "$EVENT" = pull_request ]; then git diff -U0 "origin/$BASE...HEAD" | python3 /tmp/trusted/scripts/check_hygiene.py paths; fi
       - run: bash -n demo.sh && bash -n mini.sh
+      # every install takes scripts/d1a-constraints.txt (d1a#322: a fresh resolve of the same D1A pin broke video): it must
+      # resolve, with the pinned D1A, on each platform and Python the launchers install with, and leave nothing unpinned
+      - name: The tested environment resolves on macOS, Linux and Windows
+        run: |
+          set -euo pipefail
+          sha=$(sed -n 's/^D1A_SHA="\([0-9a-f]*\)".*/\1/p' mini.sh)
+          for spec in "3.12 aarch64-apple-darwin serve,media,embed" "3.13 aarch64-apple-darwin serve,media" \
+                      "3.13 x86_64-unknown-linux-gnu serve,media" "3.13 x86_64-pc-windows-msvc serve,media"; do
+            set -- $spec
+            echo "d1a[$3] @ git+https://github.com/jonpol01/d1a@$sha" | MACOSX_DEPLOYMENT_TARGET=14.0 pipx run --spec uv==0.12.19 uv pip compile \
+              --quiet --python-version "$1" --python-platform "$2" --torch-backend cpu -c scripts/d1a-constraints.txt - -o /tmp/resolved.txt
+            loose=$(comm -13 <(grep '==' scripts/d1a-constraints.txt | sort) <(grep '==' /tmp/resolved.txt | sed 's/+cpu//' | sort) | tr '\n' ' ')
+            [ -z "$loose" ] || { echo "::error::python $1 on $2 resolves packages scripts/d1a-constraints.txt does not pin: $loose"; exit 1; }
+            echo "python $1, $2, d1a[$3]: $(grep -c '==' /tmp/resolved.txt) packages, every one pinned"
+          done
       # demo.sh's pick_port refuses a PORT something already listens on, so the browser never opens another service's page
       - run: bash scripts/test_demo_port.sh
       # a stale pid file (a reboot, a crash) can name an unrelated process: the launchers kill only what they started
