@@ -29,4 +29,10 @@ if out="$(SMOKE_LOG="$T/args-3" DEMO_EXIT=3 /bin/bash "$T/mini.sh" smoke 2>&1)";
 case "$out" in *"some answers differ from the baseline"*"--baseline=$T/.demo/demo-baseline.json --record"*) ;; *) echo "exit 3: $out"; exit 1 ;; esac
 if out="$(SMOKE_LOG="$T/args-f" DEMO_EXIT=1 /bin/bash "$T/mini.sh" smoke 2>&1)"; then echo "a failed demo passed"; exit 1; fi
 case "$out" in *"a demo no longer answers"*) ;; *) echo "exit 1: $out"; exit 1 ;; esac
+# the served outcome calibrator goes to the smoke test, so answers a promotion moved are reported, not failed (#93)
+printf 'MEDIA=0\nPORT=3999\nD1A_BASE_PATH=/d1a\nOUTCOME_CALIBRATOR=/cal.json\n' > "$T/.demo/mini.env"
+SMOKE_LOG="$T/args-cal" /bin/bash "$T/mini.sh" smoke
+[ "$(cat "$T/args-cal")" = "http://127.0.0.1:3999/d1a --no-media --baseline=$T/.demo/demo-baseline.json --calibrator=/cal.json" ] || { echo "calibrator: got '$(cat "$T/args-cal")'"; exit 1; }
+if out="$(SMOKE_LOG="$T/args-cal3" DEMO_EXIT=3 /bin/bash "$T/mini.sh" smoke 2>&1)"; then echo "exit 3 passed"; exit 1; fi
+case "$out" in *"--calibrator=/cal.json --record"*) ;; *) echo "the record command leaves out the calibrator: $out"; exit 1 ;; esac
 echo "mini.sh smoke: OK under $(/bin/bash --version | head -1)"
