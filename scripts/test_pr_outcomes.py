@@ -3,6 +3,7 @@ issue's (anonymised), and how often main() polls."""
 import collections
 import io
 import json
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -119,6 +120,33 @@ class Summary(unittest.TestCase):
         self.assertEqual(s["type"], {"closed": 1, "reviewed": 1, "reviewer_changed": 1, "person_changed": 0})
         self.assertEqual(s["blast"], {"closed": 1, "reviewed": 1, "reviewer_changed": 0, "person_changed": 0})
         self.assertEqual(s["sev"], {"closed": 1, "reviewed": 1, "reviewer_changed": 1, "person_changed": 1})
+
+
+GH_DATA = {   # what the GitHub API answers for one PR and one issue, trimmed
+    "repos/o/r/pulls/7": {"number": 7, "user": {"login": "author1"}},
+    "repos/o/r/issues/8": {"number": 8, "user": {"login": "author2"}},
+    "repos/o/r/pulls/7/reviews?per_page=100": [{"user": {"login": BOT}, "commit_id": "155bb4ad", "submitted_at": "2026-10-05T12:26:34Z"}],
+    "repos/o/r/issues/7/events?per_page=100": [{"event": "labeled", "label": {"name": "P3"}, "actor": {"login": BOT}, "created_at": "2026-10-05T11:45:18Z"}],
+    "repos/o/r/issues/8/events?per_page=100": [],
+}
+RUN = subprocess.run
+
+
+def fake_gh(cmd, **kw):
+    """`gh api <path> --jq <expr>` as gh prints it: jq over the answer, a string result raw (jq -r), anything else as compact JSON."""
+    path, expr = cmd[cmd.index("api") + 2], cmd[cmd.index("--jq") + 1]
+    out = RUN(["jq", "-rc", expr], input=json.dumps(GH_DATA[path]), capture_output=True, text=True, check=True).stdout
+    return subprocess.CompletedProcess(cmd, 0, out, "")
+
+
+class Gh(unittest.TestCase):
+    def test_the_history_readers_parse_what_gh_prints(self):
+        """gh prints a string result raw: `--jq .user.login` gave jonpol01, which json.loads refused, so from 2026-10-11 every PR
+        was skipped ("Expecting value: line 1 column 1") and no outcome was posted for 11 days."""
+        with mock.patch.object(pr_outcomes.subprocess, "run", fake_gh):
+            events, reviews, author = pr_outcomes.pr_history("o/r", 7)
+            self.assertEqual((author, reviews[0]["commit_id"], events[0]["label"]), ("author1", "155bb4ad", "P3"))
+            self.assertEqual(pr_outcomes.issue_history("o/r", 8)[2], "author2")
 
 
 class Posting(unittest.TestCase):

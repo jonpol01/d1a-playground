@@ -119,6 +119,8 @@ def outcomes(decision, next_ts, events, reviews, call_times=(), author=None):
 
 
 def gh(path, jq=".[]"):
+    """One JSON value per output line: gh prints a string result raw (jonpol01, not "jonpol01"), so `jq` must give JSON
+    (tojson for a string)."""
     r = subprocess.run(["gh", "api", "--paginate", path, "--jq", jq], capture_output=True, text=True, timeout=120)
     if r.returncode != 0: raise RuntimeError(f"gh api {path}: {r.stderr.strip()[:200]}")
     return [json.loads(l) for l in r.stdout.splitlines() if l.strip()]   # one item per line across all pages
@@ -132,12 +134,12 @@ def label_events(repo, number):
 def pr_history(repo, number):
     reviews = [{"user": (r.get("user") or {}).get("login", ""), "commit_id": r.get("commit_id"), "submitted_at": r.get("submitted_at")}
                for r in gh(f"repos/{repo}/pulls/{number}/reviews?per_page=100")]
-    author = gh(f"repos/{repo}/pulls/{number}", ".user.login")
+    author = gh(f"repos/{repo}/pulls/{number}", ".user.login | tojson")
     return label_events(repo, number), reviews, author[0] if author else None
 
 
 def issue_history(repo, number):
-    author = gh(f"repos/{repo}/issues/{number}", ".user.login")
+    author = gh(f"repos/{repo}/issues/{number}", ".user.login | tojson")
     return label_events(repo, number), [], author[0] if author else None
 
 
