@@ -67,7 +67,7 @@ If a third party takes legal action against you for research done under this pol
 ## Scope
 
 **In scope:**
-- **The web app:** its pages, the `/kev` and `/media` proxies, and the `/api/hw` route.
+- **The web app:** its pages, the `/kev` and `/media` proxies, and the `/api/hw`, `/api/learning` and `/api/review` routes.
 - **The start scripts:** `demo.sh`, `demo.ps1` and `mini.sh`, including the LaunchAgents `mini.sh` writes.
 - **The LM Studio adapter** (`server/lmstudio_systemone.py`).
 
@@ -85,7 +85,15 @@ For example: script injection through a demo's input or a loaded pull request, a
   - `mini.sh` binds the web app to `127.0.0.1` unless you set `HOST`.
   - `demo.sh` and `demo.ps1` run Next.js's development server, which listens on every network interface: other devices on your network can open the demo while it runs.
   - Serve it beyond your machine (`HOST=0.0.0.0`, a reverse proxy, or the demo scripts on a shared network) only to people you would let use the model, or put authentication in the proxy.
-- **The model server stays on loopback.** `mini.sh` and the demo scripts always bind it to `127.0.0.1`, and the web app reaches it only through its fixed proxies (`KEV_API`, `MEDIA_API`).
+- **The model server stays on loopback.** `mini.sh` and the demo scripts always bind it to `127.0.0.1`, and the web app reaches it only through its fixed proxies (`KEV_API`, `MEDIA_API`), which forward only the routes
+  the pages use; `/v1/feedback` is not among them.
+- **Two routes write, when self-learning is on** (`LABEL_OUTCOMES=1` with `OUTCOME_CALIBRATOR`):
+  - `POST /api/learning` changes the self-learning settings through d1a's own `config set`, which refuses values out of range;
+  - `POST /api/review` records an outcome (`src` human) for one of its sampled decisions, with that decision's own options only.
+
+  Both refuse a request from another site (`Sec-Fetch-Site`) and a body that is not JSON, so a page elsewhere cannot write
+  through a visitor's browser. Anyone who can reach the web app directly can still use them, as they can the model: keep the
+  app on `127.0.0.1`, or let only people you trust reach it.
 - **`/api/hw` runs fixed system commands** (`lsof`, `ioreg`, `memory_pressure`, `sysctl`, `footprint`, `nvidia-smi`) with fixed arguments. No request input reaches them.
 - **What leaves your machine:**
   - Text, photos and voice clips you enter go only to your model server.
