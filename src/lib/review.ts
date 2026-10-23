@@ -2,7 +2,7 @@
 // the server, and which answers are forwarded to the model server's POST /v1/feedback. No I/O here: the route reads the
 // logs and passes their text in, so this runs the same under `node --test` (scripts/test_review.mjs).
 
-export const TARGET = 50;                                   // decisions John checks by hand
+export const TARGET = 50;                                   // decisions the maintainer checks by hand
 export const QUESTIONS = ["type", "blast", "sev"] as const;  // the labeler's three choice questions
 export const REVIEWED = ["type", "blast"];                  // the review bot re-decides these; it never sets P0-P4
 export const UNSURE = "unsure";

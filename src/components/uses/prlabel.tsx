@@ -95,7 +95,7 @@ const TEXT = {
     needsHuman: "needs a human", confident: "confident", flagNote: (q: string) => `An answer below p ${CONFIDENT} (${q}) adds review:needs-human, as the labeling job does.`,
     rule: "Rule: a committed .env forces type/security and at least P1 (D1A's own answers are kept below).",
     labels: "Labels the job would apply", qType: "Change type", qBlast: "Blast radius", qSev: "Severity",
-    note: "The same document and questions as the CTO bot's labeling job, which asks D1A on the Mac mini every few minutes. On 17 real PRs it got 63% of labels right vs 51% for Gemma 4 chat of the same size.",
+    note: "The same document and questions as the CTO bot's labeling job, which asks D1A on the serving Mac every few minutes. On 17 real PRs it got 63% of labels right vs 51% for Gemma 4 chat of the same size.",
   },
   ja: {
     names: ["依存関係のセキュリティ修正", "ドキュメントのみ", "新機能", "CI の変更", ".env をコミット"], url: "または公開リポジトリの PR を GitHub から読み込む", load: "読み込む", loading: "読み込み中…",
@@ -104,7 +104,7 @@ const TEXT = {
     needsHuman: "人が確認", confident: "確信あり", flagNote: (q: string) => `p ${CONFIDENT} 未満の答え（${q}）があるので、ラベル付けジョブと同じく review:needs-human を付けます。`,
     rule: "ルール: .env のコミットは type/security と P1 以上に強制します（D1A 自身の答えは下に表示）。",
     labels: "ジョブが付けるラベル", qType: "変更の種類", qBlast: "影響範囲", qSev: "深刻度",
-    note: "CTO ボットのラベル付けジョブと同じ文書・同じ質問です。ジョブは数分ごとに Mac mini の D1A に問い合わせます。実際の 17 件の PR では、正しいラベルの割合が D1A 63%、同じサイズの Gemma 4 チャットは 51% でした。",
+    note: "CTO ボットのラベル付けジョブと同じ文書・同じ質問です。ジョブは数分ごとに、常時稼働の Mac で動く D1A に問い合わせます。実際の 17 件の PR では、正しいラベルの割合が D1A 63%、同じサイズの Gemma 4 チャットは 51% でした。",
   },
 };
 

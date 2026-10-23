@@ -4,7 +4,7 @@ import { BASE_PATH } from "@/lib/d1a";
 import { QUESTIONS, UNSURE, type Item, type Question } from "@/lib/review";
 
 // The human check of the PR labeler's labels (d1a-playground#29): one pull request at a time, D1A's and the reviewer's
-// label per question, and John's pick (or "unsure"), posted through /api/review to the model server as src=human.
+// label per question, and the maintainer's pick (or "unsure"), posted through /api/review to the model server as src=human.
 type State = { target: number; done: number; items: Item[]; pool: { resolved: number; disagree: number } };
 const NAMES: Record<Question, string> = { type: "Change type", blast: "Blast radius", sev: "Severity" };
 

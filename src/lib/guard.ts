@@ -1,4 +1,4 @@
-// What the web app lets a request reach. Anyone who can open the app (on the Mac mini: the LAN, through its port-80
+// What the web app lets a request reach. Anyone who can open the app (on the serving Mac: the LAN, through its port-80
 // proxy) can call these, so each is kept to what the pages themselves use.
 
 // The model server routes the pages call through the app (next.config.ts rewrites). A catch-all forwarded every route,

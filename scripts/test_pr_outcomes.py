@@ -279,7 +279,7 @@ class Issues(unittest.TestCase):
 
 class Polling(unittest.TestCase):
     """mini.sh runs the collector every 15 minutes; re-reading every PR of the last 14 days on each run was ~67 GitHub
-    reads per run on the Mac mini (2026-10-09). Young decisions are polled every run, older ones less often, and a window
+    reads per run on the serving Mac (2026-10-09). Young decisions are polled every run, older ones less often, and a window
     that closed long ago not at all."""
 
     def polled(self, now, calls, posted=None):
