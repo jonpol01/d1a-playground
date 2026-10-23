@@ -119,6 +119,8 @@ def outcomes(decision, next_ts, events, reviews, call_times=(), author=None):
 
 
 def gh(path, jq=".[]"):
+    """One JSON value per output line: gh prints a string result raw (jonpol01, not "jonpol01"), so `jq` must give JSON
+    (tojson for a string)."""
     r = subprocess.run(["gh", "api", "--paginate", path, "--jq", jq], capture_output=True, text=True, timeout=120)
     if r.returncode != 0: raise RuntimeError(f"gh api {path}: {r.stderr.strip()[:200]}")
     return [json.loads(l) for l in r.stdout.splitlines() if l.strip()]   # one item per line across all pages
@@ -132,12 +134,12 @@ def label_events(repo, number):
 def pr_history(repo, number):
     reviews = [{"user": (r.get("user") or {}).get("login", ""), "commit_id": r.get("commit_id"), "submitted_at": r.get("submitted_at")}
                for r in gh(f"repos/{repo}/pulls/{number}/reviews?per_page=100")]
-    author = gh(f"repos/{repo}/pulls/{number}", ".user.login")
+    author = gh(f"repos/{repo}/pulls/{number}", ".user.login | tojson")
     return label_events(repo, number), reviews, author[0] if author else None
 
 
 def issue_history(repo, number):
-    author = gh(f"repos/{repo}/issues/{number}", ".user.login")
+    author = gh(f"repos/{repo}/issues/{number}", ".user.login | tojson")
     return label_events(repo, number), [], author[0] if author else None
 
 
@@ -255,6 +257,12 @@ def main(argv=None, now=None):
             hits = found.get((c["title"], c["author"]), [])
             if len(hits) == 1: items.setdefault(hits[0], (issue_history, ("human",), []))[2].append(c)
     sent = 0
+
+    def save():   # also before a stop: the outcomes posted so far in this run are not posted again
+        if a.dry_run: return
+        state_path.parent.mkdir(parents=True, exist_ok=True); state_path.write_text(json.dumps(posted, indent=1) + "\n")
+        (state_path.parent / "outcomes-summary.json").write_text(json.dumps({"ts": now.isoformat(), "families": summary(calls, posted, now, a.days)}, indent=1) + "\n")
+
     for (repo, number), (history, srcs, seq) in items.items():
         todo = [(c, seq[i + 1]["ts"] if i + 1 < len(seq) else None) for i, c in enumerate(seq)]
         todo = [(c, next_ts) for c, next_ts in todo if c.get("decision_id") and ts(c["ts"]) >= since
@@ -270,12 +278,16 @@ def main(argv=None, now=None):
                 print(f"{repo}#{number} {(c['head_sha'] or 'issue')[:8]} {src}: {labels}")
                 if not a.dry_run:
                     try: post(a.feedback, c["decision_id"], labels, src, f"{repo}#{number}")
+                    except urllib.error.HTTPError as e:
+                        if e.code != 422:
+                            print(f"feedback answered {e.code}; stopping", file=sys.stderr); save(); return 1
+                        # the server refuses this outcome (a decision_id its log no longer has, labels it does not take): the
+                        # others still go; this one is asked again only while the decision is still polled
+                        print(f"  refused: {e.code} {e.read()[:200].decode(errors='replace')}", file=sys.stderr); continue
                     except (urllib.error.URLError, OSError) as e:
-                        print(f"feedback not reachable ({e}); stopping", file=sys.stderr); return 1
+                        print(f"feedback not reachable ({e}); stopping", file=sys.stderr); save(); return 1
                     done[src] = labels; sent += 1
-    if not a.dry_run:
-        state_path.parent.mkdir(parents=True, exist_ok=True); state_path.write_text(json.dumps(posted, indent=1) + "\n")
-        (state_path.parent / "outcomes-summary.json").write_text(json.dumps({"ts": now.isoformat(), "families": summary(calls, posted, now, a.days)}, indent=1) + "\n")
+    save()
     print(f"{sent} outcomes posted")
     return 0
 

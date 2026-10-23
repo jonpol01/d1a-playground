@@ -3,9 +3,9 @@
 # macOS, Linux and WSL. Windows PowerShell: demo.ps1.
 #
 #   ./demo.sh                      install what is missing, start both, open the browser; Ctrl+C stops both
-#   ./demo.sh --media              Photo check and Voice triage too: on Apple Silicon the model server answers them with
-#                                  the same model (Gemma 4's vision and audio encoders, ~1 GB, fetched on the first photo
-#                                  or voice request); elsewhere a second server, d1a.serving.media (~10 GB, loaded on that request)
+#   ./demo.sh --media              Photo check, Voice triage and Video check too: on Apple Silicon the model server answers
+#                                  them with the same model (Gemma 4's vision and audio encoders, ~1 GB, fetched on the first
+#                                  photo or voice request); elsewhere a second server, d1a.serving.media (~10 GB, loaded on that request)
 #   ./demo.sh --no-server          start only the web app, against a model server already running on $KEV_PORT
 #   ./demo.sh --lmstudio URL       no D1A weights: a prompted Gemma 4 chat model in LM Studio answers instead (NOT D1A)
 #             [--lmstudio-model ID]   the LM Studio model id (default gemma-4-e4b-it-mlx)
@@ -60,7 +60,8 @@ MEDIA_PORT="${MEDIA_PORT:-8010}"
 [ "$APPLE_SILICON" = 1 ] && MEDIA_PORT="$KEV_PORT"   # the model server answers photos and voice itself (MLX)
 
 # ---------------------------------------------------------------- helpers
-port_busy() { (exec 3<>"/dev/tcp/127.0.0.1/$1") 2>/dev/null; }     # something accepts connections on 127.0.0.1:$1
+# something accepts connections on 127.0.0.1:$1 or [::1]:$1: localhost, which the browser opens, can be either
+port_busy() { (exec 3<>"/dev/tcp/127.0.0.1/$1") 2>/dev/null || (exec 3<>"/dev/tcp/::1/$1") 2>/dev/null; }
 kev_up()    { curl -fsS -m 3 "http://127.0.0.1:$KEV_PORT/v1/models" >/dev/null 2>&1; }
 
 pick_port() {
@@ -86,12 +87,23 @@ stop_pid() {   # TERM, then KILL after 10 s
   kill -9 "$pid" 2>/dev/null || true
 }
 
+ours() {   # is process $1 still what this script started as $2 (its pid file's name)? A pid file left by a run that ended
+  local cmd   # without stop (a reboot, a crash) can name any process by now
+  cmd="$(ps -o command= -p "$1" 2>/dev/null)" || return 1
+  case "$2:$cmd" in
+    model-server:*d1a.serving.serve*|model-server:*lmstudio_systemone.py*|media-server:*d1a.serving.media*|web:*next/dist/bin/next*) return 0 ;;
+  esac
+  return 1
+}
+
 stop_all() {
-  local f name
+  local f name pid
   for f in "$STATE"/*.pid; do
     [ -e "$f" ] || continue
-    name="$(basename "$f" .pid)"
-    stop_pid "$(cat "$f")" && say "stopped $name"
+    name="$(basename "$f" .pid)"; pid="$(cat "$f")"
+    if ours "$pid" "$name"; then stop_pid "$pid" && say "stopped $name"
+    elif kill -0 "$pid" 2>/dev/null; then warn "$name: process $pid is not the one this script started; left running"
+    fi
     rm -f "$f"
   done
 }
@@ -155,12 +167,14 @@ start_kev() {
         >"$STATE/kev-server.log" 2>&1 &
   else
     local extras="serve"; [ "$MEDIA" = 1 ] && extras="serve,media"
-    if [ ! -f "$VENV/.d1a-$D1A_SHA-$extras" ]; then
+    # the tested environment (d1a#322: a fresh resolve of the same pin broke video); a changed file installs again
+    local cons="$ROOT/scripts/d1a-constraints.txt" chash; chash="$( (sha256sum "$cons" 2>/dev/null || shasum -a 256 "$cons") | cut -c1-8)"
+    if [ ! -f "$VENV/.d1a-$D1A_SHA-$extras-$chash" ]; then
       say "Installing the D1A server (d1a[$extras]) from $D1A_REPO@${D1A_SHA:0:7} into .demo/venv (first run: about 1 GB of Python packages)"
       uv venv --quiet --allow-existing --python "$PYTHON_VERSION" "$VENV"
       # --torch-backend auto picks the CUDA build of torch when an NVIDIA driver is present (PyPI's default is CPU-only on Windows)
-      uv pip install --quiet --python "$VENV/bin/python" --torch-backend auto "d1a[$extras] @ git+$D1A_REPO@$D1A_SHA"
-      rm -f "$VENV"/.kev-* "$VENV"/.d1a-*; touch "$VENV/.d1a-$D1A_SHA-$extras"
+      uv pip install --quiet --python "$VENV/bin/python" --torch-backend auto -c "$cons" "d1a[$extras] @ git+$D1A_REPO@$D1A_SHA"
+      rm -f "$VENV"/.kev-* "$VENV"/.d1a-*; touch "$VENV/.d1a-$D1A_SHA-$extras-$chash"
     fi
     if [ "$APPLE_SILICON" = 1 ]; then
       # Cap PyTorch's share of unified memory (both are needed: a high cap below the default low of 1.4 is refused).
@@ -243,9 +257,9 @@ curl -fsS -m 5 "http://localhost:$WEB_PORT/kev/v1/models" >/dev/null || warn "th
 URL="http://localhost:$WEB_PORT"
 say ""
 say "D1A playground is running:"
-if [ "$MEDIA" = 1 ]; then say "  $URL                all twelve demos"
-else say "  $URL                the demos (Photo check and Voice triage need --media)"; fi
-say "  $URL/#inbox         jump to one (#routing #guardrails #tools #inbox #rerank #evals #labeling #control #gate #photo #voice)"
+if [ "$MEDIA" = 1 ]; then say "  $URL                all thirteen demos"
+else say "  $URL                the demos (Photo check, Voice triage and Video check need --media)"; fi
+say "  $URL/#inbox         jump to one (#routing #guardrails #tools #inbox #rerank #evals #labeling #control #gate #photo #voice #prlabel #video)"
 say "  http://127.0.0.1:$KEV_PORT/v1/models   the server's model card"
 [ -n "$LMSTUDIO" ] && say "  (LM Studio mode: a prompted chat model answers, NOT the trained D1A checkpoint)"
 say "Press Ctrl+C to stop (or run ./demo.sh stop from another terminal)."

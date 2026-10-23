@@ -32,6 +32,8 @@ jobs:
       - run: node --test scripts/test_openai_port.mjs
       # the live OpenAI check passes a stand-in that answers as D1A does and fails each kind of broken one (scripts/openai_smoke.mjs)
       - run: node --test scripts/test_openai_smoke.mjs
+      # demo_smoke.mjs: exit 3 when every demo answers but answers differ from the baseline, 1 when a demo fails (mini.sh)
+      - run: node --test scripts/test_demo_smoke.mjs
       # the demo examples the UI ships must be the ones scripts/demo-baseline.json pins (scripts/demo_smoke.mjs)
       - run: node scripts/demo_smoke.mjs --list
       - run: npx next typegen && npx tsc --noEmit -p .
@@ -67,8 +69,30 @@ jobs:
           PY
           if [ "$EVENT" = pull_request ]; then git diff -U0 "origin/$BASE...HEAD" | python3 /tmp/trusted/scripts/check_hygiene.py paths; fi
       - run: bash -n demo.sh && bash -n mini.sh
+      # every install takes scripts/d1a-constraints.txt (d1a#322: a fresh resolve of the same D1A pin broke video): it must
+      # resolve, with the pinned D1A, on each platform and Python the launchers install with, and leave nothing unpinned
+      - name: The tested environment resolves on macOS, Linux and Windows
+        run: |
+          set -euo pipefail
+          sha=$(sed -n 's/^D1A_SHA="\([0-9a-f]*\)".*/\1/p' mini.sh)
+          for spec in "3.12 aarch64-apple-darwin serve,media,embed" "3.13 aarch64-apple-darwin serve,media" \
+                      "3.13 x86_64-unknown-linux-gnu serve,media" "3.13 x86_64-pc-windows-msvc serve,media"; do
+            set -- $spec
+            echo "d1a[$3] @ git+https://github.com/jonpol01/d1a@$sha" | MACOSX_DEPLOYMENT_TARGET=14.0 pipx run --spec uv==0.12.19 uv pip compile \
+              --quiet --python-version "$1" --python-platform "$2" --torch-backend cpu -c scripts/d1a-constraints.txt - -o /tmp/resolved.txt
+            loose=$(comm -13 <(grep '==' scripts/d1a-constraints.txt | sort) <(grep '==' /tmp/resolved.txt | sed 's/+cpu//' | sort) | tr '\n' ' ')
+            [ -z "$loose" ] || { echo "::error::python $1 on $2 resolves packages scripts/d1a-constraints.txt does not pin: $loose"; exit 1; }
+            echo "python $1, $2, d1a[$3]: $(grep -c '==' /tmp/resolved.txt) packages, every one pinned"
+          done
       # demo.sh's pick_port refuses a PORT something already listens on, so the browser never opens another service's page
       - run: bash scripts/test_demo_port.sh
+      # a stale pid file (a reboot, a crash) can name an unrelated process: the launchers kill only what they started
+      - run: bash scripts/test_demo_pidfile.sh
+      # mini.env: values read back as written (a space or a $( never runs), and an ignored command-line value is said
+      - run: bash scripts/test_mini_env.sh
+      - name: demo.ps1's port picker and pid-file cleanup (PowerShell)
+        shell: pwsh
+        run: ./scripts/test_demo_ps1.ps1
       - name: demo.ps1 parses (PowerShell)
         shell: pwsh
         run: |
@@ -78,6 +102,10 @@ jobs:
       - run: python3 -m py_compile server/lmstudio_systemone.py server/kev/api.py scripts/pr_outcomes.py
       - run: python3 -m unittest scripts/test_pr_outcomes.py
       - run: python3 -m unittest scripts/test_check_hygiene.py
+      # demo.sh and demo.ps1 name every demo the page has, with one count and one list of --media demos
+      - run: python3 -m unittest scripts/test_launcher_drift.py
+      # --lmstudio mode: a reply without an option letter is a 502, not an even split that reads as a real answer
+      - run: python3 -m venv /tmp/lm && /tmp/lm/bin/pip install -q fastapi uvicorn httpx && /tmp/lm/bin/python -m unittest scripts/test_lmstudio_letters.py
       - run: python3 scripts/release_notes.py --check "v$(python3 -c "import json; print(json.load(open('package.json'))['version'])")"
 
   mini-macos:
@@ -93,3 +121,5 @@ jobs:
       # owned by root once failed the install after the stop and left the Mac mini down (stand-in uv, npm and launchctl)
       - run: bash scripts/test_mini_update.sh
       - run: bash scripts/test_demo_port.sh   # the same check under macOS's bash 3.2
+      - run: bash scripts/test_demo_pidfile.sh
+      - run: bash scripts/test_mini_env.sh

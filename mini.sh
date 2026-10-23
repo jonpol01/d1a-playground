@@ -3,13 +3,16 @@
 # start at login and restart after a crash. The model loads when a demo asks and is dropped after IDLE_UNLOAD seconds
 # without one; with MEDIA=1 the same model also answers Photo check and Voice triage.
 #
-#   ./mini.sh install   first time: install the model server and the app, build, write and load the LaunchAgents
+#   ./mini.sh install   first time: install the model server and the app, build, write and load the LaunchAgents (on a
+#                       Mac that already runs them: reinstall)
 #   ./mini.sh start     load both LaunchAgents
 #   ./mini.sh stop      unload both
 #   ./mini.sh status    what is running, and whether the two ports answer
 #   ./mini.sh update    git pull, then reinstall
-#   ./mini.sh reinstall install the model server while the old one still serves, then stop, rebuild the app and start;
-#                       a step that fails after the stop starts the agents again on whatever is installed (no pull)
+#   ./mini.sh reinstall install the model server into its own venv while the old one still serves, then stop, rebuild
+#                       the app, start and run the smoke test; a step that fails after the stop goes back to the venv
+#                       and the agents that ran before (no pull); answers that only differ from the baseline do not
+#                       go back, since every demo answered
 #
 # Settings (read by install and update, then kept in .demo/mini.env):
 #   MODEL_RUN=JohnP1/d1a-e2b-mlx-q8 (Apple Silicon; JohnP1/d1a-e4b-mlx-q8 is more accurate, ~6.5 GB) or JohnP1/d1a-e2b elsewhere
@@ -18,8 +21,8 @@
 #   KEV_PREFIX_CACHE=4  KEV_PREFIX_MAX_TOKENS=65536  (the model server's cache of long states; lower them to save memory)
 #   IDLE_UNLOAD=600 (seconds without a request before the model server frees the model; it loads again in a few seconds
 #   on the next one; 0 keeps it loaded)
-#   MEDIA=0 (1 = demos 10-11 too: the model server answers photos and voice with the same model, through Gemma 4's vision
-#   and audio encoders, ~1 GB more while loaded; MODEL_RUN must carry them, e.g. JohnP1/d1a-e4b-mlx-q8@v0.3)
+#   MEDIA=0 (1 = demos 10, 11 and 13 too: the model server answers photos, voice and video with the same model, through
+#   Gemma 4's vision and audio encoders, ~1 GB more while loaded; MODEL_RUN must carry them, e.g. JohnP1/d1a-e4b-mlx-q8@v0.3)
 #   OPENAI_PORT= (e.g. 1234, LM Studio's port: the model server's OpenAI chat, embeddings and model list on OPENAI_HOST,
 #   "::" by default: every IPv4 and IPv6 address, as LM Studio listened, with no key, for apps that used LM Studio; MODEL_RUN must be an unmerged chat build, d1a docs/USAGE.md
 #   "Chat with D1A". The System One routes stay on 127.0.0.1)
@@ -34,6 +37,11 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 STATE="$ROOT/.demo"
 ENVFILE="$STATE/mini.env"
+# one model server venv per D1A pin and extras, so an install never writes into the venv a running server imports from:
+# current is the one the agents run, previous the one they ran before (a reinstall whose new pin fails goes back to it)
+VENVS="$STATE/d1a-venvs"
+PY="$VENVS/current/bin/python"
+VENV_ID=""; WAS_VENV=""; SMOKE_MOVED=0   # this run's venv, the one before it, and a smoke test that failed on answers alone
 AGENTS="$HOME/Library/LaunchAgents"
 LOGS="$HOME/Library/Logs"
 MODEL_LABEL="io.github.jonpol01.d1a-model"
@@ -51,9 +59,24 @@ PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 say() { printf '\033[1m[mini]\033[0m %s\n' "$*"; }
 die() { printf '\033[31m[mini] error:\033[0m %s\n' "$*" >&2; exit 1; }
 
+# the settings .demo/mini.env holds, in the order save_env writes them
+ENV_KEYS="MODEL_RUN KEV_PORT PORT HOST D1A_BASE_PATH PYTORCH_MPS_HIGH_WATERMARK_RATIO PYTORCH_MPS_LOW_WATERMARK_RATIO KEV_PREFIX_CACHE
+KEV_PREFIX_MAX_TOKENS MEDIA IDLE_UNLOAD FEEDBACK_LOG OUTCOME_CALIBRATOR LABEL_OUTCOMES OPENAI_PORT OPENAI_HOST EMBED_GGUF EMBED_REF CHAT_CONTEXT"
+
 load_env() {
-  # shellcheck disable=SC1090
-  [ -f "$ENVFILE" ] && . "$ENVFILE"
+  local k cli file
+  if [ -f "$ENVFILE" ]; then
+    # the file is this deployment's record and wins: a setting given on the command line that it sets otherwise is
+    # ignored, and said so (an exported PORT or HOST must not move the Mini silently on the next update)
+    for k in $ENV_KEYS; do eval "if [ -n \"\${$k+x}\" ]; then _cli_$k=\"\$$k\"; fi"; done
+    # shellcheck disable=SC1090
+    . "$ENVFILE"
+    for k in $ENV_KEYS; do
+      eval "[ -n \"\${_cli_$k+x}\" ]" || continue
+      eval "cli=\"\$_cli_$k\"; file=\"\${$k-}\""
+      [ "$cli" = "$file" ] || say "warning: $k=$cli from the command line is ignored: $ENVFILE sets $k=$file (edit it, then ./mini.sh update)"
+    done
+  fi
   MODEL_RUN="${MODEL_RUN:-$DEFAULT_MODEL_RUN}"; KEV_PORT="${KEV_PORT:-8009}"; PORT="${PORT:-3031}"; HOST="${HOST:-127.0.0.1}"; D1A_BASE_PATH="${D1A_BASE_PATH:-}"
   PYTORCH_MPS_HIGH_WATERMARK_RATIO="${PYTORCH_MPS_HIGH_WATERMARK_RATIO:-0.7}"
   PYTORCH_MPS_LOW_WATERMARK_RATIO="${PYTORCH_MPS_LOW_WATERMARK_RATIO:-0.6}"
@@ -69,36 +92,17 @@ learning_init() {   # the self-learning settings, created once with this deploym
   [ "$LABEL_OUTCOMES" = 1 ] && [ -n "$OUTCOME_CALIBRATOR" ] || return 0
   mkdir -p "$TRAINED_DIR"
   [ -f "$LEARNING" ] && return 0
-  local py="$STATE/d1a-venv/bin/python"
+  local py="$VENVS/$VENV_ID/bin/python"
   "$py" -m d1a.learning.feedback config init --file "$LEARNING" >/dev/null || die "could not create $LEARNING"
   "$py" -m d1a.learning.feedback config set --file "$LEARNING" 'outcomes.sources=["reviewer","human"]' \
     'promotion.questions=["type","blast","sev"]' "reports.webhook_file=$STATE/learning-webhook" >/dev/null || die "could not set up $LEARNING"
-  say "self-learning settings: $LEARNING (edit on the Learning page or with: $py -m d1a.learning.feedback config set --file $LEARNING key=value)"
+  say "self-learning settings: $LEARNING (edit on the Learning page or with: $PY -m d1a.learning.feedback config set --file $LEARNING key=value)"
 }
 
-save_env() {
+save_env() {   # one KEY=value line per setting, the value shell-quoted (%q), so a space or a $( in it reads back as itself
+  local k
   mkdir -p "$STATE"
-  cat >"$ENVFILE" <<EOF
-MODEL_RUN=$MODEL_RUN
-KEV_PORT=$KEV_PORT
-PORT=$PORT
-HOST=$HOST
-D1A_BASE_PATH=$D1A_BASE_PATH
-PYTORCH_MPS_HIGH_WATERMARK_RATIO=$PYTORCH_MPS_HIGH_WATERMARK_RATIO
-PYTORCH_MPS_LOW_WATERMARK_RATIO=$PYTORCH_MPS_LOW_WATERMARK_RATIO
-KEV_PREFIX_CACHE=$KEV_PREFIX_CACHE
-KEV_PREFIX_MAX_TOKENS=$KEV_PREFIX_MAX_TOKENS
-MEDIA=$MEDIA
-IDLE_UNLOAD=$IDLE_UNLOAD
-FEEDBACK_LOG=$FEEDBACK_LOG
-OUTCOME_CALIBRATOR=$OUTCOME_CALIBRATOR
-LABEL_OUTCOMES=$LABEL_OUTCOMES
-OPENAI_PORT=$OPENAI_PORT
-OPENAI_HOST=$OPENAI_HOST
-EMBED_GGUF=$EMBED_GGUF
-EMBED_REF=$EMBED_REF
-CHAT_CONTEXT=$CHAT_CONTEXT
-EOF
+  for k in $ENV_KEYS; do eval "printf '%s=%q\\n' $k \"\${$k-}\""; done >"$ENVFILE"
 }
 
 domain() { if launchctl print "gui/$(id -u)" >/dev/null 2>&1; then echo "gui/$(id -u)"; else echo "user/$(id -u)"; fi; }
@@ -110,11 +114,41 @@ install_server() {   # reinstall runs it before stop: a failed download or insta
   # run left owned by root failed the Mac mini's install (#33)
   : "${UV_CACHE_DIR:=$STATE/uv-cache}"; export UV_CACHE_DIR
   command -v node >/dev/null || die "node is missing (brew install node)"
+  local nv nmaj nmin; nv="$(node -p 'process.versions.node')"; IFS=. read -r nmaj nmin _ <<<"$nv"   # before the stop, like the install
+  [ "${nmaj:-0}" -gt 20 ] || { [ "${nmaj:-0}" -eq 20 ] && [ "${nmin:-0}" -ge 9 ]; } || die "Node.js $nv is too old; Next.js 16 needs 20.9 or newer (brew upgrade node)"
   local extras="serve"; [ "$MEDIA" = 1 ] && extras="serve,media"
   [ -n "$EMBED_GGUF" ] && extras="$extras,embed"   # llama.cpp for the GGUF embedder
-  say "model server: d1a[$extras] from $D1A_REPO@${D1A_SHA:0:7} into .demo/d1a-venv ($MODEL_RUN)"
-  uv venv --quiet --allow-existing --python 3.12 "$STATE/d1a-venv"
-  uv pip install --quiet --python "$STATE/d1a-venv/bin/python" --torch-backend auto "d1a[$extras] @ git+$D1A_REPO@$D1A_SHA"
+  [ ! -e "$VENVS/current" ] || [ -L "$VENVS/current" ] || die "$VENVS/current is not a link (move it away): ln would put the link inside it"
+  # the tested environment (scripts/d1a-constraints.txt): a fresh resolve of the same pin pulled a transformers that broke
+  # video (d1a#322); a changed file is a new venv
+  local cons="$ROOT/scripts/d1a-constraints.txt"
+  VENV_ID="${D1A_SHA:0:12}-$(printf '%s' "$extras" | tr , -)-$(shasum -a 256 "$cons" | cut -c1-8)"
+  local dir="$VENVS/$VENV_ID"
+  if [ -f "$dir/.complete" ]; then say "model server: d1a[$extras] at ${D1A_SHA:0:7} is installed (.demo/d1a-venvs/$VENV_ID)"; return 0; fi
+  say "model server: d1a[$extras] from $D1A_REPO@${D1A_SHA:0:7} into .demo/d1a-venvs/$VENV_ID ($MODEL_RUN)"
+  uv venv --quiet --allow-existing --python 3.12 "$dir"
+  uv pip install --quiet --python "$dir/bin/python" --torch-backend auto -c "$cons" "d1a[$extras] @ git+$D1A_REPO@$D1A_SHA"
+  touch "$dir/.complete"   # last: current never points at a venv whose install did not finish
+}
+
+switch_venv() {   # after the stop (or before the first start): current -> the venv install_server made sure of
+  WAS_VENV=""
+  if [ -L "$VENVS/current" ]; then WAS_VENV="$(readlink "$VENVS/current")"
+  elif [ -d "$STATE/d1a-venv" ]; then WAS_VENV="$STATE/d1a-venv"; fi   # the one venv before venvs per pin, left where it is
+  mkdir -p "$VENVS"
+  [ -z "$WAS_VENV" ] || [ "$WAS_VENV" = "$VENV_ID" ] || ln -sfn "$WAS_VENV" "$VENVS/previous"
+  ln -sfn "$VENV_ID" "$VENVS/current"
+}
+
+prune_venvs() {   # after a reinstall that passed: keep current and previous; uv's cache rebuilds any other in seconds
+  local keep prev d; keep="$(readlink "$VENVS/current")"; prev="$(readlink "$VENVS/previous" 2>/dev/null || true)"
+  for d in "$VENVS"/*; do
+    [ -d "$d" ] && [ ! -L "$d" ] || continue
+    [ "${d##*/}" = "$keep" ] || [ "${d##*/}" = "$prev" ] || { say "removing the venv of an older pin: ${d#"$ROOT"/}"; rm -rf -- "$d"; }
+  done
+  if [ -d "$STATE/d1a-venv" ] && [ ! -L "$STATE/d1a-venv" ] && [ "$prev" != "$STATE/d1a-venv" ]; then
+    say "removing the venv from before venvs per pin: .demo/d1a-venv"; rm -rf -- "$STATE/d1a-venv"
+  fi
 }
 
 build_web() {   # after stop: npm ci and next build replace the files the running web app serves from
@@ -171,7 +205,7 @@ write_agents() {
 "
   [ -n "$CHAT_CONTEXT" ] && ENV_XML+="    <key>D1A_CHAT_CONTEXT</key><string>$CHAT_CONTEXT</string>
 "
-  plist "$MODEL_LABEL" "$STATE/d1a-venv/bin/python" -m d1a.serving.serve --run "$MODEL_RUN" --port "$KEV_PORT" --host 127.0.0.1 --idle-unload "$IDLE_UNLOAD" >"$AGENTS/$MODEL_LABEL.plist"
+  plist "$MODEL_LABEL" "$PY" -m d1a.serving.serve --run "$MODEL_RUN" --port "$KEV_PORT" --host 127.0.0.1 --idle-unload "$IDLE_UNLOAD" >"$AGENTS/$MODEL_LABEL.plist"
   launchctl bootout "$(domain)/$MEDIA_LABEL" 2>/dev/null || true; rm -f "$AGENTS/$MEDIA_LABEL.plist"   # photos and voice now go to the model server
   ENV_XML="    <key>PATH</key><string>$path</string>
     <key>NODE_ENV</key><string>production</string>
@@ -185,7 +219,7 @@ write_agents() {
   # the Learning page (/learning, d1a#233) shows and edits the self-learning settings and shows the tick's status
   [ "$LABEL_OUTCOMES" = 1 ] && [ -n "$OUTCOME_CALIBRATOR" ] && ENV_XML+="    <key>LEARNING_FILE</key><string>$LEARNING</string>
     <key>LEARNING_STATUS</key><string>$(dirname "$FEEDBACK_LOG")/learning-status.json</string>
-    <key>LEARNING_PY</key><string>$STATE/d1a-venv/bin/python</string>
+    <key>LEARNING_PY</key><string>$PY</string>
 "
   plist "$WEB_LABEL" "$(command -v node)" "$ROOT/node_modules/next/dist/bin/next" start -p "$PORT" -H "$HOST" >"$AGENTS/$WEB_LABEL.plist"
   plutil -lint "$AGENTS/$MODEL_LABEL.plist" "$AGENTS/$WEB_LABEL.plist" >/dev/null
@@ -209,7 +243,7 @@ write_agents() {
   <key>Label</key><string>$OUTCOMES_LABEL</string>
   <key>ProgramArguments</key>
   <array>
-    <string>$STATE/d1a-venv/bin/python</string>
+    <string>$PY</string>
     <string>$ROOT/scripts/pr_outcomes.py</string>
     <string>--feedback</string>
     <string>http://127.0.0.1:$KEV_PORT/v1/feedback</string>
@@ -247,7 +281,7 @@ EOF
   <key>Label</key><string>$PROMOTE_LABEL</string>
   <key>ProgramArguments</key>
   <array>
-    <string>$STATE/d1a-venv/bin/python</string>
+    <string>$PY</string>
     <string>-m</string>
     <string>d1a.learning.feedback</string>
     <string>tick</string>
@@ -308,17 +342,22 @@ start() {
   for l in $(labels); do
     launchctl bootout "$d/$l" 2>/dev/null || true
     bootstrap "$d" "$AGENTS/$l.plist" || die "launchd refused $l six times; see launchctl print $d/$l"
-    [ "$l" = "$PROMOTE_LABEL" ] && continue   # a calendar job: it runs at 04:00, not at start
+    [ "$l" = "$PROMOTE_LABEL" ] && continue   # the self-learning tick runs every 15 minutes, not at start
     launchctl kickstart "$d/$l"   # a bootstrap right after a bootout can leave the agent loaded but not running
     if [ "$l" = "$MODEL_LABEL" ]; then wait_for_model; fi
   done
   say "started; logs in $LOGS/d1a-model.log and $LOGS/d1a-web.log (the model takes a minute or two to load the first time)"
 }
-smoke() {   # every demo's examples through the web app, checked against scripts/demo-baseline.json (scripts/demo_smoke.mjs)
-  local url="http://127.0.0.1:$PORT$D1A_BASE_PATH" n=0
+smoke() {   # every demo's examples through the web app, checked against the baseline (scripts/demo_smoke.mjs): this Mac's own
+  # in .demo when it has one (recorded here: MLX rounds per chip), so the checkout stays clean for update's git pull
+  local url="http://127.0.0.1:$PORT$D1A_BASE_PATH" n=0 rc=0
   until curl -fsS -m 5 -o /dev/null "$url/kev/v1/models"; do n=$((n + 1)); [ $n -gt 120 ] && die "the web app or the model server did not come up; see $LOGS"; sleep 5; done
   local media=""; [ "$MEDIA" = 1 ] || media="--no-media"   # a string, not an array: bash 3.2 under set -u calls an empty array unbound
-  node "$ROOT/scripts/demo_smoke.mjs" "$url" $media || die "demo smoke test FAILED: a demo no longer answers, or answers differently (scripts/demo_smoke.mjs)"
+  local baseline=""; [ ! -f "$STATE/demo-baseline.json" ] || baseline="--baseline=$STATE/demo-baseline.json"
+  local cal=""; [ -z "$OUTCOME_CALIBRATOR" ] || cal="--calibrator=$OUTCOME_CALIBRATOR"   # answers a newer calibrator moved are reported, not failed (#93)
+  node "$ROOT/scripts/demo_smoke.mjs" "$url" $media $baseline $cal || rc=$?
+  [ "$rc" != 3 ] || { SMOKE_MOVED=1; die "demo smoke test: every demo answers, but some answers differ from the baseline; if the change is expected, record it: node scripts/demo_smoke.mjs $url $media --baseline=$STATE/demo-baseline.json${cal:+ $cal} --record"; }
+  [ "$rc" = 0 ] || die "demo smoke test FAILED: a demo no longer answers (scripts/demo_smoke.mjs)"
   [ -n "$OPENAI_PORT" ] || return 0
   # the OpenAI port as apps see it (chat, streaming, tools, JSON, embeddings, the closed System One routes), and decisions
   # unchanged after the chats (scripts/openai_smoke.mjs)
@@ -333,10 +372,36 @@ stop() {
   for l in "$PROMOTE_LABEL" "$OUTCOMES_LABEL" "$OPENAI_LABEL" "$WEB_LABEL" "$MEDIA_LABEL" "$MODEL_LABEL"; do launchctl bootout "$d/$l" 2>/dev/null && say "stopped $l" || say "$l was not loaded"; done
 }
 
-restart_after_failure() {   # the EXIT trap between reinstall's stop and start: a down model server also stops the PR labeler
-  local status=$?
-  say "a step after the stop failed (exit $status): starting the agents again on whatever is installed"
+OUR_LABELS="$MODEL_LABEL $WEB_LABEL $OPENAI_LABEL $OUTCOMES_LABEL $PROMOTE_LABEL"
+
+backup_agents() {   # before write_agents: the agents as they run now, for going back to them
+  local l; rm -rf "$STATE/agents-prev"; mkdir -p "$STATE/agents-prev"
+  for l in $OUR_LABELS; do [ ! -f "$AGENTS/$l.plist" ] || cp -p "$AGENTS/$l.plist" "$STATE/agents-prev/"; done
+}
+
+answers() {   # the model server loads its model and answers one decision (/v1/models answers before any model loads)
+  curl -fsS -m 300 -o /dev/null -H 'content-type: application/json' -H 'x-d1a-decision-log: off' \
+    -d '{"state": "The parcel arrived.", "questions": {"ok": {"type": "noul", "instructions": "Did it arrive?"}}}' \
+    "http://127.0.0.1:$KEV_PORT/v1/systemone"
+}
+
+go_back() {   # the EXIT trap from reinstall's stop to the end of its smoke test: a down model server also stops the PR labeler,
+  # mem0 and the Hermes bots, so a failure goes back to the agents and the venv that ran before
+  local status=$? l
+  trap - EXIT
+  if [ "$SMOKE_MOVED" = 1 ]; then exit "$status"; fi   # every demo answered: a working server stays, its new answers reported
+  say "a step after the stop failed (exit $status): going back to the agents and the model server venv that ran before"
+  [ -z "$WAS_VENV" ] || { ln -sfn "$WAS_VENV" "$VENVS/current"; say "model server venv: ${WAS_VENV#"$ROOT"/}"; }
+  # the agents as they ran (MODEL_RUN, CHAT_CONTEXT and the rest as they were before this run), when the backup has them
+  if [ -f "$STATE/agents-prev/$MODEL_LABEL.plist" ]; then
+    for l in $OUR_LABELS; do
+      if [ -f "$STATE/agents-prev/$l.plist" ]; then cp -p "$STATE/agents-prev/$l.plist" "$AGENTS/"
+      else launchctl bootout "$(domain)/$l" 2>/dev/null || true; rm -f "$AGENTS/$l.plist"; fi
+    done
+  fi
   start || true
+  if answers; then say "back on the version that ran before; the model server answers (this run failed: exit $status)"
+  else say "the version that ran before does not answer either; see $LOGS/d1a-model.log (now: ${WAS_VENV:-unchanged}; tried: .demo/d1a-venvs/$VENV_ID)"; fi
   exit "$status"
 }
 
@@ -347,6 +412,7 @@ status() {
       say "$l: loaded, $(launchctl print "$d/$l" | awk -F'= ' '/^\tstate/ {s=$2} /^\tpid/ {p=$2} END {print s (p ? ", pid " p : "")}')"
     else say "$l: not loaded"; fi
   done
+  [ ! -L "$VENVS/current" ] || say "model server venv: .demo/d1a-venvs/$(readlink "$VENVS/current")$([ ! -L "$VENVS/previous" ] || echo " (previous: $(readlink "$VENVS/previous"))")"
   curl -fsS -m 3 "http://127.0.0.1:$KEV_PORT/v1/models" >/dev/null && say "model server answers on :$KEV_PORT" || say "model server not answering on :$KEV_PORT (still loading?)"
   curl -fsS -m 3 "http://127.0.0.1:$KEV_PORT/v1/models" 2>/dev/null | grep -q '"loaded":true' && say "model in memory" || say "model not in memory (it loads on the next request)"
   [ -z "$OPENAI_PORT" ] || { curl -fsS -m 3 -o /dev/null "http://127.0.0.1:$OPENAI_PORT/v1/models" && say "OpenAI routes answer on $OPENAI_HOST:$OPENAI_PORT" || say "OpenAI routes not answering on :$OPENAI_PORT"; }
@@ -355,7 +421,12 @@ status() {
 
 load_env
 case "${1:-status}" in
-  install) save_env; install_server; learning_init; build_web; write_agents; start; smoke ;;
+  install)
+    save_env
+    # on a Mac that already runs it, the reinstall path: the old version serves until the new one is installed, and a
+    # failure goes back to it
+    if [ -f "$AGENTS/$MODEL_LABEL.plist" ]; then say "already installed here: reinstalling"; exec "$ROOT/mini.sh" reinstall; fi
+    install_server; learning_init; build_web; write_agents; switch_venv; start; smoke ;;
   start) [ -f "$AGENTS/$MODEL_LABEL.plist" ] || die "run ./mini.sh install first"; start ;;
   stop) stop ;;
   status) status ;;
@@ -363,9 +434,9 @@ case "${1:-status}" in
     git -C "$ROOT" pull --ff-only
     exec "$ROOT/mini.sh" reinstall ;;   # the pulled script, not the functions this process read before the pull
   reinstall)
-    install_server; learning_init; write_agents; stop
-    trap restart_after_failure EXIT; build_web; start; trap - EXIT
-    smoke ;;
+    install_server; learning_init; backup_agents; write_agents; stop
+    trap go_back EXIT; switch_venv; build_web; start; smoke; trap - EXIT
+    prune_venvs ;;
   smoke) smoke ;;
   *) die "usage: ./mini.sh {install|start|stop|status|update|reinstall|smoke}" ;;
 esac

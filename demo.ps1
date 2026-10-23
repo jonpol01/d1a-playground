@@ -2,7 +2,7 @@
 # macOS, Linux and WSL: demo.sh.
 #
 #   .\demo.ps1                      install what is missing, start both, open the browser; Ctrl+C stops both
-#   .\demo.ps1 --media              also start the photo and voice server (d1a.serving.media) for Photo check and Voice triage;
+#   .\demo.ps1 --media              also start the photo and voice server (d1a.serving.media) for Photo check, Voice triage and Video check;
 #                                   it loads its model (~10 GB) on the first photo or voice request
 #   .\demo.ps1 --no-server          start only the web app, against a model server already running on $env:KEV_PORT
 #   .\demo.ps1 --lmstudio URL       no D1A weights: a prompted Gemma 4 chat model in LM Studio answers instead (NOT D1A)
@@ -32,6 +32,7 @@ $AppleSilicon = (-not $OnWindows) -and ((& uname -s) -eq 'Darwin') -and ((& unam
 # the 8-bit MLX build on Apple Silicon (4.2 GB, no base download), the PyTorch checkpoint elsewhere
 $ModelRun = if ($env:MODEL_RUN) { $env:MODEL_RUN } elseif ($AppleSilicon) { 'JohnP1/d1a-e2b-mlx-q8' } else { 'JohnP1/d1a-e2b' }
 $MediaPort = if ($env:MEDIA_PORT) { [int]$env:MEDIA_PORT } else { 8010 }
+if ($AppleSilicon) { $MediaPort = $KevPort }   # the model server answers photos and voice itself (MLX)
 
 function Say([string]$m) { Write-Host $m }
 function Warn([string]$m) { Write-Host "warning: $m" -ForegroundColor Yellow }
@@ -50,6 +51,13 @@ for ($i = 0; $i -lt $args.Count; $i++) {
     '^--?media$' { $Media = $true; break }
     '^--?no-?browser$' { $OpenBrowser = $false; break }
     '^--?lmstudio-?model$' { if ($i + 1 -ge $args.Count) { Die '--lmstudio-model needs a model id' }; $i++; $LMStudioModel = [string]$args[$i]; break }
+    # pwsh -File splits an argument that starts with - at its first colon and drops it (-name:value), so
+    # --lmstudio=http://host:1234 arrives as '--lmstudio=http' and '//host:1234'; a URL always has a colon
+    '^--?lmstudio=(.+)$' {
+      $LMStudio = $Matches[1]
+      if (-not $LMStudio.Contains(':') -and $i + 1 -lt $args.Count -and -not ([string]$args[$i + 1]).StartsWith('-')) { $i++; $LMStudio += ':' + [string]$args[$i] }
+      $LMStudio = $LMStudio.TrimEnd('/'); break
+    }
     '^--?lmstudio$' { if ($i + 1 -ge $args.Count) { Die '--lmstudio needs a URL, e.g. --lmstudio http://127.0.0.1:1234' }; $i++; $LMStudio = ([string]$args[$i]).TrimEnd('/'); break }
     '^(-h|--help|-help|/\?)$' { Show-Usage; exit 0 }
     default { Show-Usage; Die "unknown argument: $a" }
@@ -59,10 +67,15 @@ if ($LMStudio -and $NoServer) { Die '--lmstudio and --no-server do not go togeth
 if ($Media -and ($LMStudio -or $NoServer)) { Die '--media starts a D1A server; it does not go with --lmstudio or --no-server' }
 
 # ---------------------------------------------------------------- helpers
-function Test-PortBusy([int]$port) {
-  $c = New-Object System.Net.Sockets.TcpClient
-  try { $ar = $c.BeginConnect('127.0.0.1', $port, $null, $null); $ok = $ar.AsyncWaitHandle.WaitOne(300) -and $c.Connected; return $ok }
-  catch { return $false } finally { $c.Close() }
+function Test-PortBusy([int]$port) {   # 127.0.0.1 or ::1: localhost, which the browser opens, can be either
+  foreach ($ip in [System.Net.IPAddress]::Loopback, [System.Net.IPAddress]::IPv6Loopback) {
+    $c = $null
+    try {
+      $c = New-Object System.Net.Sockets.TcpClient($ip.AddressFamily)
+      $ar = $c.BeginConnect($ip, $port, $null, $null); if ($ar.AsyncWaitHandle.WaitOne(300) -and $c.Connected) { return $true }
+    } catch { } finally { if ($c) { $c.Close() } }
+  }
+  return $false
 }
 function Test-Url([string]$url, [int]$timeout = 3) {
   try { $null = Invoke-WebRequest -UseBasicParsing -Uri $url -TimeoutSec $timeout; return $true } catch { return $false }
@@ -85,11 +98,26 @@ function Stop-Tree([int]$procId) {
     if (Get-Process -Id $procId -ErrorAction SilentlyContinue) { & /bin/kill -9 $procId 2>$null }
   }
 }
+function Test-Ours([int]$procId, [string]$name) {
+  # is the process still what this script started as $name (its pid file's name)? A pid file left by a run that ended
+  # without stop (a reboot, a crash) can name any process by now, and Stop-Tree kills its whole tree
+  if ($OnWindows) { $cmd = (Get-CimInstance Win32_Process -Filter "ProcessId = $procId" -ErrorAction SilentlyContinue).CommandLine }
+  else { $cmd = (& ps -o command= -p $procId 2>$null) -join ' ' }
+  if (-not $cmd) { return $false }
+  switch ($name) {
+    'model-server' { return $cmd -match 'd1a\.serving\.serve|lmstudio_systemone\.py' }
+    'media-server' { return $cmd -match 'd1a\.serving\.media' }
+    'web' { return $cmd -match 'next[/\\]dist[/\\]bin[/\\]next' }
+  }
+  return $false
+}
 function Stop-All {
   Get-ChildItem -Path $State -Filter '*.pid' -ErrorAction SilentlyContinue | ForEach-Object {
-    $procId = [int](Get-Content $_.FullName -Raw).Trim()
-    Stop-Tree $procId
-    Say "stopped $($_.BaseName)"
+    $procId = 0
+    if ([int]::TryParse((Get-Content $_.FullName -Raw).Trim(), [ref]$procId)) {
+      if (Test-Ours $procId $_.BaseName) { Stop-Tree $procId; Say "stopped $($_.BaseName)" }
+      elseif (Get-Process -Id $procId -ErrorAction SilentlyContinue) { Warn "$($_.BaseName): process $procId is not the one this script started; left running" }
+    }
     Remove-Item $_.FullName -Force
   }
 }
@@ -165,13 +193,16 @@ try {
     else {
       $py = if ($OnWindows) { Join-Path $Venv 'Scripts\python.exe' } else { Join-Path $Venv 'bin/python' }
       $extras = if ($Media) { 'serve,media' } else { 'serve' }
-      $marker = Join-Path $Venv ".d1a-$D1aSha-$($extras -replace ',', '-')"
+      # the tested environment (d1a#322: a fresh resolve of the same pin broke video); a changed file installs again
+      $cons = Join-Path $Root 'scripts/d1a-constraints.txt'
+      $chash = (Get-FileHash $cons -Algorithm SHA256).Hash.Substring(0, 8).ToLower()
+      $marker = Join-Path $Venv ".d1a-$D1aSha-$($extras -replace ',', '-')-$chash"
       if (-not (Test-Path $marker)) {
         Say "Installing the D1A server (d1a[$extras]) from $D1aRepo@$($D1aSha.Substring(0, 7)) into .demo\venv (first run: about 1 GB of Python packages, more with CUDA)"
         & uv venv --quiet --allow-existing --python $PythonVersion $Venv
         if ($LASTEXITCODE -ne 0) { Die 'uv venv failed' }
         # --torch-backend auto picks the CUDA build of torch when an NVIDIA driver is present (PyPI's Windows torch is CPU-only)
-        & uv pip install --quiet --python $py --torch-backend auto "d1a[$extras] @ git+$D1aRepo@$D1aSha"
+        & uv pip install --quiet --python $py --torch-backend auto -c $cons "d1a[$extras] @ git+$D1aRepo@$D1aSha"
         if ($LASTEXITCODE -ne 0) { Die 'installing the D1A server failed (see the messages above)' }
         Get-ChildItem -Path $Venv -Force | Where-Object { $_.Name -like '.kev-*' -or $_.Name -like '.d1a-*' } | Remove-Item -Force
         New-Item -ItemType File -Path $marker | Out-Null
@@ -184,10 +215,10 @@ try {
       }
       elseif (Get-Command nvidia-smi -ErrorAction SilentlyContinue) { $device = 'NVIDIA GPU (CUDA)' }
       else { $device = 'CPU (works, but slow: several seconds per request)' }
-      if ($OnWindows) {
-        $memGb = [math]::Floor((Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory / 1GB)
-        if ($memGb -lt 16) { Warn "this PC has $memGb GB of memory; the model server peaks around 15 GB. If it runs out, use --lmstudio instead." }
-      }
+      $memGb = if ($OnWindows) { [math]::Floor((Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory / 1GB) }
+               elseif ((& uname -s) -eq 'Darwin') { [math]::Floor([double](& sysctl -n hw.memsize) / 1GB) } else { 0 }
+      $peak = if ($AppleSilicon) { 5 } else { 15 }
+      if ($memGb -gt 0 -and $memGb -lt $peak + 4) { Warn "this machine has $memGb GB of memory; the model server peaks around $peak GB. If it runs out, use --lmstudio instead." }
       Say "Starting the model server (d1a.serving.serve): $ModelRun on $device, port $KevPort (logs: .demo\model-server*.log)"
       if ($AppleSilicon) { Say 'The first start downloads the 8-bit MLX model (about 4 GB); later starts take a few seconds.' }
       else { Say 'The first start downloads Gemma 4 E2B (about 10 GB) and the adapter; later starts take about 20 s.' }
@@ -206,7 +237,7 @@ try {
     Say ("Server ready on http://127.0.0.1:{0} after {1:N0} s." -f $KevPort, ((Get-Date) - $t0).TotalSeconds)
 
     # ---------------------------------------------------------------- the photo and voice server (--media)
-    if ($Media) {
+    if ($Media -and -not $AppleSilicon) {
       if (Test-MediaUp) { Say "A media server is already answering on port $MediaPort; using it." }
       else {
         if (Test-PortBusy $MediaPort) { Die "port $MediaPort is taken; stop what uses it or set `$env:MEDIA_PORT" }
@@ -246,9 +277,9 @@ try {
 
   Say ''
   Say 'D1A playground is running:'
-  if ($Media) { Say "  $url                the eleven demos" }
-  else { Say "  $url                the demos (Photo check and Voice triage need --media)" }
-  Say "  $url/#inbox         jump to one (#routing #guardrails #tools #inbox #rerank #evals #labeling #control #gate #photo #voice)"
+  if ($Media) { Say "  $url                all thirteen demos" }
+  else { Say "  $url                the demos (Photo check, Voice triage and Video check need --media)" }
+  Say "  $url/#inbox         jump to one (#routing #guardrails #tools #inbox #rerank #evals #labeling #control #gate #photo #voice #prlabel #video)"
   Say "  http://127.0.0.1:$KevPort/v1/models   the server's model card"
   if ($LMStudio) { Say '  (LM Studio mode: a prompted chat model answers, NOT the trained D1A checkpoint)' }
   Say 'Press Ctrl+C to stop (or run .\demo.ps1 stop from another window).'
