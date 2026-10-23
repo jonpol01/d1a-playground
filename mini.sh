@@ -67,7 +67,7 @@ load_env() {
   local k cli file
   if [ -f "$ENVFILE" ]; then
     # the file is this deployment's record and wins: a setting given on the command line that it sets otherwise is
-    # ignored, and said so (an exported PORT or HOST must not move the Mini silently on the next update)
+    # ignored, and said so (an exported PORT or HOST must not move the serving Mac silently on the next update)
     for k in $ENV_KEYS; do eval "if [ -n \"\${$k+x}\" ]; then _cli_$k=\"\$$k\"; fi"; done
     # shellcheck disable=SC1090
     . "$ENVFILE"
@@ -88,7 +88,7 @@ load_env() {
   LEARNING="$STATE/learning.json"; TRAINED_DIR="$STATE/trained"   # the self-learning settings and the trained manifests (d1a#233)
 }
 
-learning_init() {   # the self-learning settings, created once with this deployment's choices; later edits are John's (page or CLI)
+learning_init() {   # the self-learning settings, created once with this deployment's choices; later edits are the maintainer's (page or CLI)
   [ "$LABEL_OUTCOMES" = 1 ] && [ -n "$OUTCOME_CALIBRATOR" ] || return 0
   mkdir -p "$TRAINED_DIR"
   [ -f "$LEARNING" ] && return 0
@@ -111,7 +111,7 @@ install_server() {   # reinstall runs it before stop: a failed download or insta
   [ ! -f "$HOME/d1a-guard/preflight.sh" ] || { . "$HOME/d1a-guard/preflight.sh"; d1a_preflight mini-install 2 3 || die "preflight refused: free must cover the ~2 GB install + 5 GB headroom (line above)"; }
   command -v uv >/dev/null || die "uv is missing (brew install uv)"
   # uv's cache under .demo, which this user owns, unless UV_CACHE_DIR says otherwise: a global ~/.cache/uv that a `sudo`
-  # run left owned by root failed the Mac mini's install (#33)
+  # run left owned by root failed the serving Mac's install (#33)
   : "${UV_CACHE_DIR:=$STATE/uv-cache}"; export UV_CACHE_DIR
   command -v node >/dev/null || die "node is missing (brew install node)"
   local nv nmaj nmin; nv="$(node -p 'process.versions.node')"; IFS=. read -r nmaj nmin _ <<<"$nv"   # before the stop, like the install

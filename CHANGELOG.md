@@ -51,13 +51,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   `demo.sh` and `demo.ps1` move with it.
 - **D1A pinned to `24e0c3d4`** (d1a#277): the GGUF embedder runs on the GPU, so its vectors are LM Studio's for the same
   file (cosine 1.00000, from about 0.99 on the CPU). `demo.sh` and `demo.ps1` move with it.
-- **The Mac mini serves D1A-E2B-it v0.6, one model for decisions and OpenAI chat** (jonpol01/d1a#274): an unmerged 8-bit
+- **The serving Mac serves D1A-E2B-it v0.6, one model for decisions and OpenAI chat** (jonpol01/d1a#274): an unmerged 8-bit
   build of `JohnP1/d1a-e2b-it@v0.6` with the media encoders, built locally (not published), with `OPENAI_PORT=1234` and
-  `EMBED_GGUF` (nomic-embed-text-v1.5). LM Studio is off. mem0, n8n and the Hermes fallbacks reach D1A on port 1234. John
+  `EMBED_GGUF` (nomic-embed-text-v1.5). LM Studio is off. mem0, n8n and the Hermes fallbacks reach D1A on port 1234. the maintainer
   accepted the PR labeler's regression from E4B v0.6.1 (severity 72.9% vs 79.1% on 487 newer PRs, P0/P1 found 3 of 30 vs
   13 of 30). Rollback: restore `.demo/mini.env.before-274` (`MODEL_RUN=JohnP1/d1a-e4b-mlx-q8@v0.6.1`, no `OPENAI_PORT`)
   and reinstall.
-  - The demo baseline is re-recorded on the Mini with E2B-it: 145/145 PASS against it, max probability change 0.0000.
+  - The demo baseline is re-recorded on the serving Mac with E2B-it: 145/145 PASS against it, max probability change 0.0000.
     Against the E4B v0.6.1 baseline, 26 entries changed (8 are evals score values). Worse: the photo demo's place is
     "on a sidewalk" for the front-door and mailbox photos, the crushed-truck photo and video are no longer "damaged", and
     two voice clips are now urgent. Also changed: the routing summary goes "small", the ambiguous gate case is "replace"
@@ -74,13 +74,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - **`mini.sh start` survives launchd's "Bootstrap failed: 5".** Right after a `stop`, launchd refused to load an agent
   again while its bootout was still finishing. Under `set -e` the start ended there and every agent stayed down: on the
-  Mac mini on 2026-10-15, after an evaluation window, the restart failed until it was run again by hand five minutes
+  serving Mac on 2026-10-15, after an evaluation window, the restart failed until it was run again by hand five minutes
   later. `start` now tries each agent up to six times, five seconds apart, and fails loudly if launchd never accepts.
 - **No more 500s while the model server starts** (jonpol01/d1a#42). `mini.sh` now starts the model server first and
   waits, for up to 2 minutes, until it answers `/v1/models` before starting the web app. Until then the web app (ready
   in about 50 ms) proxied the page's first models poll to a closed port and returned a 500 (`ECONNREFUSED`): once per
-  restart on the Mac mini, 13 of 21 restarts since 2026-10-03.
-- **A PR's author labelling it while opening it is no longer a "human" outcome.** Agent sessions open most PRs on John's
+  restart on the serving Mac, 13 of 21 restarts since 2026-10-03.
+- **A PR's author labelling it while opening it is no longer a "human" outcome.** Agent sessions open most PRs on the maintainer's
   repositories under his account and label them in the same minute (`gh pr create --label`, or `gh pr edit` just after),
   so `scripts/pr_outcomes.py` read those labels as a person correcting D1A, ranked above the review bot: 40 such outcomes
   sit in the live log (1 on 10-05, 39 from one early run on 10-06), and no person has corrected D1A yet. The author's
@@ -88,7 +88,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   later, and any other person at any time, still do. The PR's or issue's author is read with one more API call per poll.
   The 40 records already logged are voided in D1A (d1a `feedback void`).
 - **How often D1A's labels are changed** counted only decisions followed by a later labeler call on the same PR, so it
-  missed every PR's last call: about two thirds of the review bot's grades (on the Mini, 44 of 154 type grades and 0 of 15
+  missed every PR's last call: about two thirds of the review bot's grades (on the serving Mac, 44 of 154 type grades and 0 of 15
   severity grades were shown). A review bot grade now counts as soon as it is posted; a person's change counts once the
   decision is closed (the next call came over a day ago, or the PR's last call is older than `--days`, when the script
   stops checking it). `summary()` has a test for a PR with one call, red before this fix.
@@ -122,22 +122,22 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   outcomes after a model switch, and runs the gate after 10 new outcomes or daily at 04:00.
   - Replays are invisible to `scripts/pr_outcomes.py` (a replay of an issue call is never a call) and to `/review`.
   - `outcomes.enabled` false stops the outcome poster.
-- **`mini.sh` install, reinstall and update run D1A's disk and RAM preflight first**, when the Mac mini has it
+- **`mini.sh` install, reinstall and update run D1A's disk and RAM preflight first**, when the serving Mac has it
   (`~/d1a-guard/preflight.sh`; elsewhere the line is skipped). It refuses unless free disk covers the ~2 GB install plus
-  5 GB headroom and the RAM headroom holds, so an update can't fill the disk. It warns below the Mini's 10 GB target. On
-  2026-10-10 both machines' disks filled. The Mini also runs a disk guard LaunchAgent: it pauses D1A's own jobs below 6 GB
+  5 GB headroom and the RAM headroom holds, so an update can't fill the disk. It warns below the serving Mac's 10 GB target. On
+  2026-10-10 both machines' disks filled. The serving Mac also runs a disk guard LaunchAgent: it pauses D1A's own jobs below 6 GB
   free or on fast swap growth and stops them below 3 GB, and never touches the live server on :8009, the bots, Docker or
   LM Studio.
 
 ### Changed
 
-- **The Mac mini serves D1A-E4B v0.6** (`MODEL_RUN=JohnP1/d1a-e4b-mlx-q8@v0.6`; D1A pinned to `2a90e61f` in
+- **The serving Mac serves D1A-E4B v0.6** (`MODEL_RUN=JohnP1/d1a-e4b-mlx-q8@v0.6`; D1A pinned to `2a90e61f` in
   `mini.sh`, `demo.sh` and `demo.ps1`; jonpol01/d1a#230: `/v1/models` lists only `d1a-latest`). v0.6 is an
-  explicit exception to D1A's veto, chosen for the Mini's live job of labelling current pull requests: on 487 PRs newer than
+  explicit exception to D1A's veto, chosen for the serving Mac's live job of labelling current pull requests: on 487 PRs newer than
   all its training it labels severity 79.1% (v0.5: 74.7%) and type 90.6% (86.7%) (jonpol01/d1a#198, #225). Rollback:
   `MODEL_RUN=JohnP1/d1a-e4b-mlx-q8@v0.5`.
-  - The demo baseline is re-recorded on the Mini: 145/145 PASS against it. Against the v0.5 baseline, 16 entries
-    changed (several are score values only). The gate on this Mac listed 11 changed answers, and the Mini's M4 adds three
+  - The demo baseline is re-recorded on the serving Mac: 145/145 PASS against it. Against the v0.5 baseline, 16 entries
+    changed (several are score values only). The gate on this Mac listed 11 changed answers, and the serving Mac's M4 adds three
     borderline ones: the Control demo's "robot 3, target 10, no hint" now moves right (correct), Japanese rerank passage 5
     is now "not relevant", and the English evals "Good answer" now carries error = true (worse). Of the 11: Six look better: the evals demo ×4, the
     crushed-truck video now "damaged", and one English bulk row. Three are borderline: Japanese "as described", the CI
@@ -158,7 +158,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   decision log (`--log`, which `mini.sh` sets to `FEEDBACK_LOG`) by their state's `kind: github-issue`, and matched to
   the one issue with that exact title and author in the labeled repositories' owners (one GitHub search per owner per
   run). Issues get no review, so their outcome is a person's type or severity labels between the call and the next one
-  on the same issue, posted as `src` human with group `<repo>#<number>`. On the Mac mini's log (2026-10-09) 120 of 121
+  on the same issue, posted as `src` human with group `<repo>#<number>`. On the serving Mac's log (2026-10-09) 120 of 121
   labelled issues match; one of the 301 issue decisions has a person's labels in its window so far.
 - **PR label check** (`/review`, #29). It is the human check of the PR labeler's labels, to measure how noisy the review
   bot's labels are; the outcome calibrator and outcome memory learn from them.
@@ -176,9 +176,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   the baseline's choice. The requests come from the demos' own questions, presets and state builders
   (`src/components/uses/smoke.ts`), so the test follows the UI. Checks: CI's `--list` (no server) fails when an example
   is added or removed without re-recording the baseline. `mini.sh install|reinstall|update` and `./mini.sh smoke` run
-  the full test after a deploy and stop on a failure. Baseline recorded on the Mac mini (D1A `a84bd8c`,
+  the full test after a deploy and stop on a failure. Baseline recorded on the serving Mac (D1A `a84bd8c`,
   `d1a-e4b-mlx-q8@v0.4`): 145/145, in 77 s.
-- The Mini runs D1A's promotion gate daily: with `LABEL_OUTCOMES=1` and `OUTCOME_CALIBRATOR` set, `mini.sh` adds the
+- The serving Mac runs D1A's promotion gate daily: with `LABEL_OUTCOMES=1` and `OUTCOME_CALIBRATOR` set, `mini.sh` adds the
   `io.github.jonpol01.d1a-promote` LaunchAgent (04:00, `python -m d1a.feedback promote`), and removes it when either is off.
 - Demo 13, **Video check**: the Photo check questions (is the parcel damaged, where was it left) about a short clip, with
   four sample clips and an upload (MP4, MOV, WebM up to 24 MB). The model reads 16 timestamped frames through Gemma 4's
@@ -213,13 +213,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - **Demo and smoke-test requests stay out of the learning log.** The demos (`src/lib/kev.ts`) and
   `scripts/demo_smoke.mjs` send `x-d1a-decision-log: off`, which a D1A model server that honours it answers without
-  writing a decision; older servers ignore it, so on the Mac mini it takes effect when the D1A pin moves to the server
-  change (jonpol01/d1a#221). On the Mac mini's log (2026-10-09) 1,879 of 2,290 decisions were demo
+  writing a decision; older servers ignore it, so on the serving Mac it takes effect when the D1A pin moves to the server
+  change (jonpol01/d1a#221). On the serving Mac's log (2026-10-09) 1,879 of 2,290 decisions were demo
   and smoke traffic (726 of v0.5's 855), each one pending forever: `d1a.learning.feedback status` reported 2,181 pending
   decisions, 302 without them (v0.5: 818, 92). A local server on the tiny test checkpoint logged 131 decisions for one
   `--no-media` smoke run before the change and 0 after.
 - **The outcome collector polls GitHub less.** Each run re-read every pull request of the last 14 days until a person
-  relabelled it, which most never are: 67 reads per run on the Mac mini. A decision is now checked every run in its first
+  relabelled it, which most never are: 67 reads per run on the serving Mac. A decision is now checked every run in its first
   day, hourly until its third, then every 6 hours, staggered per pull request, and a window that closed more than a day
   ago is not polled for a person's labels any more: 14 reads per run on average (5 to 23), plus about 20 for issues.
 - **The D1A model server pin moves to jonpol01/d1a@140a3dea** (from `ff212c06`, jonpol01/d1a#186). The daily promote job
@@ -229,20 +229,20 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   (`--base ff212c06 --head 140a3dea`, `d1a-e4b-mlx-q8@v0.4`): every demo example and the labeler replay, 237 requests,
   0 changed answers, max |dp| 0, latency 1.004 against a 0.996 floor. `scripts/test_mini_update.sh` checks that the
   promote agent passes `--run MODEL_RUN`.
-- **The Mac mini serves D1A-E4B v0.5** (`JohnP1/d1a-e4b-mlx-q8@v0.5`, jonpol01/d1a#175), set as `MODEL_RUN` in
+- **The serving Mac serves D1A-E4B v0.5** (`JohnP1/d1a-e4b-mlx-q8@v0.5`, jonpol01/d1a#175), set as `MODEL_RUN` in
   `.demo/mini.env`.
   - v0.5 against v0.4 on held-out data, MLX 8-bit:
     - better: hard decisions 55% → 71%, developer tools 64% → 70%, transfer +2.7, JGLUE +1.1, routing +1.5, decision
       +0.6, documents +0.9, PR change type +2.0;
     - worse: PR severity −2.2, and blast radius on the owner's repositories 87% → 74% (39 hand-checked PRs).
   - The full scorecard is on jonpol01/d1a#175.
-  - `scripts/demo-baseline.json` is recorded on v0.5 on the Mac mini itself (M4, MLX 0.32.3), 145 requests, reproduced
+  - `scripts/demo-baseline.json` is recorded on v0.5 on the serving Mac itself (M4, MLX 0.32.3), 145 requests, reproduced
     exactly there. 17 of 201 answers change from v0.4:
     - evals: quality scores move a little, and the wrong and partly correct answers are now flagged as errors;
     - the crushed-truck photo is now "damaged";
     - one each for inbox email 7, a rerank passage, a bulk row and the Japanese summary's route;
     - the CI-change PR's blast radius changes too.
-    A first recording on an M1 Max (MLX 0.32.2) differed from the Mini's by up to 0.045 in probability, flipping three
+    A first recording on an M1 Max (MLX 0.32.2) differed from the serving Mac's by up to 0.045 in probability, flipping three
     answers near a boundary: MLX rounds 8-bit matrix products differently per chip, so a baseline is recorded on the
     machine that serves it.
   - Rollback:
@@ -258,7 +258,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Fixed
 
 - **A failed `mini.sh update` no longer leaves the Mac down.** Before, `reinstall` (which `update` runs) stopped every
-  agent before installing anything. On 2026-10-07 the Mac mini's uv cache, owned by root, failed the install, and the
+  agent before installing anything. On 2026-10-07 the serving Mac's uv cache, owned by root, failed the install, and the
   model server, the PR labeler and the demos stayed down until they were restarted by hand.
   - `reinstall` now installs the model server and writes the LaunchAgents while the old version still serves, and stops
     the agents only after both succeed.

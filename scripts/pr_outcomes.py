@@ -3,7 +3,7 @@
     python3 scripts/pr_outcomes.py                       # once; mini.sh runs it every 15 minutes when LABEL_OUTCOMES=1
     python3 scripts/pr_outcomes.py --dry-run             # print what it would post
 
-The CTO bot's labeling job asks D1A three choice questions on every open pull request in John's repositories (change
+The CTO bot's labeling job asks D1A three choice questions on every open pull request in the maintainer's repositories (change
 type, blast radius, severity P0-P4) and applies the answers as labels. It writes one line per D1A call to
 /Users/Shared/d1a/labeler-decisions.jsonl: ts, repo, number, head_sha, decision_id, applied_labels. Two kinds of outcome
 follow on GitHub:

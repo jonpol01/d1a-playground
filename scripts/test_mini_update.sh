@@ -2,7 +2,7 @@
 # mini.sh reinstall (update runs it after the pull) under the system bash (3.2 on macOS): a model-server install that fails
 # leaves the running services up, a step that fails after they were stopped starts them again, and uv uses the cache under
 # .demo unless UV_CACHE_DIR names another. On 2026-10-07 a uv cache owned by root failed the install after the stop and left
-# the Mac mini down. Run by CI's mini-macos job, and by hand on a Mac.
+# the serving Mac down. Run by CI's mini-macos job, and by hand on a Mac.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"; T="$(mktemp -d)"; trap 'rm -rf "$T"' EXIT
 mkdir -p "$T/app/.demo" "$T/home"; cp "$ROOT/mini.sh" "$T/app/"; printf 'PORT=3999\n' > "$T/app/.demo/mini.env"
@@ -17,7 +17,7 @@ cat > "$PYSTUB" <<'PY'
 echo "python $*" >> "$CALLS"; for a in "$@"; do [ "$prev" = --file ] && [ "$3" = config ] && [ "$4" = init ] && echo '{}' > "$a"; prev=$a; done; exit 0
 PY
 chmod +x "$PYSTUB"
-mkdir -p "$APP/.demo/d1a-venv/bin"; cp "$PYSTUB" "$APP/.demo/d1a-venv/bin/python"   # the one venv the Mac mini had before venvs per pin
+mkdir -p "$APP/.demo/d1a-venv/bin"; cp "$PYSTUB" "$APP/.demo/d1a-venv/bin/python"   # the one venv the serving Mac had before venvs per pin
 # stand-ins for what mini.sh runs, as exported functions so they win over the Homebrew PATH it prepends; they log their calls
 uv() {   # printenv: what uv itself would see; venv makes the directory, with the logging python
   echo "uv $* cache=$(printenv UV_CACHE_DIR || echo unset)" >> "$CALLS"
@@ -81,7 +81,7 @@ grep -q "StartInterval" "$agent" && ! grep -q "StartCalendarInterval" "$agent" |
 grep -A1 "<key>D1A_LEARNING</key>" "$T/home/Library/LaunchAgents/io.github.jonpol01.d1a-model.plist" | grep -qF "<string>$T/app/.demo/learning.json</string>" || fail promote "the model server does not read the settings file (its learned flags and rules)"
 grep -qF "config init --file $T/app/.demo/learning.json" "$T/promote" || fail promote "did not create the settings file"
 grep -qF 'promotion.questions=["type","blast","sev"]' "$T/promote" || fail promote "did not set the questions that learn"
-run promote2 FAIL_UV=   # a reinstall never overwrites John's settings
+run promote2 FAIL_UV=   # a reinstall never overwrites the maintainer's settings
 ! grep -q "config init" "$T/promote2" || fail promote2 "re-created the settings file on reinstall"
 printf 'PORT=3999\n' > "$T/app/.demo/mini.env"
 

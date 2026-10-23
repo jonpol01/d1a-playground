@@ -38,7 +38,7 @@ jobs:
       - run: node scripts/demo_smoke.mjs --list
       - run: npx next typegen && npx tsc --noEmit -p .
       - run: npm run build
-      # the Mac mini serves the app under /d1a behind a proxy (mini.sh, D1A_BASE_PATH): that build must work too
+      # the serving Mac serves the app under /d1a behind a proxy (mini.sh, D1A_BASE_PATH): that build must work too
       - run: D1A_BASE_PATH=/d1a npm run build
 
   scripts:
@@ -113,12 +113,12 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
-      # macOS ships bash 3.2, where `set -u` calls an empty array unbound: mini.sh's smoke step crashed on the Mac mini that
+      # macOS ships bash 3.2, where `set -u` calls an empty array unbound: mini.sh's smoke step crashed on the serving Mac that
       # way. A copy of mini.sh runs `smoke` against a stand-in web app (a static server answering the model check) with a
       # stand-in demo_smoke.mjs that records its arguments; media on and off must pass the right ones.
       - run: bash scripts/test_mini_smoke.sh
       # a failed install must leave the running services up, and a failure after the stop must start them again: a uv cache
-      # owned by root once failed the install after the stop and left the Mac mini down (stand-in uv, npm and launchctl)
+      # owned by root once failed the install after the stop and left the serving Mac down (stand-in uv, npm and launchctl)
       - run: bash scripts/test_mini_update.sh
       - run: bash scripts/test_demo_port.sh   # the same check under macOS's bash 3.2
       - run: bash scripts/test_demo_pidfile.sh

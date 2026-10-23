@@ -55,7 +55,7 @@ test("the sample: half disagree and half agree, a short stratum filled from the 
   const big = sample(candidates(log(80, 60)));
   assert.equal(big.length, TARGET);
   assert.equal(big.filter((i) => i.disagree).length, TARGET / 2);
-  const few = sample(candidates(log(30, 9)));                                                              // what the Mini has today
+  const few = sample(candidates(log(30, 9)));                                                              // what the serving Mac has today
   assert.deepEqual([few.length, few.filter((i) => i.disagree).length], [39, 9]);
   const short = sample(candidates(log(10, 70)));
   assert.deepEqual([short.length, short.filter((i) => i.disagree).length], [50, 40]);
