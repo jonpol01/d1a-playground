@@ -1,3 +1,4 @@
+import { crossSiteRefusal } from "@/lib/guard";
 import { readFile } from "node:fs/promises";
 import { candidates, feedbackBody, parseJsonl, sample, TARGET } from "@/lib/review";
 
@@ -35,6 +36,8 @@ export async function GET() {
 
 export async function POST(req: Request) {
   if (!LOG) return off();
+  const refused = crossSiteRefusal(req);
+  if (refused) return refused;
   let posted: unknown;
   try { posted = await req.json(); } catch { return Response.json({ error: "body must be JSON" }, { status: 400 }); }
   const checked = feedbackBody((await current()).items, posted);

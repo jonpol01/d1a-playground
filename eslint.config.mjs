@@ -9,6 +9,7 @@ const eslintConfig = defineConfig([
   globalIgnores([
     // Default ignores of eslint-config-next:
     ".next/**",
+    ".demo/**",   // demo.sh's state: its Python venv carries third-party JavaScript (torch, scikit-learn)
     "out/**",
     "build/**",
     "next-env.d.ts",
