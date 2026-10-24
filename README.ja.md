@@ -4,7 +4,7 @@
 
 小さな判断モデルが1つの文書を読み、それについての型付きの質問にいくつか答え、すべての選択肢に確率を返します。このプレイグラウンドでは、その仕組みで13の実際の仕事をライブで動かします。プロンプトのモデル振り分け、プロンプトインジェクションのブロック、エージェントのツール呼び出しの制御、受信トレイの仕分け、検索結果のリランキング、LLM の回答の採点、表のラベル付け、ロボットのリアルタイム制御、実行するか人に回すかの判断、そして写真・音声メモ・短い動画からの、配達荷物の破損チェックとドライバーの連絡の振り分け、そしてプルリクエストのラベル付けです。どの例も編集でき、どの答えにも確率の分布全体が表示されます。
 
-D1A は Jared Palmer による [Kev](https://github.com/jaredpalmer/kev)（Apache-2.0）をベースにしています。D1A は Jared Palmer および Kev プロジェクトとは提携しておらず、推奨も受けていません。プレイグラウンドでは、Gemma 4 E2B をベースにした1エポックのモデル D1A-E2B v0.1（[JohnP1/d1a-e2b](https://huggingface.co/JohnP1/d1a-e2b)、タグ `v0.1-1epoch`）を使います。
+D1A は Jared Palmer による [Kev](https://github.com/jaredpalmer/kev)（Apache-2.0）をベースにしています。D1A は Jared Palmer および Kev プロジェクトとは提携しておらず、推奨も受けていません。プレイグラウンドでは Gemma 4 E2B をベースにした D1A-E2B（[JohnP1/d1a-e2b](https://huggingface.co/JohnP1/d1a-e2b)、Apple Silicon ではその 8 ビット MLX 版）の最新リリースを使います。`MODEL_RUN` で別のモデルやタグを選べます。各モデルのバージョンとスコアは D1A の[モデル一覧](https://github.com/jonpol01/d1a/blob/main/docs/MODELS.md)にあります。
 
 ## 13のデモ
 
@@ -123,7 +123,7 @@ powershell -ExecutionPolicy Bypass -File .\demo.ps1
 
 ## 画面
 
-UI は既定で日本語で、ヘッダーの JA / EN で切り替えられます。選択はブラウザに保存され、URL の `?lang=en` または `?lang=ja` が優先されます。日本語モードでは例文も日本語です。プロトタイプのモデルは英語のデータで学習しているため、日本語の文言では答えが弱い、または不安定だったデモでは、読む文章は日本語のまま、質問文と選択肢の説明を英語で送っています（どのデモがそうかは各ファイルに書いてあります）。ヘッダーの下のハードウェアモニターには、バックエンド、リクエストごとのレイテンシとその推移、スループット、モデルサーバーのマシンの GPU 使用率・メモリ・負荷が表示されます（`GET /api/hw` が `ioreg`、`footprint`、`memory_pressure`、`nvidia-smi` など権限不要のコマンドで取得します）。`/architecture` ではモデルの仕組みを説明しています。
+UI は既定で日本語で、ヘッダーの JA / EN で切り替えられます。選択はブラウザに保存され、URL の `?lang=en` または `?lang=ja` が優先されます。日本語モードでは例文も日本語です。デモは英語のデータだけで学習したモデルで作られたため、当時日本語の文言では答えが弱い、または不安定だったデモでは、読む文章は日本語のまま、質問文と選択肢の説明を英語で送っています（どのデモがそうかは各ファイルに書いてあります）。ヘッダーの下のハードウェアモニターには、バックエンド、リクエストごとのレイテンシとその推移、スループット、モデルサーバーのマシンの GPU 使用率・メモリ・負荷が表示されます（`GET /api/hw` が `ioreg`、`footprint`、`memory_pressure`、`nvidia-smi` など権限不要のコマンドで取得します）。`/architecture` ではモデルの仕組みを説明しています。
 
 ## Mac で常時稼働させる
 
@@ -145,7 +145,7 @@ git clone https://github.com/jonpol01/d1a-playground.git ~/d1a-playground && cd 
 
 **自己学習。** D1A の `d1a.learning.feedback` による自己学習は、設定しない限りオフです。`FEEDBACK_LOG=<パス>` を設定すると、すべての判定を `decision_id` 付きで記録し、実際の結果（アウトカム）を `POST /v1/feedback` で受け取ります。`OUTCOME_CALIBRATOR=<ファイル>` を設定すると、そのアウトカムで求めたキャリブレーター（`python -m d1a.learning.feedback calibrate`）を適用し、ファイルが変わると読み込み直します。
 
-**PR ラベルのアウトカム。** `LABEL_OUTCOMES=1`（`FEEDBACK_LOG` と一緒に）を設定すると、`scripts/pr_outcomes.py` を 15 分ごとに実行する LaunchAgent が加わります。CTO ボットの PR ラベル付けの判定を `/Users/Shared/d1a/labeler-decisions.jsonl` から読み、そのアウトカムをモデルサーバーに送ります。アウトカムは、レビューボットがレビューしたヘッドに付けた種類と影響範囲のラベル（`src` reviewer）と、人が変えた種類・影響範囲・深刻度のラベル（`src` human。こちらが優先）です。Issue のラベル付けの判定は `FEEDBACK_LOG` から読み（state に `kind: github-issue` とあるもの）、同じタイトルと作成者の Issue 1件に対応付けます。Issue にはレビューがないので、アウトカムは人によるラベルの変更だけで、規則は同じです。判定は最初の1日は毎回、3日目までは1時間ごと、14日目までは6時間ごとに確かめ、期間が終わって1日を過ぎたものはもう確かめません。GitHub には何も書き込みません。ログは `~/Library/Logs/d1a-outcomes.log` です。モデルサーバーが受け付けないアウトカム（422。例: 判定ログにもうない判定）は飛ばし、ほかは送ります。サーバーにつながらないときはその回を止めますが、それまでに送ったものは記録します。各アウトカムには `group` `<repo>#<number>` が付くので、1つの PR や Issue で付け直された判定は、まとめて1つの根拠として数えます。
+**PR ラベルのアウトカム。** `LABEL_OUTCOMES=1`（`FEEDBACK_LOG` と一緒に）を設定すると、`scripts/pr_outcomes.py` を 15 分ごとに実行する LaunchAgent が加わります。PR ラベル付けエージェントの判定を `/Users/Shared/d1a/labeler-decisions.jsonl` から読み、そのアウトカムをモデルサーバーに送ります。アウトカムは、レビューボットがレビューしたヘッドに付けた種類と影響範囲のラベル（`src` reviewer）と、人が変えた種類・影響範囲・深刻度のラベル（`src` human。こちらが優先）です。Issue のラベル付けの判定は `FEEDBACK_LOG` から読み（state に `kind: github-issue` とあるもの）、同じタイトルと作成者の Issue 1件に対応付けます。Issue にはレビューがないので、アウトカムは人によるラベルの変更だけで、規則は同じです。判定は最初の1日は毎回、3日目までは1時間ごと、14日目までは6時間ごとに確かめ、期間が終わって1日を過ぎたものはもう確かめません。GitHub には何も書き込みません。ログは `~/Library/Logs/d1a-outcomes.log` です。モデルサーバーが受け付けないアウトカム（422。例: 判定ログにもうない判定）は飛ばし、ほかは送ります。サーバーにつながらないときはその回を止めますが、それまでに送ったものは記録します。各アウトカムには `group` `<repo>#<number>` が付くので、1つの PR や Issue で付け直された判定は、まとめて1つの根拠として数えます。
 
 **自己学習のティック。** `OUTCOME_CALIBRATOR` も設定すると、2つ目の LaunchAgent（`io.github.jonpol01.d1a-promote`）が D1A の自己学習のティックを 15 分ごとに実行します（`python -m d1a.learning.feedback tick <FEEDBACK_LOG> --calibrator <OUTCOME_CALIBRATOR> --server <モデルサーバー> --trained-dir .demo/trained`、d1a#233）。設定は `.demo/learning.json` から読みます。このファイルは `install` が一度だけ作ります。アウトカムの出どころは reviewer と human、質問は type・blast・sev で、ほかは現在の既定値です（新しいアウトカム 10 件ごと、または毎日 04:00 にゲート、当てはめには 20 件以上のアウトカム、PR の 30% を検証用に取り置き）。モデルを切り替えた後は、以前のモデルの判定のうちアウトカムのあるものを、待っているリクエストがない間だけ1件ずつモデルサーバーで再生し、新しいモデルがそれを持った状態で始められるようにします。新しいモデルの学習に使った PR や state は再生せず、`.demo/trained` にそのモデルの完全な学習マニフェストがなければ何も再生しません。そのうえで設定に従って昇格ゲートを実行し、検証用の PR で効果が確かめられた質問についてだけキャリブレーターを書き出します。モデルサーバーは再起動なしでそのファイルを読み込みます。どの質問もゲートを通るまでは、ファイルがなくてもかまいません。ログは `~/Library/Logs/d1a-promote.log`、レポートは `FEEDBACK_LOG` と同じ場所の `learning-status.json` です。
 
@@ -167,7 +167,7 @@ git clone https://github.com/jonpol01/d1a-playground.git ~/d1a-playground && cd 
 
 ## 必要なもの・制限事項・トラブルシューティング
 
-メモリや速度の目安、LM Studio モード、制限事項、トラブルシューティング、開発手順は [README.md](README.md)（英語）を参照してください。要点: モデルサーバーはアイドル時に約 12 GB、ピーク時に約 15 GB のメモリを使います（M1 Max 64 GB で計測）。チェックポイントは英語データで学習した1エポックのプロトタイプです。
+メモリや速度の目安、LM Studio モード、制限事項、トラブルシューティング、開発手順は [README.md](README.md)（英語）を参照してください。要点: Apple Silicon（MLX、既定）ではダウンロード約 4 GB、メモリ約 3〜4 GB です。それ以外（PyTorch）ではモデルサーバーがアイドル時に約 12 GB、ピーク時に約 15 GB のメモリを使います（M1 Max 64 GB、PyTorch MPS で計測）。学習データは主に英語で、v0.6 から日本語（JGLUE）が加わりました。
 
 ## リリース
 
