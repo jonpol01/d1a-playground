@@ -10,8 +10,8 @@ renamed),
 src/components/answer-card.tsx, src/app/layout.tsx and next.config.ts. Carried
 over unchanged: src/app/globals.css, src/app/favicon.ico,
 src/components/ui/button.tsx, src/lib/utils.ts and the TypeScript, ESLint,
-PostCSS and shadcn config files. server/kev/api.py is Kev's kev/api.py, vendored unchanged apart from a
-header comment. server/lmstudio_systemone.py comes from John Soliva's Kev fork
+PostCSS and shadcn config files. server/systemone/api.py is Kev's kev/api.py, vendored with a header comment, the
+default model id and one docstring changed. server/lmstudio_systemone.py comes from John Soliva's Kev fork
 (https://github.com/jonpol01/kev, branch lmstudio-demo).
 
 The model server the setup scripts install is Kev's kev.serve from the fork

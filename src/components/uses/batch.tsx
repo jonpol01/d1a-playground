@@ -8,7 +8,7 @@ import { accentButton, ask, DemoGrid, Empty, ErrorNote, Field, inputCls, pool, t
 import { Confetti, CountUp, ProgressRing } from "@/components/uses/visuals";
 import { useText, type Lang } from "@/lib/i18n";
 
-/** A batch run: one Kev request per item, a few in flight at once, results filled in as they arrive. */
+/** A batch run: one model request per item, a few in flight at once, results filled in as they arrive. */
 function useBatch<R>() {
   const [results, setResults] = useState<(R | null)[]>([]);
   const [error, setError] = useState<unknown>(null);

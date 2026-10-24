@@ -26,7 +26,7 @@ jobs:
       - run: npm run lint
       # the PR label check's sampling and answer rules (src/lib/review.ts; Node 22 strips the types)
       - run: node --test scripts/test_review.mjs
-      # the /kev and /media proxies forward the pages' model routes only (never POST /v1/feedback), and the write APIs refuse cross-site requests
+      # the /model (and its old name /kev) and /media proxies forward the pages' model routes only (never POST /v1/feedback), and the write APIs refuse cross-site requests
       - run: node --test scripts/test_guard.mjs
       # the OpenAI port passes only chat, embeddings and the model list, and streams as they come (scripts/openai_port.mjs)
       - run: node --test scripts/test_openai_port.mjs
@@ -99,7 +99,7 @@ jobs:
           $errors = $null
           [void][System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path demo.ps1), [ref]$null, [ref]$errors)
           if ($errors) { $errors | ForEach-Object { "demo.ps1:$($_.Extent.StartLineNumber): $($_.Message)" }; exit 1 }
-      - run: python3 -m py_compile server/lmstudio_systemone.py server/kev/api.py scripts/pr_outcomes.py
+      - run: python3 -m py_compile server/lmstudio_systemone.py server/systemone/api.py scripts/pr_outcomes.py
       - run: python3 -m unittest scripts/test_pr_outcomes.py
       - run: python3 -m unittest scripts/test_check_hygiene.py
       # demo.sh and demo.ps1 name every demo the page has, with one count and one list of --media demos

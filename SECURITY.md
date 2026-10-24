@@ -14,7 +14,7 @@ Fixes ship in a patch release of the latest minor version. The D1A model server 
 
 **Do not open a public issue, pull request or discussion for a security problem.**
 
-Report it privately through GitHub: **[Security → Report a vulnerability](https://github.com/jonpol01/d1a-playground/security/advisories/new)**. Only the maintainers can read the report, and GitHub can assign a CVE once it is confirmed. A problem in the model server itself (`d1a.serve`, `d1a.media`) goes to [jonpol01/d1a](https://github.com/jonpol01/d1a/security/advisories/new).
+Report it privately through GitHub: **[Security → Report a vulnerability](https://github.com/jonpol01/d1a-playground/security/advisories/new)**. Only the maintainers can read the report, and GitHub can assign a CVE once it is confirmed. A problem in the model server itself (`d1a.serving.serve`, `d1a.serving.media`) goes to [jonpol01/d1a](https://github.com/jonpol01/d1a/security/advisories/new).
 
 A useful report includes:
 
@@ -67,7 +67,7 @@ If a third party takes legal action against you for research done under this pol
 ## Scope
 
 **In scope:**
-- **The web app:** its pages, the `/kev` and `/media` proxies, and the `/api/hw`, `/api/learning` and `/api/review` routes.
+- **The web app:** its pages, the `/model` (and its old name `/kev`) and `/media` proxies, and the `/api/hw`, `/api/learning` and `/api/review` routes.
 - **The start scripts:** `demo.sh`, `demo.ps1` and `mini.sh`, including the LaunchAgents `mini.sh` writes.
 - **The LM Studio adapter** (`server/lmstudio_systemone.py`).
 
@@ -85,7 +85,7 @@ For example: script injection through a demo's input or a loaded pull request, a
   - `mini.sh` binds the web app to `127.0.0.1` unless you set `HOST`.
   - `demo.sh` and `demo.ps1` run Next.js's development server, which listens on every network interface: other devices on your network can open the demo while it runs.
   - Serve it beyond your machine (`HOST=0.0.0.0`, a reverse proxy, or the demo scripts on a shared network) only to people you would let use the model, or put authentication in the proxy.
-- **The model server stays on loopback.** `mini.sh` and the demo scripts always bind it to `127.0.0.1`, and the web app reaches it only through its fixed proxies (`KEV_API`, `MEDIA_API`), which forward only the routes
+- **The model server stays on loopback.** `mini.sh` and the demo scripts always bind it to `127.0.0.1`, and the web app reaches it only through its fixed proxies (`MODEL_API`, `MEDIA_API`), which forward only the routes
   the pages use; `/v1/feedback` is not among them.
 - **Two routes write, when self-learning is on** (`LABEL_OUTCOMES=1` with `OUTCOME_CALIBRATOR`):
   - `POST /api/learning` changes the self-learning settings through d1a's own `config set`, which refuses values out of range;

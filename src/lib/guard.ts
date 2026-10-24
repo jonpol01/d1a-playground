@@ -4,12 +4,21 @@
 // The model server routes the pages call through the app (next.config.ts rewrites). A catch-all forwarded every route,
 // POST /v1/feedback included: anyone who reached the app could write outcomes, marked human, into the PR labeler's
 // self-learning loop. The OpenAI port (scripts/openai_port.mjs) already refuses /v1/feedback; this does the same here.
-export const KEV_ROUTES = ["v1/models", "v1/systemone", "v1/systemone/separate", "v1/systemone/permute"] as const;
+export const MODEL_ROUTES = ["v1/models", "v1/systemone", "v1/systemone/separate", "v1/systemone/permute"] as const;
 export const MEDIA_ROUTES = ["v1/systemone/media"] as const;
 
-export function proxyRewrites(kevApi: string, mediaApi: string) {
+// The model server's proxy path is /model. /kev is what it was called before: a reverse proxy or a script outside this repo
+// may still send /d1a/kev/..., so it forwards the very same routes, no more.
+export const MODEL_PROXY_PATHS = ["model", "kev"] as const;
+
+// Where the model server listens: MODEL_API, or its old name KEV_API when that is unset.
+export function modelApiUrl(env: Record<string, string | undefined> = process.env): string {
+  return env.MODEL_API ?? env.KEV_API ?? "http://127.0.0.1:8009";
+}
+
+export function proxyRewrites(modelApi: string, mediaApi: string) {
   return [
-    ...KEV_ROUTES.map((p) => ({ source: `/kev/${p}`, destination: `${kevApi}/${p}` })),
+    ...MODEL_PROXY_PATHS.flatMap((proxy) => MODEL_ROUTES.map((p) => ({ source: `/${proxy}/${p}`, destination: `${modelApi}/${p}` }))),
     ...MEDIA_ROUTES.map((p) => ({ source: `/media/${p}`, destination: `${mediaApi}/${p}` })),
   ];
 }

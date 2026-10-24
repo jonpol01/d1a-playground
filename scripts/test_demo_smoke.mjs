@@ -30,7 +30,7 @@ async function standIn(mode) {
       const json = (s, j) => { res.writeHead(s, { "content-type": "application/json" }); res.end(JSON.stringify(j)); };
       if (req.url === "/review") { res.writeHead(200, { "content-type": "text/html" }); return res.end("<h1>PR label check</h1>"); }
       if (req.url === "/api/review") return json(404, { error: "review is off" });
-      if (req.url !== "/kev/v1/systemone") return json(404, { error: "not here" });
+      if (req.url !== "/model/v1/systemone") return json(404, { error: "not here" });
       if (mode === "fail" && n++ === 0) return json(500, { error: "model server down" });
       const { questions } = JSON.parse(raw);
       const audit = req.headers["x-d1a-audit"] === "on" ? { audit: { outcome_calibrator: mode.includes("cal") ? Object.keys(questions) : [] } } : {};

@@ -4,8 +4,8 @@ import { useRef, useState } from "react";
 import type { JSONContent, Question, SystemOneResponse } from "@/lib/d1a";
 import { ask } from "@/components/uses/shared";
 
-/** One-shot Kev request state for a demo: the latest response, the latest error, and whether a request is in flight. */
-export function useKevRequest() {
+/** One-shot model request state for a demo: the latest response, the latest error, and whether a request is in flight. */
+export function useModelRequest() {
   const [result, setResult] = useState<SystemOneResponse | null>(null);
   const [error, setError] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);

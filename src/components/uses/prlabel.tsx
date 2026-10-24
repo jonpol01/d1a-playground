@@ -4,7 +4,7 @@ import { useState } from "react";
 import type { Question } from "@/lib/d1a";
 import { useText } from "@/lib/i18n";
 import { AnswerBars, DemoGrid, Empty, ErrorNote, Field, inputCls, Latency, Presets, ResultCard, RunBar, textareaCls, Verdict } from "@/components/uses/shared";
-import { useKevRequest } from "@/components/uses/use-request";
+import { useModelRequest } from "@/components/uses/use-request";
 import { Shimmer } from "@/components/uses/visuals";
 
 // PR labeler: the labeling a scheduled job runs on every open pull request (the CTO bot's personal-pr-label cron). The
@@ -114,7 +114,7 @@ export function PRLabelDemo() {
   const [pr, setPR] = useState<PR>(PRESETS[0].pr);
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
-  const req = useKevRequest();
+  const req = useModelRequest();
   const set = (k: keyof PR) => (e: { target: { value: string } }) => setPR({ ...pr, [k]: e.target.value });
 
   async function load() {

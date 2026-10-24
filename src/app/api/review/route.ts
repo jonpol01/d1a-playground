@@ -1,4 +1,4 @@
-import { crossSiteRefusal } from "@/lib/guard";
+import { crossSiteRefusal, modelApiUrl } from "@/lib/guard";
 import { readFile } from "node:fs/promises";
 import { candidates, feedbackBody, parseJsonl, sample, TARGET } from "@/lib/review";
 
@@ -7,7 +7,7 @@ import { candidates, feedbackBody, parseJsonl, sample, TARGET } from "@/lib/revi
 // forwarded to the model server's POST /v1/feedback as src=human. Off (404) unless mini.sh passes REVIEW_FEEDBACK_LOG.
 export const dynamic = "force-dynamic";
 
-const KEV_API = process.env.KEV_API ?? "http://127.0.0.1:8009";
+const MODEL_API = modelApiUrl();
 const LOG = process.env.REVIEW_FEEDBACK_LOG ?? "";                                       // the model server's D1A_FEEDBACK_LOG
 const CALLS = process.env.REVIEW_LABELER_LOG ?? "/Users/Shared/d1a/labeler-decisions.jsonl";  // names the PR of outcomes without a group
 
@@ -42,7 +42,7 @@ export async function POST(req: Request) {
   try { posted = await req.json(); } catch { return Response.json({ error: "body must be JSON" }, { status: 400 }); }
   const checked = feedbackBody((await current()).items, posted);
   if (!checked.ok) return Response.json({ error: checked.error }, { status: 400 });
-  const r = await fetch(`${KEV_API}/v1/feedback`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(checked.body) })
+  const r = await fetch(`${MODEL_API}/v1/feedback`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(checked.body) })
     .catch((e: Error) => ({ ok: false, status: 502, text: async () => e.message }));
   if (!r.ok) return Response.json({ error: `model server: ${await r.text()}` }, { status: 502 });
   return Response.json({ ok: true, posted: checked.body.labels });

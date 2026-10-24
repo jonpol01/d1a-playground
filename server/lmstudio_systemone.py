@@ -1,16 +1,16 @@
-"""A System One endpoint backed by a chat model in LM Studio (Gemma 4 by default), for demos without Kev weights.
+"""A System One endpoint backed by a chat model in LM Studio (Gemma 4 by default), for demos without D1A weights.
 
 Each question is its own chat request (so questions are isolated by construction): the state, the instructions and the
 options as letters, answered with one letter. The option probabilities are the model's top-logprob mass on those letters,
-renormalized over the offered options. This is zero-shot prompting of a chat model, not a trained Kev checkpoint: no
+renormalized over the offered options. This is zero-shot prompting of a chat model, not a trained D1A checkpoint: no
 LoRA, no pointer head, no calibration. It exists so the demos and the TypeSafe SDK can be pointed at LM Studio.
 
     uv run --no-project --python 3.13 --with fastapi --with uvicorn --with httpx python server/lmstudio_systemone.py \\
         --lmstudio http://127.0.0.1:1234 --model gemma-4-e4b-it-mlx --port 8009
 
-Requests and responses use kev.api (pydantic only, no torch), so the answers have exactly kev.serve's shape.
+Requests and responses use systemone.api (pydantic only, no torch), so the answers have exactly d1a.serving.serve's shape.
 
-Vendored from jonpol01/kev (branch lmstudio-demo, scripts/lmstudio_systemone.py, Apache-2.0); kev/api.py next to it
+Vendored from jonpol01/kev (branch lmstudio-demo, scripts/lmstudio_systemone.py, Apache-2.0); systemone/api.py next to it
 is kev's own kev/api.py from jonpol01/kev@13374b3 (Jared Palmer, Apache-2.0).
 """
 import argparse, asyncio, math, os, random, string, sys, time, uuid
@@ -21,8 +21,8 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # the vendored kev/api.py next to this file
-from kev.api import SystemOneRequest, to_answers, to_record   # noqa: E402
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # the vendored systemone/api.py next to this file
+from systemone.api import SystemOneRequest, to_answers, to_record   # noqa: E402
 
 LETTERS = string.ascii_uppercase
 TOP_LOGPROBS = 10   # LM Studio rejects more; letters outside the top 10 get no mass
@@ -82,7 +82,7 @@ async def answer(req, sequential=False):
             "latency_ms": round((time.perf_counter() - t) * 1000, 1)}
 
 
-app = FastAPI(title="kev-lmstudio")
+app = FastAPI(title="d1a-lmstudio")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"], expose_headers=["x-typesafe-request-id"])
 
 

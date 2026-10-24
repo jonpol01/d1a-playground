@@ -24,7 +24,10 @@ uv() {   # printenv: what uv itself would see; venv makes the directory, with th
   if [ "$1" = venv ]; then eval "local d=\${$#}"; mkdir -p "$d/bin"; cp "$PYSTUB" "$d/bin/python"; fi
   [ "$1" != pip ] || [ -z "${FAIL_UV:-}" ]
 }
-npm() { echo "npm $*" >> "$CALLS"; [ "$1" != ci ] || [ -z "${FAIL_NPM:-}" ]; }
+npm() {   # a build logs the proxy target it was given
+  echo "npm $*" >> "$CALLS"; [ "$1" != run ] || echo "build MODEL_API=${MODEL_API-unset} KEV_API=${KEV_API-unset}" >> "$CALLS"
+  [ "$1" != ci ] || [ -z "${FAIL_NPM:-}" ]
+}
 launchctl() {   # FAIL_BOOTSTRAP=n: the first n bootstraps fail as launchd does right after a bootout (exit 5)
   echo "launchctl $*" >> "$CALLS"
   case "$1 ${2:-}" in "bootout "*/io.github.jonpol01.d1a-model) echo "current at the model's bootout: $(readlink "$APP/.demo/d1a-venvs/current" || echo none)" >> "$CALLS" ;; esac
@@ -84,6 +87,34 @@ grep -qF 'promotion.questions=["type","blast","sev"]' "$T/promote" || fail promo
 run promote2 FAIL_UV=   # a reinstall never overwrites the maintainer's settings
 ! grep -q "config init" "$T/promote2" || fail promote2 "re-created the settings file on reinstall"
 printf 'PORT=3999\n' > "$T/app/.demo/mini.env"
+
+# a Mac set up before the rename, its mini.env with the KEV_* names: update (reinstall) renames them in the file, keeps the
+# file as it was, and the build and every agent carry the new names only, with the same values
+printf 'PORT=3999\nKEV_PORT=8123\nKEV_PREFIX_CACHE=2\nKEV_PREFIX_MAX_TOKENS=1024\nLABEL_OUTCOMES=1\nFEEDBACK_LOG=%s\nOUTCOME_CALIBRATOR=%s\nOPENAI_PORT=1234\n' "$T/log.jsonl" "$T/cal.json" > "$T/app/.demo/mini.env"
+run legacy FAIL_UV=
+[ "$(cat "$T/legacy.status")" = 0 ] || fail legacy "did not reinstall"
+mini_env="$T/app/.demo/mini.env"; agents="$T/home/Library/LaunchAgents"
+grep -qx 'MODEL_PORT=8123' "$mini_env" && grep -qx 'MODEL_PREFIX_CACHE=2' "$mini_env" && grep -qx 'MODEL_PREFIX_MAX_TOKENS=1024' "$mini_env" && ! grep -q 'KEV_' "$mini_env" \
+  || fail legacy "mini.env was not renamed: $(cat "$mini_env")"
+grep -qx 'KEV_PORT=8123' "$mini_env.before-rename" || fail legacy "no copy of mini.env as it was"
+grep -qF 'build MODEL_API=http://127.0.0.1:8123 KEV_API=unset' "$T/legacy" || fail legacy "the web build did not get MODEL_API: $(grep '^build' "$T/legacy")"
+grep -A1 "<string>--port</string>" "$agents/io.github.jonpol01.d1a-model.plist" | grep -qF "<string>8123</string>" || fail legacy "the model server is not on the port KEV_PORT named"
+grep -A1 "<key>D1A_PREFIX_CACHE</key>" "$agents/io.github.jonpol01.d1a-model.plist" | grep -qF "<string>2</string>" || fail legacy "the cache size of KEV_PREFIX_CACHE was lost"
+grep -A1 "<key>D1A_PREFIX_MAX_TOKENS</key>" "$agents/io.github.jonpol01.d1a-model.plist" | grep -qF "<string>1024</string>" || fail legacy "the limit of KEV_PREFIX_MAX_TOKENS was lost"
+for key in MODEL_API MEDIA_API; do
+  grep -A0 "<key>$key</key>" "$agents/io.github.jonpol01.d1a-web.plist" | grep -qF "<string>http://127.0.0.1:8123</string>" || fail legacy "the web agent has no $key for port 8123"
+done
+for agent in model web openai outcomes promote; do   # every generated agent: no old name left, and every one that names the port names 8123
+  [ -f "$agents/io.github.jonpol01.d1a-$agent.plist" ] || fail legacy "no $agent agent"
+  ! grep -qi 'kev' "$agents/io.github.jonpol01.d1a-$agent.plist" || fail legacy "the $agent agent still has an old name"
+done
+grep -qF "<string>http://127.0.0.1:8123/v1/feedback</string>" "$agents/io.github.jonpol01.d1a-outcomes.plist" && grep -qF "<string>http://127.0.0.1:8123</string>" "$agents/io.github.jonpol01.d1a-promote.plist" \
+  || fail legacy "the outcomes or promote agent is not on port 8123"
+cp "$mini_env" "$T/mini-env-after"; cp "$mini_env.before-rename" "$T/mini-env-copy"
+run legacy2 FAIL_UV=   # a second update changes nothing in the file or in the copy
+[ "$(cat "$T/legacy2.status")" = 0 ] && ! grep -q 'renamed the old' "$T/legacy2.out" && cmp -s "$mini_env" "$T/mini-env-after" && cmp -s "$mini_env.before-rename" "$T/mini-env-copy" \
+  || fail legacy2 "renamed again: $(cat "$T/legacy2.out")"
+printf 'PORT=3999\n' > "$T/app/.demo/mini.env"; rm -f "$T/app/.demo/mini.env.before-rename"
 
 printf 'PORT=3999\nOPENAI_PORT=1234\nEMBED_GGUF=/models/nomic.gguf\nCHAT_CONTEXT=32768\n' > "$T/app/.demo/mini.env"
 run openai FAIL_UV=   # OPENAI_PORT and EMBED_GGUF: the OpenAI routes on the LAN and the embedder (d1a#274)

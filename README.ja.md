@@ -4,7 +4,7 @@
 
 小さな判断モデルが1つの文書を読み、それについての型付きの質問にいくつか答え、すべての選択肢に確率を返します。このプレイグラウンドでは、その仕組みで13の実際の仕事をライブで動かします。プロンプトのモデル振り分け、プロンプトインジェクションのブロック、エージェントのツール呼び出しの制御、受信トレイの仕分け、検索結果のリランキング、LLM の回答の採点、表のラベル付け、ロボットのリアルタイム制御、実行するか人に回すかの判断、そして写真・音声メモ・短い動画からの、配達荷物の破損チェックとドライバーの連絡の振り分け、そしてプルリクエストのラベル付けです。どの例も編集でき、どの答えにも確率の分布全体が表示されます。
 
-D1A は Jared Palmer による [Kev](https://github.com/jaredpalmer/kev)（Apache-2.0）をベースにしています。D1A は Jared Palmer および Kev プロジェクトとは提携しておらず、推奨も受けていません。プレイグラウンドでは、Gemma 4 E2B をベースにした1エポックのモデル D1A-E2B v0.1（[JohnP1/d1a-e2b](https://huggingface.co/JohnP1/d1a-e2b)、タグ `v0.1-1epoch`、旧 JohnP1/kev-gemma4-e2b）を使います。このモデルはフォーク [jonpol01/kev](https://github.com/jonpol01/kev) の Gemma 4 対応で学習しました。
+D1A は Jared Palmer による [Kev](https://github.com/jaredpalmer/kev)（Apache-2.0）をベースにしています。D1A は Jared Palmer および Kev プロジェクトとは提携しておらず、推奨も受けていません。プレイグラウンドでは、Gemma 4 E2B をベースにした1エポックのモデル D1A-E2B v0.1（[JohnP1/d1a-e2b](https://huggingface.co/JohnP1/d1a-e2b)、タグ `v0.1-1epoch`）を使います。
 
 ## 13のデモ
 
@@ -141,7 +141,7 @@ git clone https://github.com/jonpol01/d1a-playground.git ~/d1a-playground && cd 
 
 `install`・`reinstall`・`update` の後と `./mini.sh smoke` では、デモのスモークテスト（`scripts/demo_smoke.mjs`）が全デモの例を Web アプリ経由で送り、答えなくなったデモや `scripts/demo-baseline.json` と違う答えを返すデモがあれば止まります。ベースラインは実際に提供するマシンで記録してください。MLX は 8 ビットの行列積の丸めがチップごとに異なり、確率が 0.05 動いて境界近くの答えが入れ替わることがあるためです。そのマシンで `node scripts/demo_smoke.mjs <url> --baseline=.demo/demo-baseline.json --record` を実行すると、その Mac 自身のベースラインが書かれ、スモークテストはコミットされたファイルの代わりにそれを使います。そのためチェックアウトは変更なしのままで、`update` の `git pull` が止まりません。全デモが答えたのに一部の答えがベースラインと違う場合は終了コード 3 で失敗し、このコマンドを表示します。答えないデモがある場合は終了コード 1 で失敗します。mini.sh は提供中のアウトカム・キャリブレーター（`OUTCOME_CALIBRATOR`）も渡します。自己学習のティックが新しいキャリブレーションを昇格させた後、そのキャリブレーターが扱う質問の答えが変わった場合は「キャリブレーターによる変化」として報告し、失敗にはしません（どの質問をキャリブレーションしたかはサーバーが `x-d1a-audit` で答えます）。デモと同じく、スモークテストのリクエストはヘッダー `x-d1a-decision-log: off` を送ります。これに従う D1A サーバーはそのリクエストを記録せずに答えるので、判定ログの保留中の判定はラベラーのものだけになります（古いサーバーはヘッダーを無視して記録します）。
 
-ログは `~/Library/Logs/d1a-model.log` と `~/Library/Logs/d1a-web.log` です。設定は `install` と `update` が読み、`.demo/mini.env` に保存します。`KEV_PORT`（8009）、`PORT`（3031）、`HOST`（127.0.0.1。LAN に直接公開するなら 0.0.0.0）、`D1A_BASE_PATH`（空）、MPS のメモリ上限 `PYTORCH_MPS_HIGH_WATERMARK_RATIO` / `PYTORCH_MPS_LOW_WATERMARK_RATIO`（0.7 / 0.6。他の用途にも使う 32 GB の Mac 向けの値です。スワップさせずに早めに失敗させたいときは下げてください）、モデルサーバーの長い state のキャッシュ `KEV_PREFIX_CACHE` / `KEV_PREFIX_MAX_TOKENS`（4 / 65536）。モデルサーバーは常に 127.0.0.1 だけで待ち受けます。LaunchAgent はユーザーがログインしている間だけ動くので、再起動後に自動で戻したい場合は自動ログインを有効にしてください。uv のキャッシュは、`UV_CACHE_DIR` で別の場所を指定しない限り `.demo/uv-cache` に置きます。uv のほかの設定もインストールに効きます（例: TLS を検査するネットワークでは `UV_SYSTEM_CERTS=1`）。
+ログは `~/Library/Logs/d1a-model.log` と `~/Library/Logs/d1a-web.log` です。設定は `install` と `update` が読み、`.demo/mini.env` に保存します。`MODEL_PORT`（8009）、`PORT`（3031）、`HOST`（127.0.0.1。LAN に直接公開するなら 0.0.0.0）、`D1A_BASE_PATH`（空）、MPS のメモリ上限 `PYTORCH_MPS_HIGH_WATERMARK_RATIO` / `PYTORCH_MPS_LOW_WATERMARK_RATIO`（0.7 / 0.6。他の用途にも使う 32 GB の Mac 向けの値です。スワップさせずに早めに失敗させたいときは下げてください）、モデルサーバーの長い state のキャッシュ `MODEL_PREFIX_CACHE` / `MODEL_PREFIX_MAX_TOKENS`（4 / 65536）。旧名の `KEV_PORT`、`KEV_API`、`KEV_PREFIX_CACHE`、`KEV_PREFIX_MAX_TOKENS` と旧パス `/kev/*` も引き続き使えます（`install` と `update` が `.demo/mini.env` の名前を書き換えます）。モデルサーバーは常に 127.0.0.1 だけで待ち受けます。LaunchAgent はユーザーがログインしている間だけ動くので、再起動後に自動で戻したい場合は自動ログインを有効にしてください。uv のキャッシュは、`UV_CACHE_DIR` で別の場所を指定しない限り `.demo/uv-cache` に置きます。uv のほかの設定もインストールに効きます（例: TLS を検査するネットワークでは `UV_SYSTEM_CERTS=1`）。
 
 **自己学習。** D1A の `d1a.learning.feedback` による自己学習は、設定しない限りオフです。`FEEDBACK_LOG=<パス>` を設定すると、すべての判定を `decision_id` 付きで記録し、実際の結果（アウトカム）を `POST /v1/feedback` で受け取ります。`OUTCOME_CALIBRATOR=<ファイル>` を設定すると、そのアウトカムで求めたキャリブレーター（`python -m d1a.learning.feedback calibrate`）を適用し、ファイルが変わると読み込み直します。
 
@@ -163,7 +163,7 @@ git clone https://github.com/jonpol01/d1a-playground.git ~/d1a-playground && cd 
 
 **チャットのプロンプトの上限。** `.demo/mini.env` に `CHAT_CONTEXT=32768` を設定して `./mini.sh update` を実行すると、チャットのプロンプトと `max_tokens` の合計に上限を設けます（d1a の `D1A_CHAT_CONTEXT`）。それより長いリクエストにはすぐに 400 を返します。Hermes はこれを受けて履歴を圧縮するので、1つのモデルが何分もふさがって他のチャットが待たされることはありません（2026-10-21 には 237k トークンのプロンプトがモデルを 16 分ふさぎました）。設定しなければ、モデル自身のコンテキスト（D1A-E4B-it では 131,072）が上限です。
 
-**リバースプロキシの下、サブパスで公開する場合。** `D1A_BASE_PATH=/d1a` でビルドすると（初回のインストールでは `D1A_BASE_PATH=/d1a ./mini.sh install`。`.demo/mini.env` ができた後はそのファイルが記録なので、そこに設定してください。食い違うコマンドラインの値は、警告を出して無視されます）、ページ、アセット、モデル API のプロキシ（`/d1a/kev/...`）、`/d1a/api/hw` のすべてが `/d1a` の下で提供されます。プロキシでは `/d1a` で始まるパスを、パスを変えずに `http://127.0.0.1:3031` に転送してください（例: `http://<your-mac-ip>/d1a`）。`next build` と `next start` の両方に同じ `D1A_BASE_PATH` が必要です（mini.sh は両方に設定します）。`.demo/mini.env` を書き換えたら `./mini.sh update` で反映します。
+**リバースプロキシの下、サブパスで公開する場合。** `D1A_BASE_PATH=/d1a` でビルドすると（初回のインストールでは `D1A_BASE_PATH=/d1a ./mini.sh install`。`.demo/mini.env` ができた後はそのファイルが記録なので、そこに設定してください。食い違うコマンドラインの値は、警告を出して無視されます）、ページ、アセット、モデル API のプロキシ（`/d1a/model/...`）、`/d1a/api/hw` のすべてが `/d1a` の下で提供されます。プロキシでは `/d1a` で始まるパスを、パスを変えずに `http://127.0.0.1:3031` に転送してください（例: `http://<your-mac-ip>/d1a`）。`next build` と `next start` の両方に同じ `D1A_BASE_PATH` が必要です（mini.sh は両方に設定します）。`.demo/mini.env` を書き換えたら `./mini.sh update` で反映します。
 
 ## 必要なもの・制限事項・トラブルシューティング
 

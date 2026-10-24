@@ -40,6 +40,19 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **The model server's names are D1A's own, and the old ones still work.** The settings are `MODEL_PORT`, `MODEL_API`,
+  `MODEL_PREFIX_CACHE` and `MODEL_PREFIX_MAX_TOKENS` (was `KEV_*`, now matching `MEDIA_PORT` and `MEDIA_API`), the web app
+  proxies the model server under `/model` (was `/kev`), and `server/kev/` is `server/systemone/`. The LM Studio adapter
+  is titled `d1a-lmstudio` and a request without a `model` gets `d1a-latest`; `kev-latest` is still accepted.
+  - Every `KEV_*` name is still read when its `MODEL_*` name is unset (`demo.sh`, `demo.ps1` and `mini.sh` say so once;
+    the `MODEL_*` name wins when both are set).
+  - `/kev/*` is an alias for `/model/*`: the same four routes the pages use, never `POST /v1/feedback`, so a reverse
+    proxy or script that still sends `/d1a/kev/...` keeps working.
+  - `mini.sh install`, `reinstall` and `update` rename the `KEV_*` lines of `.demo/mini.env` in place: the value is kept
+    byte for byte, and the line is dropped when a `MODEL_*` line is there already. The file as it was stays beside it as
+    `.demo/mini.env.before-rename`. The build and the LaunchAgents carry the new names after the next `update`, and
+    `.demo/mini.env` is still the record: a command-line value it contradicts is ignored, under either name.
+  - The README names no Kev fork and no longer compares the checkpoint with Kev's recipe; the credit to Kev stays.
 - **D1A pinned to `9b7bd8b6`** (d1a#281, d1a#283):
   - `/v1/models` lists `d1a-chat` while an idle server has unloaded the model, so n8n's model dropdown finds it;
   - `/v1/embeddings` honours `encoding_format: "base64"`. The openai Node SDK (n8n) always asks for it, and used to

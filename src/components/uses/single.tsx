@@ -4,7 +4,7 @@ import { useState } from "react";
 import type { Question } from "@/lib/d1a";
 import { useText, type Lang } from "@/lib/i18n";
 import { AnswerBars, DemoGrid, Empty, ErrorNote, Field, inputCls, Latency, pretty, Presets, ResultCard, RunBar, textareaCls, Verdict } from "@/components/uses/shared";
-import { useKevRequest } from "@/components/uses/use-request";
+import { useModelRequest } from "@/components/uses/use-request";
 import { CountUp, GateTrack, RouteViz, Shimmer, ShieldViz, StarsViz, TrafficLight, VizFrame } from "@/components/uses/visuals";
 
 /* ---------------------------------------------------------------- 1. Model routing */
@@ -61,7 +61,7 @@ export function RoutingDemo() {
   const ROUTE_PRESETS = t.presets;
   const [pi, setPi] = useState(0);
   const [prompt, setPrompt] = useState(ROUTE_PRESETS[0].prompt);
-  const req = useKevRequest();
+  const req = useModelRequest();
   const a = req.result?.answers.route;
   const routed = a?.type === "choice" ? a.choice : null;
   const tiers = Object.keys(COST);
@@ -159,7 +159,7 @@ export function GuardrailsDemo() {
   const GUARD_PRESETS = t.presets;
   const [pi, setPi] = useState(0);
   const [text, setText] = useState(GUARD_PRESETS[0].text);
-  const req = useKevRequest();
+  const req = useModelRequest();
   const cat = req.result?.answers.category;
   const reach = req.result?.answers.reach_llm;
   const verdict = cat?.type === "choice" && reach?.type === "noul"
@@ -251,7 +251,7 @@ export function ToolGateDemo() {
   const [task, setTask] = useState(TOOL_PRESETS[0].task);
   const [tool, setTool] = useState(TOOL_PRESETS[0].tool);
   const [args, setArgs] = useState(pretty(TOOL_PRESETS[0].args));
-  const req = useKevRequest();
+  const req = useModelRequest();
   const a = req.result?.answers.decision;
 
   function pick(i: number) {
@@ -366,7 +366,7 @@ export function EvalsDemo() {
   const [question, setQuestion] = useState(t.question);
   const [answer, setAnswer] = useState(EVAL_PRESETS[0].answer);
   const [reference, setReference] = useState(t.reference);
-  const req = useKevRequest();
+  const req = useModelRequest();
   const q = req.result?.answers.quality;
   const err = req.result?.answers.error;
   const [gradedWithReference, setGradedWithReference] = useState(true);
@@ -467,7 +467,7 @@ export function GateDemo() {
   const [options, setOptions] = useState(t.options);
   const [act, setAct] = useState(0.9);
   const [human, setHuman] = useState(0.5);
-  const req = useKevRequest();
+  const req = useModelRequest();
   const a = req.result?.answers.action;
   const opts = parseOptions(options);
   const p = a?.type === "choice" ? a.probabilities[a.choice] : null;   // the top option's probability; the API's "confidence" rescales it so 0 means uniform, which is not what the thresholds are about

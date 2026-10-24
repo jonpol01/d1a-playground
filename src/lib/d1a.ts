@@ -1,6 +1,6 @@
 // Modified from Kev (https://github.com/jaredpalmer/kev), Copyright 2026 Jared Palmer, Apache-2.0.
 // Changes for the D1A playground by John Soliva, 2026.
-// Types mirror the TypeSafe /v1/systemone contract that kev.serve implements.
+// Types mirror the TypeSafe /v1/systemone contract that d1a.serving.serve implements.
 import { recordRequest } from "@/lib/metrics";
 
 export type JSONContent = string | number | boolean | null | JSONContent[] | { [k: string]: JSONContent };
@@ -34,7 +34,7 @@ export type PermuteResponse = {
 
 // The app can be served under a sub-path (D1A_BASE_PATH at build time); fetch URLs are not prefixed by Next itself.
 export const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
-const KEV = `${BASE_PATH}/kev`;
+const MODEL_PATH = `${BASE_PATH}/model`;
 const MEDIA = `${BASE_PATH}/media`;   // the same questions about a photo, a voice clip or a video: the model server on a Mac, d1a.serving.media on PyTorch
 
 export type MediaRequest = Omit<SystemOneRequest, "state"> & { state?: JSONContent; media: { type: "image" | "audio" | "video"; data: string } };
@@ -43,7 +43,7 @@ export type MediaRequest = Omit<SystemOneRequest, "state"> & { state?: JSONConte
 // D1A_FEEDBACK_LOG set), whose pending decisions are then the PR labeler's alone. Servers without the switch ignore it.
 export const NOT_FOR_LEARNING = { "x-d1a-decision-log": "off" };
 
-async function post<T>(path: string, body: unknown, base = KEV): Promise<T> {
+async function post<T>(path: string, body: unknown, base = MODEL_PATH): Promise<T> {
   const r = await fetch(`${base}${path}`, { method: "POST", headers: { "content-type": "application/json", ...NOT_FOR_LEARNING }, body: JSON.stringify(body) });
   if (!r.ok) throw new Error(`${r.status}: ${await r.text()}`);
   return r.json();
@@ -65,7 +65,7 @@ export const api = {
     return r;
   },
   models: async () => {
-    const r = await fetch(`${KEV}/v1/models`);
+    const r = await fetch(`${MODEL_PATH}/v1/models`);
     if (!r.ok) throw new Error(`${r.status}: ${await r.text()}`);
     return r.json() as Promise<{ models: { name: string; run: string; base: string; device?: string; backend?: string; dtype?: string }[] }>;
   },
@@ -84,7 +84,7 @@ export const START_HINT = {
 };
 
 // A proxy failure (server not started, still loading, or crashed) reaches the browser as a 5xx without a JSON
-// body, or as a network error; kev.serve's own validation errors carry {"detail": ...} and are shown as they are.
+// body, or as a network error; d1a.serving.serve's own validation errors carry {"detail": ...} and are shown as they are.
 export function describeError(e: unknown, lang: "en" | "ja" = "en"): string {
   const msg = e instanceof Error ? e.message : String(e);
   const m = /^(\d{3}): ([\s\S]*)$/.exec(msg);
