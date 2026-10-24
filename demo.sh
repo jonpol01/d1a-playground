@@ -6,14 +6,14 @@
 #   ./demo.sh --media              Photo check, Voice triage and Video check too: on Apple Silicon the model server answers
 #                                  them with the same model (Gemma 4's vision and audio encoders, ~1 GB, fetched on the first
 #                                  photo or voice request); elsewhere a second server, d1a.serving.media (~10 GB, loaded on that request)
-#   ./demo.sh --no-server          start only the web app, against a model server already running on $KEV_PORT
+#   ./demo.sh --no-server          start only the web app, against a model server already running on $MODEL_PORT
 #   ./demo.sh --lmstudio URL       no D1A weights: a prompted Gemma 4 chat model in LM Studio answers instead (NOT D1A)
 #             [--lmstudio-model ID]   the LM Studio model id (default gemma-4-e4b-it-mlx)
 #   ./demo.sh --no-browser         do not open the browser
 #   ./demo.sh stop                 stop what an earlier ./demo.sh started (for example after closing its terminal)
 #
-# Environment: MODEL_RUN (default JohnP1/d1a-e2b-mlx-q8 on Apple Silicon, JohnP1/d1a-e2b elsewhere), KEV_PORT (default
-# 8009), MEDIA_PORT (default 8010), PORT (web app; default 3001, then 3011, then 3021-3030).
+# Environment: MODEL_RUN (default JohnP1/d1a-e2b-mlx-q8 on Apple Silicon, JohnP1/d1a-e2b elsewhere), MODEL_PORT (default
+# 8009; the old name KEV_PORT still works), MEDIA_PORT (default 8010), PORT (web app; default 3001, then 3011, then 3021-3030).
 set -euo pipefail
 
 # The D1A model server this demo runs, pinned to a commit so every friend gets the same server (mini.sh pins the same one).
@@ -29,11 +29,17 @@ LMSTUDIO_MODEL_DEFAULT="gemma-4-e4b-it-mlx"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 STATE="$ROOT/.demo"
 VENV="$STATE/venv"
-KEV_PORT="${KEV_PORT:-8009}"
 
 say()  { printf '%s\n' "$*"; }
 warn() { printf 'warning: %s\n' "$*" >&2; }
 die()  { printf 'error: %s\n' "$*" >&2; exit 1; }
+
+model_port() {   # MODEL_PORT, else its old name KEV_PORT (with a note), else 8009
+  if [ -n "${MODEL_PORT:-}" ]; then echo "$MODEL_PORT"
+  elif [ -n "${KEV_PORT:-}" ]; then warn "KEV_PORT is the old name of MODEL_PORT: it still works, but use MODEL_PORT"; echo "$KEV_PORT"
+  else echo 8009; fi
+}
+MODEL_PORT="$(model_port)"
 
 usage() { sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'; }
 
@@ -57,12 +63,12 @@ done
 [ -n "$LMSTUDIO" ] && [ "$NO_SERVER" = 1 ] && die "--lmstudio and --no-server do not go together"
 [ "$MEDIA" = 1 ] && { [ -n "$LMSTUDIO" ] || [ "$NO_SERVER" = 1 ]; } && die "--media starts a D1A server; it does not go with --lmstudio or --no-server"
 MEDIA_PORT="${MEDIA_PORT:-8010}"
-[ "$APPLE_SILICON" = 1 ] && MEDIA_PORT="$KEV_PORT"   # the model server answers photos and voice itself (MLX)
+[ "$APPLE_SILICON" = 1 ] && MEDIA_PORT="$MODEL_PORT"   # the model server answers photos and voice itself (MLX)
 
 # ---------------------------------------------------------------- helpers
 # something accepts connections on 127.0.0.1:$1 or [::1]:$1: localhost, which the browser opens, can be either
 port_busy() { (exec 3<>"/dev/tcp/127.0.0.1/$1") 2>/dev/null || (exec 3<>"/dev/tcp/::1/$1") 2>/dev/null; }
-kev_up()    { curl -fsS -m 3 "http://127.0.0.1:$KEV_PORT/v1/models" >/dev/null 2>&1; }
+model_up() { curl -fsS -m 3 "http://127.0.0.1:$MODEL_PORT/v1/models" >/dev/null 2>&1; }
 
 pick_port() {
   if [ -n "${PORT:-}" ]; then port_busy "$PORT" && die "PORT=$PORT is already in use"; echo "$PORT"; return; fi
@@ -146,12 +152,12 @@ cleanup() {
 trap cleanup INT TERM EXIT
 
 # ---------------------------------------------------------------- the model server (or the LM Studio bridge)
-start_kev() {
-  if kev_up; then
-    say "A System One server is already answering on port $KEV_PORT; using it."
+start_model() {
+  if model_up; then
+    say "A System One server is already answering on port $MODEL_PORT; using it."
     return
   fi
-  port_busy "$KEV_PORT" && die "port $KEV_PORT is taken by something that is not a model server; stop it or set KEV_PORT"
+  port_busy "$MODEL_PORT" && die "port $MODEL_PORT is taken by something that is not a model server; stop it or set MODEL_PORT"
 
   if [ -n "$LMSTUDIO" ]; then
     say "LM Studio mode: answers come from $LMSTUDIO_MODEL, a prompted chat model in LM Studio at $LMSTUDIO."
@@ -163,8 +169,8 @@ start_kev() {
       warn "pass --lmstudio-model <id> to pick one (on Windows and Linux, LM Studio ids have no -mlx suffix)"
     fi
     (cd "$ROOT" && exec uv run --no-project --python "$PYTHON_VERSION" --with fastapi --with uvicorn --with httpx \
-        python server/lmstudio_systemone.py --lmstudio "$LMSTUDIO" --model "$LMSTUDIO_MODEL" --port "$KEV_PORT") \
-        >"$STATE/kev-server.log" 2>&1 &
+        python server/lmstudio_systemone.py --lmstudio "$LMSTUDIO" --model "$LMSTUDIO_MODEL" --port "$MODEL_PORT") \
+        >"$STATE/lmstudio-server.log" 2>&1 &
   else
     local extras="serve"; [ "$MEDIA" = 1 ] && extras="serve,media"
     # the tested environment (d1a#322: a fresh resolve of the same pin broke video); a changed file installs again
@@ -188,15 +194,15 @@ start_kev() {
     if [ "$mem" -gt 0 ] && [ "$mem" -lt $((peak + 4)) ]; then
       warn "this machine has ${mem} GB of memory; the model server peaks around ${peak} GB. If it runs out, use --lmstudio instead."
     fi
-    say "Starting the model server (d1a.serving.serve): $MODEL_RUN on $device, port $KEV_PORT (log: .demo/model-server.log)"
+    say "Starting the model server (d1a.serving.serve): $MODEL_RUN on $device, port $MODEL_PORT (log: .demo/model-server.log)"
     if [ "$APPLE_SILICON" = 1 ]; then say "The first start downloads the 8-bit MLX model (about 4 GB); later starts take a few seconds."
     else say "The first start downloads Gemma 4 E2B (about 10 GB) and the adapter; later starts take about 20 s."; fi
-    "$VENV/bin/python" -m d1a.serving.serve --run "$MODEL_RUN" --port "$KEV_PORT" >"$STATE/model-server.log" 2>&1 &
+    "$VENV/bin/python" -m d1a.serving.serve --run "$MODEL_RUN" --port "$MODEL_PORT" >"$STATE/model-server.log" 2>&1 &
   fi
   echo $! >"$STATE/model-server.pid"; PIDS+=("$!")
 
   local t0=$SECONDS last=0
-  until kev_up; do
+  until model_up; do
     if ! kill -0 "$(cat "$STATE/model-server.pid")" 2>/dev/null; then
       say "The server exited. Last lines of .demo/model-server.log:"; tail -n 25 "$STATE/model-server.log" >&2 || true
       die "the model server did not start (see .demo/model-server.log)"
@@ -207,7 +213,7 @@ start_kev() {
     fi
     sleep 1
   done
-  say "Server ready on http://127.0.0.1:$KEV_PORT after $((SECONDS - t0)) s."
+  say "Server ready on http://127.0.0.1:$MODEL_PORT after $((SECONDS - t0)) s."
 }
 
 # ---------------------------------------------------------------- the photo and voice server (--media)
@@ -230,10 +236,10 @@ start_media() {
 }
 
 if [ "$NO_SERVER" = 1 ]; then
-  kev_up || die "--no-server: nothing answers on http://127.0.0.1:$KEV_PORT/v1/models (start d1a.serving.serve there, or drop --no-server)"
-  say "Using the model server already running on port $KEV_PORT."
+  model_up || die "--no-server: nothing answers on http://127.0.0.1:$MODEL_PORT/v1/models (start d1a.serving.serve there, or drop --no-server)"
+  say "Using the model server already running on port $MODEL_PORT."
 else
-  start_kev
+  start_model
   [ "$MEDIA" = 1 ] && [ "$APPLE_SILICON" != 1 ] && start_media
 fi
 
@@ -245,14 +251,14 @@ if [ ! -f node_modules/.package-lock.json ] || [ package-lock.json -nt node_modu
 fi
 WEB_PORT="$(pick_port)"
 say "Starting the web app on port $WEB_PORT (log: .demo/web.log)"
-KEV_API="http://127.0.0.1:$KEV_PORT" MEDIA_API="http://127.0.0.1:$MEDIA_PORT" NEXT_TELEMETRY_DISABLED=1 node node_modules/next/dist/bin/next dev -p "$WEB_PORT" >"$STATE/web.log" 2>&1 &
+MODEL_API="http://127.0.0.1:$MODEL_PORT" MEDIA_API="http://127.0.0.1:$MEDIA_PORT" NEXT_TELEMETRY_DISABLED=1 node node_modules/next/dist/bin/next dev -p "$WEB_PORT" >"$STATE/web.log" 2>&1 &
 echo $! >"$STATE/web.pid"; PIDS+=("$!")
 for _ in $(seq 1 120); do
   curl -fsS -m 30 -o /dev/null "http://localhost:$WEB_PORT/" 2>/dev/null && break
   kill -0 "$(cat "$STATE/web.pid")" 2>/dev/null || { tail -n 25 "$STATE/web.log" >&2; die "the web app did not start (see .demo/web.log)"; }
   sleep 1
 done
-curl -fsS -m 5 "http://localhost:$WEB_PORT/kev/v1/models" >/dev/null || warn "the web app cannot reach the model server through its /kev proxy"
+curl -fsS -m 5 "http://localhost:$WEB_PORT/model/v1/models" >/dev/null || warn "the web app cannot reach the model server through its /model proxy"
 
 URL="http://localhost:$WEB_PORT"
 say ""
@@ -260,7 +266,7 @@ say "D1A playground is running:"
 if [ "$MEDIA" = 1 ]; then say "  $URL                all thirteen demos"
 else say "  $URL                the demos (Photo check, Voice triage and Video check need --media)"; fi
 say "  $URL/#inbox         jump to one (#routing #guardrails #tools #inbox #rerank #evals #labeling #control #gate #photo #voice #prlabel #video)"
-say "  http://127.0.0.1:$KEV_PORT/v1/models   the server's model card"
+say "  http://127.0.0.1:$MODEL_PORT/v1/models   the server's model card"
 [ -n "$LMSTUDIO" ] && say "  (LM Studio mode: a prompted chat model answers, NOT the trained D1A checkpoint)"
 say "Press Ctrl+C to stop (or run ./demo.sh stop from another terminal)."
 open_url "$URL"

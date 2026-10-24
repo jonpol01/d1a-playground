@@ -6,8 +6,8 @@ import { LangSwitch, LicensesLink } from "@/components/use-cases";
 import { useHtmlLang, useText, type Lang } from "@/lib/i18n";
 
 // One page on how D1A works, from the input layout to the roadmap. Numbers are the prototype checkpoint's
-// (JohnP1/d1a-e2b, see its model card) and the model code at the commit demo.sh pins (kev/model.py in
-// jonpol01/kev). The UI names only D1A; the upstream credit lives in the repository (README, NOTICE).
+// (JohnP1/d1a-e2b, see its model card) and the model code at the commit demo.sh pins (d1a/backends/torch.py in
+// jonpol01/d1a). The UI names only D1A; the upstream credit lives in the repository (README, NOTICE).
 
 const link = "font-medium text-foreground underline underline-offset-2";
 const C = { state: "#0284c7", q: "#7c3aed", opt: "#d97706", decide: "#e11d48", lora: "#059669", head: "#c026d3" };

@@ -1,15 +1,16 @@
 import { execFile } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import os from "node:os";
+import { modelApiUrl } from "@/lib/guard";
 import type { Hw } from "@/lib/hw";
 
-// Live machine stats for the hardware monitor, read from the host that runs this app (and, when KEV_API is local,
+// Live machine stats for the hardware monitor, read from the host that runs this app (and, when MODEL_API is local,
 // the model server's process). Only cheap, unprivileged commands; each has a short timeout, a missing tool or a
 // failed command leaves its field null, and the result is shared for CACHE_MS so polling browsers cost one read.
 export const dynamic = "force-dynamic";
 
 const CACHE_MS = 1500;
-const KEV_API = process.env.KEV_API ?? "http://127.0.0.1:8009";
+const MODEL_API = modelApiUrl();
 let cached: { at: number; value: Promise<Hw> } | null = null;
 
 function run(cmd: string, args: string[], timeout = 1500): Promise<string | null> {
@@ -27,7 +28,7 @@ const UNITS: Record<string, number> = { B: 1, KB: 1024, MB: 1024 ** 2, GB: 1024 
 
 function serverTarget() {
   try {
-    const u = new URL(KEV_API);
+    const u = new URL(MODEL_API);
     const local = ["127.0.0.1", "localhost", "[::1]", "::1"].includes(u.hostname);
     return { local, port: u.port || (u.protocol === "https:" ? "443" : "80") };
   } catch {

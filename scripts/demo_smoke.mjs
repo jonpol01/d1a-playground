@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Every demo's built-in examples, sent through the web app (its /kev and /media proxies) as the UI sends them, checked
+// Every demo's built-in examples, sent through the web app (its /model and /media proxies) as the UI sends them, checked
 // against a committed baseline of the answers; and the PR label check (/review) answers, read only.
 //
 //   node scripts/demo_smoke.mjs http://127.0.0.1:3032/d1a             # check: exits 1 when a demo fails, 3 when every demo
@@ -48,7 +48,7 @@ const probs = (a) => (a.type === "noul" ? { true: a.noul, false: 1 - a.noul } : 
 
 async function send(r) {
   const [url, body] = r.kind === "text"
-    ? [`${base}/kev/v1/systemone`, r.body]
+    ? [`${base}/model/v1/systemone`, r.body]
     : [`${base}/media/v1/systemone/media`, { model: "d1a-latest", questions: r.questions,
         media: { type: r.mediaType, data: readFileSync(join(ROOT, "public/samples", r.file)).toString("base64") } }];
   const t0 = performance.now();

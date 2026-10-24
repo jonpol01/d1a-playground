@@ -1,5 +1,5 @@
-# Vendored unchanged from jonpol01/kev@13374b311cde06d09017c7ca61ff884e2fd90df6 kev/api.py (Kev by Jared Palmer, Apache-2.0).
-# Only the LM Studio bridge uses it; the real Kev server installs the whole kev package.
+# Vendored from jonpol01/kev@13374b311cde06d09017c7ca61ff884e2fd90df6 kev/api.py (Kev by Jared Palmer, Apache-2.0), changed
+# only in the default model id and one docstring. Only the LM Studio bridge uses it; d1a.serving.serve has its own (d1a.core.api).
 """TypeSafe-compatible request/response shapes (POST /v1/systemone) mapped onto the single pointer primitive.
 
 Noul   -> 2 options [false, true];            answer = p(true)
@@ -44,7 +44,7 @@ Question = Union[Noul, Choice, Score]
 
 class SystemOneRequest(BaseModel):
     state: JSONContent
-    model: str = "kev-latest"
+    model: str = "d1a-latest"
     questions: dict[str, Question] = Field(min_length=1)
 
 
@@ -85,7 +85,7 @@ def date_facts(text: str) -> str:
 
 def with_date_facts(state):
     """State with a `date_facts` field (object states) or an appended paragraph (string states) when two or more absolute
-    dates appear. Opt-in preprocessing (KEV_DATE_FACTS=1 in kev.serve, --date_facts in kev.benchmark)."""
+    dates appear. Opt-in preprocessing (D1A_DATE_FACTS=1 in d1a.serving.serve, --date_facts in d1a.eval.benchmark)."""
     facts = date_facts(render(state))
     if not facts: return state
     if isinstance(state, dict): return {**state, "date_facts": facts}

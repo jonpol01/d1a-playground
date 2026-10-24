@@ -1,5 +1,5 @@
 """python -m unittest scripts/test_lmstudio_letters.py (needs fastapi, httpx, uvicorn): letter_probs, which turns LM Studio's
-top logprobs into option probabilities for the --lmstudio mode."""
+top logprobs into option probabilities for the --lmstudio mode, and the model id a request may carry."""
 import math
 import sys
 import unittest
@@ -9,6 +9,7 @@ from fastapi import HTTPException
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "server"))
 from lmstudio_systemone import letter_probs  # noqa: E402
+from systemone.api import SystemOneRequest  # noqa: E402
 
 
 def tok(token, top=None):
@@ -44,6 +45,15 @@ class LetterProbs(unittest.TestCase):
             with self.assertRaises(HTTPException) as e:
                 letter_probs(c, 2)
             self.assertEqual(e.exception.status_code, 502)
+
+
+class ModelId(unittest.TestCase):
+    QUESTIONS = {"q": {"type": "noul", "instructions": "Did it arrive?"}}
+
+    def test_default_is_d1a_latest_and_the_old_id_is_still_accepted(self):
+        # the playground sends d1a-latest; a client that still sends the id this endpoint used to answer to is not refused
+        self.assertEqual(SystemOneRequest(state="x", questions=self.QUESTIONS).model, "d1a-latest")
+        self.assertEqual(SystemOneRequest(state="x", model="kev-latest", questions=self.QUESTIONS).model, "kev-latest")
 
 
 if __name__ == "__main__":

@@ -8,7 +8,7 @@ import { useLang, useText } from "@/lib/i18n";
 
 export const pretty = (v: unknown) => JSON.stringify(v, null, 2);
 
-/** One Kev request: one state, the given questions, and the use case they belong to, if any. */
+/** One model request: one state, the given questions, and the use case they belong to, if any. */
 export function ask(state: JSONContent, questions: Record<string, Question>, useCase?: string): Promise<SystemOneResponse> {
   return api.systemOne({ state, model: MODEL, questions, ...(useCase ? { use_case: useCase } : {}) });
 }

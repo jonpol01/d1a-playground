@@ -16,9 +16,9 @@
 #
 # Settings (read by install and update, then kept in .demo/mini.env):
 #   MODEL_RUN=JohnP1/d1a-e2b-mlx-q8 (Apple Silicon; JohnP1/d1a-e4b-mlx-q8 is more accurate, ~6.5 GB) or JohnP1/d1a-e2b elsewhere
-#   KEV_PORT=8009  PORT=3031  HOST=127.0.0.1 (0.0.0.0 to serve the LAN directly)  D1A_BASE_PATH= (e.g. /d1a behind a proxy)
+#   MODEL_PORT=8009  PORT=3031  HOST=127.0.0.1 (0.0.0.0 to serve the LAN directly)  D1A_BASE_PATH= (e.g. /d1a behind a proxy)
 #   PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.7  PYTORCH_MPS_LOW_WATERMARK_RATIO=0.6  (cap on PyTorch's share of unified memory; unused on MLX)
-#   KEV_PREFIX_CACHE=4  KEV_PREFIX_MAX_TOKENS=65536  (the model server's cache of long states; lower them to save memory)
+#   MODEL_PREFIX_CACHE=4  MODEL_PREFIX_MAX_TOKENS=65536  (the model server's cache of long states; lower them to save memory)
 #   IDLE_UNLOAD=600 (seconds without a request before the model server frees the model; it loads again in a few seconds
 #   on the next one; 0 keeps it loaded)
 #   MEDIA=0 (1 = demos 10, 11 and 13 too: the model server answers photos, voice and video with the same model, through
@@ -32,6 +32,8 @@
 #   prompt holds the model ~9 minutes and every other chat waits; d1a#318)
 #   EMBED_REF= (reference vectors, {"texts": [...], "vectors": [...]}, e.g. LM Studio's for the same GGUF: the smoke test's
 #   OpenAI check then requires the served embeddings to match them, cosine >= 0.999)
+# The old names of three settings, KEV_PORT, KEV_PREFIX_CACHE and KEV_PREFIX_MAX_TOKENS, still work: install, reinstall and
+# update rename them in .demo/mini.env (the file as it was stays beside it, as mini.env.before-rename).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
@@ -60,27 +62,69 @@ say() { printf '\033[1m[mini]\033[0m %s\n' "$*"; }
 die() { printf '\033[31m[mini] error:\033[0m %s\n' "$*" >&2; exit 1; }
 
 # the settings .demo/mini.env holds, in the order save_env writes them
-ENV_KEYS="MODEL_RUN KEV_PORT PORT HOST D1A_BASE_PATH PYTORCH_MPS_HIGH_WATERMARK_RATIO PYTORCH_MPS_LOW_WATERMARK_RATIO KEV_PREFIX_CACHE
-KEV_PREFIX_MAX_TOKENS MEDIA IDLE_UNLOAD FEEDBACK_LOG OUTCOME_CALIBRATOR LABEL_OUTCOMES OPENAI_PORT OPENAI_HOST EMBED_GGUF EMBED_REF CHAT_CONTEXT"
+ENV_KEYS="MODEL_RUN MODEL_PORT PORT HOST D1A_BASE_PATH PYTORCH_MPS_HIGH_WATERMARK_RATIO PYTORCH_MPS_LOW_WATERMARK_RATIO MODEL_PREFIX_CACHE
+MODEL_PREFIX_MAX_TOKENS MEDIA IDLE_UNLOAD FEEDBACK_LOG OUTCOME_CALIBRATOR LABEL_OUTCOMES OPENAI_PORT OPENAI_HOST EMBED_GGUF EMBED_REF CHAT_CONTEXT"
+
+# the settings' old names, from when the model server was Kev's: still read, and mini.env's lines are renamed (migrate_env)
+OLD_NAMES="KEV_PORT:MODEL_PORT KEV_PREFIX_CACHE:MODEL_PREFIX_CACHE KEV_PREFIX_MAX_TOKENS:MODEL_PREFIX_MAX_TOKENS"
+
+has_old_names() {   # does the env file $1 still set an old name?
+  local pair
+  for pair in $OLD_NAMES; do grep -q "^${pair%%:*}=" "$1" && return 0; done
+  return 1
+}
+
+rename_old_lines() {   # the env file $1 as migrate_env leaves it: OLD=value becomes NEW=value with the value as it is, and
+  # is dropped when the file has a NEW line already; every other line is as it was
+  local line pair keep
+  while IFS= read -r line || [ -n "$line" ]; do
+    keep=1
+    for pair in $OLD_NAMES; do
+      case "$line" in
+        "${pair%%:*}="*) if grep -q "^${pair##*:}=" "$1"; then keep=0; else line="${pair##*:}=${line#"${pair%%:*}="}"; fi ;;
+      esac
+    done
+    [ "$keep" = 0 ] || printf '%s\n' "$line"
+  done <"$1"
+}
+
+migrate_env() {   # install, reinstall and update: the old names in .demo/mini.env become the new ones, in place; the file as
+  # it was is copied once, beside it, before the first rewrite
+  [ -f "$ENVFILE" ] && has_old_names "$ENVFILE" || return 0
+  [ -e "$ENVFILE.before-rename" ] || cp -p "$ENVFILE" "$ENVFILE.before-rename"
+  cp -p "$ENVFILE" "$ENVFILE.tmp"; rename_old_lines "$ENVFILE" >"$ENVFILE.tmp"; mv "$ENVFILE.tmp" "$ENVFILE"
+  say "renamed the old KEV_* settings in $ENVFILE (the file as it was: $ENVFILE.before-rename)"
+}
 
 load_env() {
-  local k cli file
+  local k cli file given pair old new src="$ENVFILE" tmp=""
+  # an old name given on the command line or in the environment stands for the new one when that is unset
+  for pair in $OLD_NAMES; do
+    old="${pair%%:*}"; new="${pair##*:}"
+    eval "if [ -z \"\${$new:-}\" ] && [ -n \"\${$old:-}\" ]; then $new=\"\$$old\"; _given_$new=$old; say \"note: $old is the old name of $new: it still works, but use $new\"; fi"
+  done
   if [ -f "$ENVFILE" ]; then
+    # a file that still has the old names reads as if they were renamed: it is the record for the new names too
+    if has_old_names "$ENVFILE"; then
+      tmp="$(mktemp "${TMPDIR:-/tmp}/mini-env.XXXXXX")"; rename_old_lines "$ENVFILE" >"$tmp"; src="$tmp"
+      say "note: $ENVFILE still has the old KEV_* names; install and update rename them to MODEL_*"
+    fi
     # the file is this deployment's record and wins: a setting given on the command line that it sets otherwise is
     # ignored, and said so (an exported PORT or HOST must not move the serving Mac silently on the next update)
     for k in $ENV_KEYS; do eval "if [ -n \"\${$k+x}\" ]; then _cli_$k=\"\$$k\"; fi"; done
     # shellcheck disable=SC1090
-    . "$ENVFILE"
+    . "$src"
+    [ -z "$tmp" ] || rm -f "$tmp"
     for k in $ENV_KEYS; do
       eval "[ -n \"\${_cli_$k+x}\" ]" || continue
-      eval "cli=\"\$_cli_$k\"; file=\"\${$k-}\""
-      [ "$cli" = "$file" ] || say "warning: $k=$cli from the command line is ignored: $ENVFILE sets $k=$file (edit it, then ./mini.sh update)"
+      eval "cli=\"\$_cli_$k\"; file=\"\${$k-}\"; given=\"\${_given_$k:-$k}\""
+      [ "$cli" = "$file" ] || say "warning: $given=$cli from the command line is ignored: $ENVFILE sets $k=$file (edit it, then ./mini.sh update)"
     done
   fi
-  MODEL_RUN="${MODEL_RUN:-$DEFAULT_MODEL_RUN}"; KEV_PORT="${KEV_PORT:-8009}"; PORT="${PORT:-3031}"; HOST="${HOST:-127.0.0.1}"; D1A_BASE_PATH="${D1A_BASE_PATH:-}"
+  MODEL_RUN="${MODEL_RUN:-$DEFAULT_MODEL_RUN}"; MODEL_PORT="${MODEL_PORT:-8009}"; PORT="${PORT:-3031}"; HOST="${HOST:-127.0.0.1}"; D1A_BASE_PATH="${D1A_BASE_PATH:-}"
   PYTORCH_MPS_HIGH_WATERMARK_RATIO="${PYTORCH_MPS_HIGH_WATERMARK_RATIO:-0.7}"
   PYTORCH_MPS_LOW_WATERMARK_RATIO="${PYTORCH_MPS_LOW_WATERMARK_RATIO:-0.6}"
-  KEV_PREFIX_CACHE="${KEV_PREFIX_CACHE:-4}"; KEV_PREFIX_MAX_TOKENS="${KEV_PREFIX_MAX_TOKENS:-65536}"
+  MODEL_PREFIX_CACHE="${MODEL_PREFIX_CACHE:-4}"; MODEL_PREFIX_MAX_TOKENS="${MODEL_PREFIX_MAX_TOKENS:-65536}"
   MEDIA="${MEDIA:-0}"; IDLE_UNLOAD="${IDLE_UNLOAD:-600}"
   OPENAI_PORT="${OPENAI_PORT:-}"; OPENAI_HOST="${OPENAI_HOST:-::}"; EMBED_GGUF="${EMBED_GGUF:-}"; EMBED_REF="${EMBED_REF:-}"
   CHAT_CONTEXT="${CHAT_CONTEXT:-}"
@@ -153,9 +197,9 @@ prune_venvs() {   # after a reinstall that passed: keep current and previous; uv
 
 build_web() {   # after stop: npm ci and next build replace the files the running web app serves from
   say "web app: npm ci and a production build${D1A_BASE_PATH:+ under $D1A_BASE_PATH}"
-  # next build bakes the /kev and /media proxy targets into the build; next start does not read them again
-  (cd "$ROOT" && npm ci --no-audit --no-fund --loglevel=error && D1A_BASE_PATH="$D1A_BASE_PATH" KEV_API="http://127.0.0.1:$KEV_PORT" \
-    MEDIA_API="http://127.0.0.1:$KEV_PORT" npm run build >/dev/null)
+  # next build bakes the /model and /media proxy targets into the build; next start does not read them again
+  (cd "$ROOT" && npm ci --no-audit --no-fund --loglevel=error && D1A_BASE_PATH="$D1A_BASE_PATH" MODEL_API="http://127.0.0.1:$MODEL_PORT" \
+    MEDIA_API="http://127.0.0.1:$MODEL_PORT" npm run build >/dev/null)
 }
 
 plist() {   # label, then program arguments; environment from the ENV_* variables below
@@ -190,8 +234,8 @@ write_agents() {
   ENV_XML="    <key>PATH</key><string>$path</string>
     <key>PYTORCH_MPS_HIGH_WATERMARK_RATIO</key><string>$PYTORCH_MPS_HIGH_WATERMARK_RATIO</string>
     <key>PYTORCH_MPS_LOW_WATERMARK_RATIO</key><string>$PYTORCH_MPS_LOW_WATERMARK_RATIO</string>
-    <key>D1A_PREFIX_CACHE</key><string>$KEV_PREFIX_CACHE</string>
-    <key>D1A_PREFIX_MAX_TOKENS</key><string>$KEV_PREFIX_MAX_TOKENS</string>
+    <key>D1A_PREFIX_CACHE</key><string>$MODEL_PREFIX_CACHE</string>
+    <key>D1A_PREFIX_MAX_TOKENS</key><string>$MODEL_PREFIX_MAX_TOKENS</string>
 "
   # self-learning (d1a.learning.feedback): log every decision and take outcomes at POST /v1/feedback; apply a fitted calibrator
   [ -n "$FEEDBACK_LOG" ] && ENV_XML+="    <key>D1A_FEEDBACK_LOG</key><string>$FEEDBACK_LOG</string>
@@ -205,12 +249,12 @@ write_agents() {
 "
   [ -n "$CHAT_CONTEXT" ] && ENV_XML+="    <key>D1A_CHAT_CONTEXT</key><string>$CHAT_CONTEXT</string>
 "
-  plist "$MODEL_LABEL" "$PY" -m d1a.serving.serve --run "$MODEL_RUN" --port "$KEV_PORT" --host 127.0.0.1 --idle-unload "$IDLE_UNLOAD" >"$AGENTS/$MODEL_LABEL.plist"
+  plist "$MODEL_LABEL" "$PY" -m d1a.serving.serve --run "$MODEL_RUN" --port "$MODEL_PORT" --host 127.0.0.1 --idle-unload "$IDLE_UNLOAD" >"$AGENTS/$MODEL_LABEL.plist"
   launchctl bootout "$(domain)/$MEDIA_LABEL" 2>/dev/null || true; rm -f "$AGENTS/$MEDIA_LABEL.plist"   # photos and voice now go to the model server
   ENV_XML="    <key>PATH</key><string>$path</string>
     <key>NODE_ENV</key><string>production</string>
-    <key>KEV_API</key><string>http://127.0.0.1:$KEV_PORT</string>
-    <key>MEDIA_API</key><string>http://127.0.0.1:$KEV_PORT</string>
+    <key>MODEL_API</key><string>http://127.0.0.1:$MODEL_PORT</string>
+    <key>MEDIA_API</key><string>http://127.0.0.1:$MODEL_PORT</string>
     <key>D1A_BASE_PATH</key><string>$D1A_BASE_PATH</string>
 "   # next start reads next.config.ts again, so the base path must match the build's
   # the PR label check (/review, d1a-playground#29) reads the decision log; off unless the labeler's outcomes are on
@@ -226,7 +270,7 @@ write_agents() {
   if [ -n "$OPENAI_PORT" ]; then
     ENV_XML="    <key>PATH</key><string>$path</string>
 "
-    plist "$OPENAI_LABEL" "$(command -v node)" "$ROOT/scripts/openai_port.mjs" "$OPENAI_HOST" "$OPENAI_PORT" "http://127.0.0.1:$KEV_PORT" >"$AGENTS/$OPENAI_LABEL.plist"
+    plist "$OPENAI_LABEL" "$(command -v node)" "$ROOT/scripts/openai_port.mjs" "$OPENAI_HOST" "$OPENAI_PORT" "http://127.0.0.1:$MODEL_PORT" >"$AGENTS/$OPENAI_LABEL.plist"
     plutil -lint "$AGENTS/$OPENAI_LABEL.plist" >/dev/null
   else
     launchctl bootout "$(domain)/$OPENAI_LABEL" 2>/dev/null || true; rm -f "$AGENTS/$OPENAI_LABEL.plist"
@@ -246,7 +290,7 @@ write_agents() {
     <string>$PY</string>
     <string>$ROOT/scripts/pr_outcomes.py</string>
     <string>--feedback</string>
-    <string>http://127.0.0.1:$KEV_PORT/v1/feedback</string>
+    <string>http://127.0.0.1:$MODEL_PORT/v1/feedback</string>
     <string>--log</string>
     <string>$FEEDBACK_LOG</string>
   </array>
@@ -289,7 +333,7 @@ EOF
     <string>--calibrator</string>
     <string>$OUTCOME_CALIBRATOR</string>
     <string>--server</string>
-    <string>http://127.0.0.1:$KEV_PORT</string>
+    <string>http://127.0.0.1:$MODEL_PORT</string>
     <string>--trained-dir</string>
     <string>$TRAINED_DIR</string>
   </array>
@@ -322,8 +366,8 @@ labels() {   # the agents this machine runs, in start order
 wait_for_model() {   # the web app is ready in ~50 ms, the model server's port opens seconds later: until then every
   # proxied request (the page's first /v1/models poll) is a 500 "ECONNREFUSED" (d1a#42). Bounded: a slow load still starts the web.
   local n=0
-  until curl -fs -m 3 -o /dev/null "http://127.0.0.1:$KEV_PORT/v1/models"; do
-    n=$((n + 1)); [ $n -ge 60 ] && { say "the model server is not answering on :$KEV_PORT after 2 minutes; starting the web app anyway"; return 0; }
+  until curl -fs -m 3 -o /dev/null "http://127.0.0.1:$MODEL_PORT/v1/models"; do
+    n=$((n + 1)); [ $n -ge 60 ] && { say "the model server is not answering on :$MODEL_PORT after 2 minutes; starting the web app anyway"; return 0; }
     sleep 2
   done
 }
@@ -351,7 +395,7 @@ start() {
 smoke() {   # every demo's examples through the web app, checked against the baseline (scripts/demo_smoke.mjs): this Mac's own
   # in .demo when it has one (recorded here: MLX rounds per chip), so the checkout stays clean for update's git pull
   local url="http://127.0.0.1:$PORT$D1A_BASE_PATH" n=0 rc=0
-  until curl -fsS -m 5 -o /dev/null "$url/kev/v1/models"; do n=$((n + 1)); [ $n -gt 120 ] && die "the web app or the model server did not come up; see $LOGS"; sleep 5; done
+  until curl -fsS -m 5 -o /dev/null "$url/model/v1/models"; do n=$((n + 1)); [ $n -gt 120 ] && die "the web app or the model server did not come up; see $LOGS"; sleep 5; done
   local media=""; [ "$MEDIA" = 1 ] || media="--no-media"   # a string, not an array: bash 3.2 under set -u calls an empty array unbound
   local baseline=""; [ ! -f "$STATE/demo-baseline.json" ] || baseline="--baseline=$STATE/demo-baseline.json"
   local cal=""; [ -z "$OUTCOME_CALIBRATOR" ] || cal="--calibrator=$OUTCOME_CALIBRATOR"   # answers a newer calibrator moved are reported, not failed (#93)
@@ -363,7 +407,7 @@ smoke() {   # every demo's examples through the web app, checked against the bas
   # unchanged after the chats (scripts/openai_smoke.mjs)
   local h="$OPENAI_HOST" ref=""; case "$h" in 0.0.0.0|::) h=127.0.0.1 ;; *:*) h="[$h]" ;; esac
   [ -z "$EMBED_REF" ] || ref="--embed-ref $EMBED_REF"
-  node "$ROOT/scripts/openai_smoke.mjs" "http://$h:$OPENAI_PORT" --decide "http://127.0.0.1:$KEV_PORT" $ref \
+  node "$ROOT/scripts/openai_smoke.mjs" "http://$h:$OPENAI_PORT" --decide "http://127.0.0.1:$MODEL_PORT" $ref \
     || die "OpenAI smoke test FAILED: chat, embeddings or decisions on the OpenAI port (scripts/openai_smoke.mjs)"
 }
 
@@ -382,7 +426,7 @@ backup_agents() {   # before write_agents: the agents as they run now, for going
 answers() {   # the model server loads its model and answers one decision (/v1/models answers before any model loads)
   curl -fsS -m 300 -o /dev/null -H 'content-type: application/json' -H 'x-d1a-decision-log: off' \
     -d '{"state": "The parcel arrived.", "questions": {"ok": {"type": "noul", "instructions": "Did it arrive?"}}}' \
-    "http://127.0.0.1:$KEV_PORT/v1/systemone"
+    "http://127.0.0.1:$MODEL_PORT/v1/systemone"
 }
 
 go_back() {   # the EXIT trap from reinstall's stop to the end of its smoke test: a down model server also stops the PR labeler,
@@ -413,12 +457,13 @@ status() {
     else say "$l: not loaded"; fi
   done
   [ ! -L "$VENVS/current" ] || say "model server venv: .demo/d1a-venvs/$(readlink "$VENVS/current")$([ ! -L "$VENVS/previous" ] || echo " (previous: $(readlink "$VENVS/previous"))")"
-  curl -fsS -m 3 "http://127.0.0.1:$KEV_PORT/v1/models" >/dev/null && say "model server answers on :$KEV_PORT" || say "model server not answering on :$KEV_PORT (still loading?)"
-  curl -fsS -m 3 "http://127.0.0.1:$KEV_PORT/v1/models" 2>/dev/null | grep -q '"loaded":true' && say "model in memory" || say "model not in memory (it loads on the next request)"
+  curl -fsS -m 3 "http://127.0.0.1:$MODEL_PORT/v1/models" >/dev/null && say "model server answers on :$MODEL_PORT" || say "model server not answering on :$MODEL_PORT (still loading?)"
+  curl -fsS -m 3 "http://127.0.0.1:$MODEL_PORT/v1/models" 2>/dev/null | grep -q '"loaded":true' && say "model in memory" || say "model not in memory (it loads on the next request)"
   [ -z "$OPENAI_PORT" ] || { curl -fsS -m 3 -o /dev/null "http://127.0.0.1:$OPENAI_PORT/v1/models" && say "OpenAI routes answer on $OPENAI_HOST:$OPENAI_PORT" || say "OpenAI routes not answering on :$OPENAI_PORT"; }
   curl -fsS -m 5 -o /dev/null "http://127.0.0.1:$PORT$D1A_BASE_PATH" && say "web app answers on http://$HOST:$PORT$D1A_BASE_PATH" || say "web app not answering on :$PORT"
 }
 
+case "${1:-status}" in install|reinstall|update) migrate_env ;; esac
 load_env
 case "${1:-status}" in
   install)

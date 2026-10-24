@@ -4,13 +4,13 @@
 #   .\demo.ps1                      install what is missing, start both, open the browser; Ctrl+C stops both
 #   .\demo.ps1 --media              also start the photo and voice server (d1a.serving.media) for Photo check, Voice triage and Video check;
 #                                   it loads its model (~10 GB) on the first photo or voice request
-#   .\demo.ps1 --no-server          start only the web app, against a model server already running on $env:KEV_PORT
+#   .\demo.ps1 --no-server          start only the web app, against a model server already running on $env:MODEL_PORT
 #   .\demo.ps1 --lmstudio URL       no D1A weights: a prompted Gemma 4 chat model in LM Studio answers instead (NOT D1A)
 #              [--lmstudio-model ID]   the LM Studio model id (default gemma-4-e4b-it-mlx; Windows ids have no -mlx suffix)
 #   .\demo.ps1 --no-browser         do not open the browser
 #   .\demo.ps1 stop                 stop what an earlier .\demo.ps1 started (for example after closing its window)
 #
-# Environment: MODEL_RUN (default JohnP1/d1a-e2b; JohnP1/d1a-e2b-mlx-q8 on Apple Silicon), KEV_PORT (default 8009),
+# Environment: MODEL_RUN (default JohnP1/d1a-e2b; JohnP1/d1a-e2b-mlx-q8 on Apple Silicon), MODEL_PORT (default 8009; the old name KEV_PORT still works),
 # MEDIA_PORT (default 8010), PORT (web app; default 3001, then 3011, then 3021-3030).
 # If PowerShell refuses to run scripts: powershell -ExecutionPolicy Bypass -File .\demo.ps1
 # Works in Windows PowerShell 5.1 and PowerShell 7.
@@ -26,17 +26,22 @@ $PythonVersion = '3.13'       # torch has no wheels for 3.14 yet; uv downloads 3
 $Root = Split-Path -Parent $MyInvocation.MyCommand.Path
 $State = Join-Path $Root '.demo'
 $Venv = Join-Path $State 'venv'
-$KevPort = if ($env:KEV_PORT) { [int]$env:KEV_PORT } else { 8009 }
+function Say([string]$m) { Write-Host $m }
+function Warn([string]$m) { Write-Host "warning: $m" -ForegroundColor Yellow }
+function Die([string]$m) { Write-Host "error: $m" -ForegroundColor Red; exit 1 }   # exit still runs the finally block below
+function Get-ModelPort {   # MODEL_PORT, else its old name KEV_PORT (with a note), else 8009
+  if ($env:MODEL_PORT) { return [int]$env:MODEL_PORT }
+  if ($env:KEV_PORT) { Warn 'KEV_PORT is the old name of MODEL_PORT: it still works, but use MODEL_PORT'; return [int]$env:KEV_PORT }
+  return 8009
+}
+$ModelPort = Get-ModelPort
 $OnWindows = ($PSVersionTable.PSEdition -eq 'Desktop') -or $IsWindows
 $AppleSilicon = (-not $OnWindows) -and ((& uname -s) -eq 'Darwin') -and ((& uname -m) -eq 'arm64')
 # the 8-bit MLX build on Apple Silicon (4.2 GB, no base download), the PyTorch checkpoint elsewhere
 $ModelRun = if ($env:MODEL_RUN) { $env:MODEL_RUN } elseif ($AppleSilicon) { 'JohnP1/d1a-e2b-mlx-q8' } else { 'JohnP1/d1a-e2b' }
 $MediaPort = if ($env:MEDIA_PORT) { [int]$env:MEDIA_PORT } else { 8010 }
-if ($AppleSilicon) { $MediaPort = $KevPort }   # the model server answers photos and voice itself (MLX)
+if ($AppleSilicon) { $MediaPort = $ModelPort }   # the model server answers photos and voice itself (MLX)
 
-function Say([string]$m) { Write-Host $m }
-function Warn([string]$m) { Write-Host "warning: $m" -ForegroundColor Yellow }
-function Die([string]$m) { Write-Host "error: $m" -ForegroundColor Red; exit 1 }   # exit still runs the finally block below
 $ScriptPath = $MyInvocation.MyCommand.Path
 function Show-Usage { Get-Content $ScriptPath -TotalCount 13 | ForEach-Object { $_ -replace '^# ?', '' } }
 
@@ -80,7 +85,7 @@ function Test-PortBusy([int]$port) {   # 127.0.0.1 or ::1: localhost, which the 
 function Test-Url([string]$url, [int]$timeout = 3) {
   try { $null = Invoke-WebRequest -UseBasicParsing -Uri $url -TimeoutSec $timeout; return $true } catch { return $false }
 }
-function Test-KevUp { Test-Url "http://127.0.0.1:$KevPort/v1/models" }
+function Test-ModelUp { Test-Url "http://127.0.0.1:$ModelPort/v1/models" }
 function Test-MediaUp { Test-Url "http://127.0.0.1:$MediaPort/v1/models" }
 
 function Select-WebPort {
@@ -169,14 +174,14 @@ $procs = @()
 try {
   # ---------------------------------------------------------------- the model server (or the LM Studio bridge)
   if ($NoServer) {
-    if (-not (Test-KevUp)) { Die "--no-server: nothing answers on http://127.0.0.1:$KevPort/v1/models (start d1a.serving.serve there, or drop --no-server)" }
-    Say "Using the model server already running on port $KevPort."
+    if (-not (Test-ModelUp)) { Die "--no-server: nothing answers on http://127.0.0.1:$ModelPort/v1/models (start d1a.serving.serve there, or drop --no-server)" }
+    Say "Using the model server already running on port $ModelPort."
   }
-  elseif (Test-KevUp) {
-    Say "A System One server is already answering on port $KevPort; using it."
+  elseif (Test-ModelUp) {
+    Say "A System One server is already answering on port $ModelPort; using it."
   }
   else {
-    if (Test-PortBusy $KevPort) { Die "port $KevPort is taken by something that is not a model server; stop it or set `$env:KEV_PORT" }
+    if (Test-PortBusy $ModelPort) { Die "port $ModelPort is taken by something that is not a model server; stop it or set `$env:MODEL_PORT" }
     if ($LMStudio) {
       Say "LM Studio mode: answers come from $LMStudioModel, a prompted chat model in LM Studio at $LMStudio."
       Say 'This is NOT the trained D1A checkpoint: no LoRA, no pointer head, uncalibrated probabilities.'
@@ -188,7 +193,7 @@ try {
         Warn 'pass --lmstudio-model <id> to pick one'
       }
       $procs += Start-Logged 'model-server' 'uv' @('run', '--no-project', '--python', $PythonVersion, '--with', 'fastapi', '--with', 'uvicorn', '--with', 'httpx',
-        'python', 'server/lmstudio_systemone.py', '--lmstudio', $LMStudio, '--model', $LMStudioModel, '--port', "$KevPort")
+        'python', 'server/lmstudio_systemone.py', '--lmstudio', $LMStudio, '--model', $LMStudioModel, '--port', "$ModelPort")
     }
     else {
       $py = if ($OnWindows) { Join-Path $Venv 'Scripts\python.exe' } else { Join-Path $Venv 'bin/python' }
@@ -219,14 +224,14 @@ try {
                elseif ((& uname -s) -eq 'Darwin') { [math]::Floor([double](& sysctl -n hw.memsize) / 1GB) } else { 0 }
       $peak = if ($AppleSilicon) { 5 } else { 15 }
       if ($memGb -gt 0 -and $memGb -lt $peak + 4) { Warn "this machine has $memGb GB of memory; the model server peaks around $peak GB. If it runs out, use --lmstudio instead." }
-      Say "Starting the model server (d1a.serving.serve): $ModelRun on $device, port $KevPort (logs: .demo\model-server*.log)"
+      Say "Starting the model server (d1a.serving.serve): $ModelRun on $device, port $ModelPort (logs: .demo\model-server*.log)"
       if ($AppleSilicon) { Say 'The first start downloads the 8-bit MLX model (about 4 GB); later starts take a few seconds.' }
       else { Say 'The first start downloads Gemma 4 E2B (about 10 GB) and the adapter; later starts take about 20 s.' }
-      $procs += Start-Logged 'model-server' $py @('-m', 'd1a.serving.serve', '--run', $ModelRun, '--port', "$KevPort")
+      $procs += Start-Logged 'model-server' $py @('-m', 'd1a.serving.serve', '--run', $ModelRun, '--port', "$ModelPort")
     }
 
     $t0 = Get-Date; $last = $t0
-    while (-not (Test-KevUp)) {
+    while (-not (Test-ModelUp)) {
       if ($procs[-1].HasExited) { Say 'The server exited. Last lines of its log:'; Show-LogTail 'model-server'; Die 'the model server did not start (see .demo\model-server*.log)' }
       if (((Get-Date) - $last).TotalSeconds -ge 15) {
         $last = Get-Date
@@ -234,7 +239,7 @@ try {
       }
       Start-Sleep -Seconds 1
     }
-    Say ("Server ready on http://127.0.0.1:{0} after {1:N0} s." -f $KevPort, ((Get-Date) - $t0).TotalSeconds)
+    Say ("Server ready on http://127.0.0.1:{0} after {1:N0} s." -f $ModelPort, ((Get-Date) - $t0).TotalSeconds)
 
     # ---------------------------------------------------------------- the photo and voice server (--media)
     if ($Media -and -not $AppleSilicon) {
@@ -265,7 +270,7 @@ try {
   }
   $webPort = Select-WebPort
   Say "Starting the web app on port $webPort (logs: .demo\web*.log)"
-  $env:KEV_API = "http://127.0.0.1:$KevPort"; $env:MEDIA_API = "http://127.0.0.1:$MediaPort"; $env:NEXT_TELEMETRY_DISABLED = '1'
+  $env:MODEL_API = "http://127.0.0.1:$ModelPort"; $env:MEDIA_API = "http://127.0.0.1:$MediaPort"; $env:NEXT_TELEMETRY_DISABLED = '1'
   $node = (Get-Command node).Source
   $procs += Start-Logged 'web' $node @('node_modules/next/dist/bin/next', 'dev', '-p', "$webPort")
   $url = "http://localhost:$webPort"
@@ -273,14 +278,14 @@ try {
     if ($procs[-1].HasExited) { Show-LogTail 'web'; Die 'the web app did not start (see .demo\web*.log)' }
     Start-Sleep -Seconds 1
   }
-  if (-not (Test-Url "$url/kev/v1/models" 5)) { Warn 'the web app cannot reach the model server through its /kev proxy' }
+  if (-not (Test-Url "$url/model/v1/models" 5)) { Warn 'the web app cannot reach the model server through its /model proxy' }
 
   Say ''
   Say 'D1A playground is running:'
   if ($Media) { Say "  $url                all thirteen demos" }
   else { Say "  $url                the demos (Photo check, Voice triage and Video check need --media)" }
   Say "  $url/#inbox         jump to one (#routing #guardrails #tools #inbox #rerank #evals #labeling #control #gate #photo #voice #prlabel #video)"
-  Say "  http://127.0.0.1:$KevPort/v1/models   the server's model card"
+  Say "  http://127.0.0.1:$ModelPort/v1/models   the server's model card"
   if ($LMStudio) { Say '  (LM Studio mode: a prompted chat model answers, NOT the trained D1A checkpoint)' }
   Say 'Press Ctrl+C to stop (or run .\demo.ps1 stop from another window).'
   if ($OpenBrowser) { if ($OnWindows) { Start-Process $url } elseif ((& uname -s) -eq 'Darwin') { & open $url } }
