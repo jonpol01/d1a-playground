@@ -13,13 +13,17 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 Every change is checked by the test suites, with the numbers in the PR. Nothing downgrades and no feature is removed silently:
 - `npm run lint`, the type check and both builds pass (CI).
 - `node scripts/demo_smoke.mjs <web app URL>` passes: every demo's built-in examples answer through the web app with the
-  choices in `scripts/demo-baseline.json`. `mini.sh update` runs it after every deploy, against the serving Mac's own
+  choices in `scripts/demo-baseline.json`. `mini.sh update` runs it after every deploy, against the serving host's own
   `.demo/demo-baseline.json` when it has one. A change of answers is recorded on purpose (`--record`) in the same PR, with
   the reason and the numbers. Exit 3 means every demo answered but answers differ from the baseline; exit 1, a demo failed.
   An answer a newly promoted outcome calibrator moved (on a question it calibrates) is reported, not failed (#93).
 - A demo, example, endpoint or setting is never dropped silently: the smoke test fails on a removed example. Remove it
   in the same PR that re-records the baseline, and say why.
 - A new demo or example ships with its smoke requests (`src/components/uses/smoke.ts`) and an updated baseline.
+- **Docs with every change** (the maintainer, 2026-10-24). A PR updates every doc its change touches (README.md and
+  README.ja.md together, SECURITY.md, CHANGELOG.md) in the same PR. A new demo, setting, endpoint or script that no doc
+  covers yet gets one: a section in the closest doc or a new page linked from the README. The PR body says which:
+  `Docs: <pages>`, or `Docs: none needed, <why>`.
 - A D1A pin move also replays the PR labeler's states (`d1a/runs/labeler-replay`): identical answers, and interleaved latency within noise.
 - A D1A pin move regenerates `scripts/d1a-constraints.txt` from the venv that passed the quality gate (its header says how);
   the launchers install exactly that environment, and CI resolves it for macOS, Linux and Windows.

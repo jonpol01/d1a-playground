@@ -40,6 +40,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **The README describes the model the playground serves today.** The newest D1A-E2B release (its MLX build on Apple
+  Silicon) instead of the v0.1 one-epoch prototype, with D1A's model list for every version's scores; the memory and
+  download figures are split into MLX (the Apple Silicon default) and PyTorch; Japanese training since v0.6 is noted.
+  AGENTS.md: docs ship with every change.
 - **The model server's names are D1A's own, and the old ones still work.** The settings are `MODEL_PORT`, `MODEL_API`,
   `MODEL_PREFIX_CACHE` and `MODEL_PREFIX_MAX_TOKENS` (was `KEV_*`, now matching `MEDIA_PORT` and `MEDIA_API`), the web app
   proxies the model server under `/model` (was `/kev`), and `server/kev/` is `server/systemone/`. The LM Studio adapter
