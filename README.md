@@ -6,7 +6,7 @@ A small decision model reads one document, answers a few typed questions about i
 
 D1A is built on [Kev](https://github.com/jaredpalmer/kev) by Jared Palmer (Apache-2.0). D1A is not affiliated with or endorsed by Jared Palmer or the Kev project. The playground serves D1A-E2B on Gemma 4 E2B ([JohnP1/d1a-e2b](https://huggingface.co/JohnP1/d1a-e2b); its 8-bit MLX build on Apple Silicon), the newest release unless `MODEL_RUN` picks another model or tag. D1A's [model list](https://github.com/jonpol01/d1a/blob/main/docs/MODELS.md) has every model, its versions and its scores.
 
-![The demos, one after another, each with the live model's answer](docs/demos.gif)
+![The tool-call gating demo running live: the call rm -rf ~/ is denied, shown as a red traffic light with the allow, ask and deny probabilities](docs/gifs/en/tools.gif)
 
 ## The Thirteen Demos
 
