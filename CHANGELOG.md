@@ -40,6 +40,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **The models page lists the QAT builds** (`/models`, English and Japanese, #105). D1A-E2B-it QAT and D1A-E4B-it QAT join
+  the family diagram (a third trunk under E2B and E4B: Google's 4-bit quantization-aware-trained -it), the scores section
+  (D1A-E4B-it QAT against v0.6, and a column in its table) and the builds table; D1A-E4B-it QAT is the newest. Each trunk
+  label is now a title with a line under it, so three fit side by side.
 - **The README describes the model the playground serves today.** The newest D1A-E2B release (its MLX build on Apple
   Silicon) instead of the v0.1 one-epoch prototype, with D1A's model list for every version's scores; the memory and
   download figures are split into MLX (the Apple Silicon default) and PyTorch; Japanese training since v0.6 is noted.

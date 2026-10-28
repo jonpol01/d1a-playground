@@ -32,29 +32,32 @@ function Defs() {
   return <defs><marker id="marr" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L8 4 L0 8 z" fill="var(--muted-foreground)" /></marker></defs>;
 }
 
-type Kid = { trunk: string; model: string; sub: string; newest?: boolean; planned?: boolean };
+type Kid = { trunk: string; trunkSub: string; model: string; sub: string; newest?: boolean; planned?: boolean };
 
 function FamilyDiagram({ t }: { t: Text }) {
-  // three trunk sizes; under each, the base and the instruction-tuned trunk, and the D1A model trained on it
-  const cols: { x: number; name: string; color: string; kids: Kid[] }[] = [
-    { x: 16, name: "E2B", color: C.e2b, kids: [{ trunk: t.base, model: "D1A-E2B v0.6.1", sub: t.decisions }, { trunk: t.it, model: "D1A-E2B-it v0.6", sub: t.decisionsChat }] },
-    { x: 296, name: "E4B", color: C.e4b, kids: [{ trunk: t.base, model: "D1A-E4B v0.6.1", sub: t.decisions }, { trunk: t.it, model: "D1A-E4B-it v0.6", sub: t.decisionsChat, newest: true }] },
-    { x: 576, name: "12B", color: C.b12, kids: [{ trunk: t.itQat, model: "D1A-12B", sub: t.planned, planned: true }] },
+  // three trunk sizes; under each, its trunks (the base, the instruction-tuned -it, Google's 4-bit QAT -it) and the D1A
+  // model trained on each
+  const groups: { name: string; color: string; kids: Kid[] }[] = [
+    { name: "E2B", color: C.e2b, kids: [{ trunk: t.base, trunkSub: t.baseSub, model: "D1A-E2B v0.6.1", sub: t.decisions }, { trunk: t.it, trunkSub: t.itSub, model: "D1A-E2B-it v0.6", sub: t.decisionsChat }, { trunk: t.itQat, trunkSub: t.itQatSub, model: "D1A-E2B-it QAT", sub: t.decisionsChat }] },
+    { name: "E4B", color: C.e4b, kids: [{ trunk: t.base, trunkSub: t.baseSub, model: "D1A-E4B v0.6.1", sub: t.decisions }, { trunk: t.it, trunkSub: t.itSub, model: "D1A-E4B-it v0.6", sub: t.decisionsChat }, { trunk: t.itQat, trunkSub: t.itQatSub, model: "D1A-E4B-it QAT", sub: t.decisionsChat, newest: true }] },
+    { name: "12B", color: C.b12, kids: [{ trunk: t.itQat, trunkSub: t.itQatSub, model: "D1A-12B", sub: t.planned, planned: true }] },
   ];
+  let right = 16;
+  const cols = groups.map((g) => { const w = g.kids.length === 1 ? 264 : 32 + g.kids.length * 120 - 8, c = { ...g, x: right, w }; right += w + 16; return c; });
   return (
     <div className="overflow-x-auto">
-      <svg viewBox="0 0 856 290" className="h-auto w-full min-w-[700px]" role="img" aria-label={t.familyAria}>
+      <svg viewBox={`0 0 ${right} 290`} className="h-auto w-full min-w-[900px]" role="img" aria-label={t.familyAria}>
         <Defs />
         {cols.map((c) => (
           <g key={c.name}>
-            <rect x={c.x} y={8} width={264} height={274} rx={18} fill={`color-mix(in oklch, ${c.color} 5%, transparent)`} stroke={`color-mix(in oklch, ${c.color} 40%, var(--border))`} />
+            <rect x={c.x} y={8} width={c.w} height={274} rx={18} fill={`color-mix(in oklch, ${c.color} 5%, transparent)`} stroke={`color-mix(in oklch, ${c.color} 40%, var(--border))`} />
             <text x={c.x + 16} y={34} className="font-heading fill-foreground text-[15px] font-semibold">Gemma 4 {c.name}</text>
             <text x={c.x + 16} y={52} className="fill-muted-foreground text-[10px]">{c.name === "12B" ? t.trunk12 : c.name === "E4B" ? t.trunkE4 : t.trunkE2}</text>
             {c.kids.map((k, i) => {
               const w = c.kids.length === 1 ? 232 : 112, x = c.kids.length === 1 ? c.x + 16 : c.x + 16 + i * 120;
               return (
                 <g key={k.model}>
-                  <Box x={x} y={70} w={w} h={44} title={k.trunk} color={i === 1 || k.planned ? C.it : C.muted} dashed={k.planned} />
+                  <Box x={x} y={70} w={w} h={44} title={k.trunk} sub={k.trunkSub} color={k.trunk === t.base ? C.muted : C.it} dashed={k.planned} />
                   <Arrow x1={x + w / 2} y1={114} x2={x + w / 2} y2={146} dashed={k.planned} />
                   <Box x={x} y={150} w={w} h={56} title={k.model} sub={k.sub} color={c.color} dashed={k.planned} />
                   {k.newest && <text x={x + w / 2} y={224} textAnchor="middle" className="fill-foreground text-[10px] font-semibold">{t.newest}</text>}
@@ -200,12 +203,12 @@ function ScoresChart({ t }: { t: Text }) {
 
 const EN = {
   back: "Playground", title: "The D1A models", kicker: "Models",
-  intro: "Every D1A model is the same design on a different Gemma 4 trunk: a LoRA adapter and a small pointer head that read typed questions about a document and return a calibrated probability for every option, in one forward pass. Two things vary: the trunk's size (E2B, E4B, and a planned 12B) and its kind (the pretrained base, or the instruction-tuned -it model). On an -it trunk the same model also chats: switch the adapter off and it is the -it model exactly.",
+  intro: "Every D1A model is the same design on a different Gemma 4 trunk: a LoRA adapter and a small pointer head that read typed questions about a document and return a calibrated probability for every option, in one forward pass. Two things vary: the trunk's size (E2B, E4B, and a planned 12B) and its kind (the pretrained base, the instruction-tuned -it model, or Google's 4-bit quantization-aware-trained -it). On an -it trunk the same model also chats: switch the adapter off and it is the -it model exactly.",
   credit: <>Weights and model cards: <a className={link} href="https://huggingface.co/JohnP1">huggingface.co/JohnP1</a>. The list of builds is kept in <a className={link} href="https://github.com/jonpol01/d1a/blob/main/docs/MODELS.md">docs/MODELS.md</a>; how the model itself works is on the <Link className={link} href="/architecture">architecture</Link> page.</>,
   s1: "1. The family",
-  s1body: "Five models on five trunks. The base-trunk models (E2B, E4B v0.6.1) answer decisions only. The -it models were trained with the same recipe and data mix (23,427 records, byte for byte) and keep the -it model's own chat, vision and audio. D1A-E4B-it v0.6 is the newest; D1A-12B is planned, not trained.",
-  base: "base (pretrained)", it: "-it (instruction-tuned)", itQat: "-it, QAT 4-bit", head: "pointer head",
-  loraHead: "+ LoRA + head", decisions: "decisions", decisionsChat: "decisions + chat", planned: "planned (not trained)", newest: "newest · 2026-10-17",
+  s1body: "Seven models on seven trunks. The base-trunk models (E2B, E4B v0.6.1) answer decisions only. The -it models were trained with the same recipe and data mix (23,427 records, byte for byte) and keep the -it model's own chat, vision and audio. The QAT models are those -it adapters retrained on Google's 4-bit quantization-aware-trained -it trunks, whose 4-bit weights they keep exactly: D1A-E2B-it QAT is the recommended E2B-it build, and D1A-E4B-it QAT, the newest, is level with D1A-E4B-it v0.6 overall. D1A-12B is planned, not trained.",
+  base: "base", baseSub: "pretrained", it: "-it", itSub: "instruction-tuned", itQat: "-it, QAT", itQatSub: "4-bit", head: "pointer head",
+  loraHead: "+ LoRA + head", decisions: "decisions", decisionsChat: "decisions + chat", planned: "planned (not trained)", newest: "newest · 2026-10-27",
   trunkE2: "about 2B effective parameters · on-device size", trunkE4: "about 4B effective parameters", trunk12: "dense 12B, quantization-aware trained for 4-bit",
   footE2: "fastest: about 1/3 of E4B's time per decision", footE4: "the most accurate published D1A", foot12: "more accuracy expected · 7.4 GB at 4-bit",
   familyAria: "The D1A family: Gemma 4 trunks and the D1A model on each",
@@ -222,7 +225,7 @@ const EN = {
   frozen: "frozen weights, loaded once", switchLabel: "LoRA adapter: on / off", on: "adapter on", off: "adapter off",
   headSub: "q·k over options, ÷ T", lmHead: "language-model head", lmHeadSub: "the -it model's own",
   decisionOut: "calibrated probabilities", chatOut: "chat text, tools, JSON",
-  jobsFoot: "The published -mlx-q8 / -mlx-q4 repositories have the adapter merged into the weights: they answer decisions only.",
+  jobsFoot: "The published v0.6 -mlx-q8 / -mlx-q4 repositories have the adapter merged into the weights: they answer decisions only. The QAT builds keep it separate and chat as published.",
   jobsAria: "One model: adapter on for decisions, off for chat",
   s3b: "Decisions do not wait for a chat",
   s3bbody: "Both jobs share one model thread. A decision that arrives while a chat is generating is answered between two of the chat's tokens, or between two chunks of a long prompt, with the adapter switched on for it and off again after. The chat's text and the decision's probabilities are the same as when each runs alone. On D1A-E4B-it a decision during a 200-token chat waits 0.24 s instead of 4-5 s.",
@@ -231,25 +234,28 @@ const EN = {
   interleaveAria: "Decisions cutting in between a chat's prompt chunks and tokens",
   s4: "4. How they score",
   s4body: "D1A-E4B-it against D1A-E2B-it on every D1A suite, both MLX 8-bit with the adapter unmerged, each at its own calibrated temperature (2026-10-17). E4B-it is ahead on 21 of 22 suites (pooled +2.5 points [+1.7, +3.4]) and behind on one, the unknowable-facts monitor. The price is time: about 2.9× E2B-it's model time per decision.",
+  s4qat: <>D1A-E4B-it QAT against D1A-E4B-it v0.6 on every suite (MLX 4-bit against 8-bit, 2026-10-28): level overall (pooled −0.2 points [−0.9, +0.5]), ahead on PR labels (+1.6), PR severity (+6.0) and routing (+1.7, +1.5), behind on the external TypeSafe suite (−7.8, which comes from the 4-bit trunk). Every suite: <a className={link} href="https://github.com/jonpol01/d1a/blob/main/docs/reports/2026-10-28-e4b-it-qat-scorecard.md">the scorecard</a>.</>,
   scoresLegend: "accuracy %, the axis starts at 60",
   scoresAria: "Accuracy per suite, E2B-it against E4B-it",
   s4table: [
-    ["calibration temperature", "1.41", "1.55"],
-    ["routing temperature", "not shipped", "not shipped"],
-    ["model time per decision", "1×", "about 2.9×"],
-    ["photos, voice, video (zero-shot)", "yes", "yes; catches damage E2B-it misses"],
-  ] as [string, string, string][],
+    ["calibration temperature", "1.41", "1.55", "1.66"],
+    ["routing temperature", "not shipped", "not shipped", "not shipped"],
+    ["model time per decision", "1×", "about 2.9×", "about 2.9×"],
+    ["photos, voice, video (zero-shot)", "yes", "yes; catches damage E2B-it misses", "yes; 26 of 28 demo answers as v0.6's"],
+  ] as [string, string, string, string][],
   s5: "5. Builds",
-  s5body: "Each model ships in several formats. PyTorch is the adapter and head on the Hub trunk (any GPU or CPU); MLX runs on a Mac's GPU, with the photo, voice and video encoders; Core ML runs on the Apple Neural Engine or GPU (text, up to 512 tokens).",
+  s5body: "Each model ships in several formats. PyTorch is the adapter and head on the Hub trunk (any GPU or CPU; a QAT build rebuilds its 4-bit trunk on load); MLX runs on a Mac's GPU, with the photo, voice and video encoders; Core ML runs on the Apple Neural Engine or GPU: the v0.6 builds are text only, up to 512 tokens, while D1A-E2B-it QAT's also chats and reads photos, voice and video, through a Python reference runner on the GPU.",
   colModel: "model", colPt: "PyTorch", colMlx8: "MLX 8-bit", colMlx4: "MLX 4-bit", colCm8: "Core ML int8", colCm4: "Core ML int4",
   builds: [
+    ["D1A-E4B-it QAT", "adapter", "—", "4.4 + 0.9 GB", "—", "not yet"],
     ["D1A-E4B-it v0.6", "adapter", "6.1 + 0.9 GB", "3.9 + 0.9 GB", "skipped", "4.4 GB"],
     ["D1A-E4B v0.6.1", "adapter", "6 + 1 GB", "—", "preview", "—"],
+    ["D1A-E2B-it QAT", "adapter", "—", "2.9 + 0.9 GB", "—", "4.6 GB"],
     ["D1A-E2B-it v0.6", "adapter", "3.5 + 0.9 GB", "2.5 + 0.9 GB", "3.5 GB", "2.6 GB"],
     ["D1A-E2B v0.6.1", "adapter", "3.5 + 0.9 GB", "—", "yes", "—"],
     ["D1A-12B", "—", "planned", "planned", "—", "—"],
   ] as string[][],
-  buildsNote: "MLX sizes: model + photo/voice/video encoders. The -it chat builds are made locally from the adapter (scripts/export_mlx.py --unmerged).",
+  buildsNote: "MLX sizes: model + photo/voice/video encoders. The v0.6 -it chat builds are made locally from the adapter (scripts/export_mlx.py --unmerged); the QAT builds are published unmerged, at Google's own 4-bit grid (no 8-bit or int8 build).",
   s6: "6. The 12B plan",
   s6body: "D1A-12B would put D1A on Gemma 4 12B-it, trained for 4-bit (QAT), as one model for decisions, chat, vision and audio. The code is ready (the 12B port and the 4-bit converter are merged) and both training smoke runs passed; it is shelved until the training budget is approved.",
   plan: [
@@ -263,12 +269,12 @@ type Text = typeof EN;
 
 const JA: Text = {
   back: "プレイグラウンド", title: "D1A のモデル", kicker: "モデル",
-  intro: "D1A のモデルはどれも同じ設計で、土台にする Gemma 4 のトランクだけが違います。LoRA アダプターと小さなポインターヘッドが、文書についての型付きの質問を読み、1回の順伝播ですべての選択肢に較正済みの確率を返します。違うのは2点です。トランクの大きさ（E2B、E4B、計画中の 12B）と種類（事前学習のベース、または指示調整済みの -it）。-it のトランクでは同じモデルがチャットもします。アダプターを外すと、そのまま -it モデルになるからです。",
+  intro: "D1A のモデルはどれも同じ設計で、土台にする Gemma 4 のトランクだけが違います。LoRA アダプターと小さなポインターヘッドが、文書についての型付きの質問を読み、1回の順伝播ですべての選択肢に較正済みの確率を返します。違うのは2点です。トランクの大きさ（E2B、E4B、計画中の 12B）と種類（事前学習のベース、指示調整済みの -it、または Google が 4 ビット向けに量子化を考慮して学習した -it）。-it のトランクでは同じモデルがチャットもします。アダプターを外すと、そのまま -it モデルになるからです。",
   credit: <>重みとモデルカード: <a className={link} href="https://huggingface.co/JohnP1">huggingface.co/JohnP1</a>。ビルドの一覧は <a className={link} href="https://github.com/jonpol01/d1a/blob/main/docs/MODELS.md">docs/MODELS.md</a> にあります。モデル自体の仕組みは<Link className={link} href="/architecture">アーキテクチャ</Link>のページをご覧ください。</>,
   s1: "1. ファミリー",
-  s1body: "5つのトランクに5つのモデル。ベースのトランクのモデル（E2B、E4B v0.6.1）は判断だけを返します。-it のモデルは同じレシピと同じデータ（23,427 件、バイト単位で同一）で学習し、-it モデル本来のチャット・画像・音声の能力を保っています。最新は D1A-E4B-it v0.6、D1A-12B は計画中で、まだ学習していません。",
-  base: "ベース（事前学習）", it: "-it（指示調整）", itQat: "-it、4 ビット QAT", head: "ポインターヘッド",
-  loraHead: "+ LoRA + ヘッド", decisions: "判断", decisionsChat: "判断 + チャット", planned: "計画中（未学習）", newest: "最新 · 2026-10-17",
+  s1body: "7つのトランクに7つのモデル。ベースのトランクのモデル（E2B、E4B v0.6.1）は判断だけを返します。-it のモデルは同じレシピと同じデータ（23,427 件、バイト単位で同一）で学習し、-it モデル本来のチャット・画像・音声の能力を保っています。QAT のモデルは、その -it のアダプターを、Google が 4 ビット向けに量子化を考慮して学習した（QAT）-it トランクで学習し直したもので、その 4 ビットの重みをそのまま使います。E2B-it の推奨ビルドは D1A-E2B-it QAT、最新の D1A-E4B-it QAT は全体で D1A-E4B-it v0.6 と同等です。D1A-12B は計画中で、まだ学習していません。",
+  base: "ベース", baseSub: "事前学習", it: "-it", itSub: "指示調整", itQat: "-it、QAT", itQatSub: "4 ビット", head: "ポインターヘッド",
+  loraHead: "+ LoRA + ヘッド", decisions: "判断", decisionsChat: "判断 + チャット", planned: "計画中（未学習）", newest: "最新 · 2026-10-27",
   trunkE2: "実効パラメータ約 2B · 端末向けの大きさ", trunkE4: "実効パラメータ約 4B", trunk12: "密な 12B、4 ビット向けに量子化を考慮して学習",
   footE2: "最速: 1回の判断にかかる時間は E4B の約 1/3", footE4: "公開済みの D1A で最も高精度", foot12: "精度の上乗せを期待 · 4 ビットで 7.4 GB",
   familyAria: "D1A ファミリー: Gemma 4 のトランクとそれぞれの D1A モデル",
@@ -285,7 +291,7 @@ const JA: Text = {
   frozen: "固定の重み、1回だけ読み込む", switchLabel: "LoRA アダプター: オン / オフ", on: "アダプター オン", off: "アダプター オフ",
   headSub: "選択肢ごとの q·k、÷ T", lmHead: "言語モデルヘッド", lmHeadSub: "-it モデル本来のもの",
   decisionOut: "較正済みの確率", chatOut: "チャットの文章、ツール、JSON",
-  jobsFoot: "公開している -mlx-q8 / -mlx-q4 はアダプターを重みに合成済みのため、判断だけに答えます。",
+  jobsFoot: "公開している v0.6 の -mlx-q8 / -mlx-q4 はアダプターを重みに合成済みのため、判断だけに答えます。QAT のビルドはアダプターを別に持ち、公開したままでチャットもできます。",
   jobsAria: "1つのモデル: 判断ではアダプターをオン、チャットではオフ",
   s3b: "判断はチャットを待たない",
   s3bbody: "2つの仕事は1本のモデルスレッドを共有します。チャットの生成中に届いた判断は、チャットのトークンとトークンの間、または長いプロンプトを読み込むチャンクの間に、アダプターをオンにして答え、終わったらオフに戻します。チャットの文章も判断の確率も、それぞれを単独で動かしたときと同じです。D1A-E4B-it では、200 トークンのチャット中の判断の待ち時間が 4〜5 秒から 0.24 秒になりました。",
@@ -294,25 +300,28 @@ const JA: Text = {
   interleaveAria: "チャットのプロンプトのチャンクとトークンの間に割り込む判断",
   s4: "4. スコア",
   s4body: "D1A のすべてのスイートで D1A-E4B-it と D1A-E2B-it を比べました。どちらも MLX 8 ビット、アダプター非合成、それぞれの較正温度で測定（2026-10-17）。E4B-it は 22 スイート中 21 で上回り（全体で +2.5 ポイント [+1.7, +3.4]）、下回ったのは「答えのない事実」のモニター1つだけです。代わりに、1回の判断にかかるモデル時間は E2B-it の約 2.9 倍です。",
+  s4qat: <>D1A-E4B-it QAT と D1A-E4B-it v0.6 をすべてのスイートで比べました（MLX 4 ビットと 8 ビット、2026-10-28）。全体では同等（全体で −0.2 ポイント [−0.9, +0.5]）で、PR ラベル（+1.6）、PR の重大度（+6.0）、ルーティング（+1.7、+1.5）で上回り、外部の TypeSafe スイート（−7.8、4 ビットのトランクによるもの）で下回りました。すべてのスイートは<a className={link} href="https://github.com/jonpol01/d1a/blob/main/docs/reports/2026-10-28-e4b-it-qat-scorecard.md">スコアカード</a>にあります。</>,
   scoresLegend: "精度 %、軸は 60 から",
   scoresAria: "スイートごとの精度、E2B-it と E4B-it",
   s4table: [
-    ["較正温度", "1.41", "1.55"],
-    ["ルーティング用の温度", "採用せず", "採用せず"],
-    ["1回の判断のモデル時間", "1×", "約 2.9×"],
-    ["写真・音声・動画（ゼロショット）", "対応", "対応、E2B-it が見逃す損傷も検出"],
-  ] as [string, string, string][],
+    ["較正温度", "1.41", "1.55", "1.66"],
+    ["ルーティング用の温度", "採用せず", "採用せず", "採用せず"],
+    ["1回の判断のモデル時間", "1×", "約 2.9×", "約 2.9×"],
+    ["写真・音声・動画（ゼロショット）", "対応", "対応、E2B-it が見逃す損傷も検出", "対応、デモの 28 回答中 26 が v0.6 と同じ"],
+  ],
   s5: "5. ビルド",
-  s5body: "各モデルは複数の形式で配布しています。PyTorch は Hub のトランクに載せるアダプターとヘッド（GPU・CPU どちらでも）。MLX は Mac の GPU で動き、写真・音声・動画のエンコーダーも含みます。Core ML は Apple Neural Engine または GPU で動きます（テキストのみ、512 トークンまで）。",
+  s5body: "各モデルは複数の形式で配布しています。PyTorch は Hub のトランクに載せるアダプターとヘッド（GPU・CPU どちらでも。QAT のビルドは読み込み時に 4 ビットのトランクを組み立てます）。MLX は Mac の GPU で動き、写真・音声・動画のエンコーダーも含みます。Core ML は Apple Neural Engine または GPU で動きます。v0.6 のビルドはテキストのみで 512 トークンまで、D1A-E2B-it QAT のものは Python の参照ランナーを通して GPU でチャットもし、写真・音声・動画も読みます。",
   colModel: "モデル", colPt: "PyTorch", colMlx8: "MLX 8 ビット", colMlx4: "MLX 4 ビット", colCm8: "Core ML int8", colCm4: "Core ML int4",
   builds: [
+    ["D1A-E4B-it QAT", "アダプター", "—", "4.4 + 0.9 GB", "—", "未作成"],
     ["D1A-E4B-it v0.6", "アダプター", "6.1 + 0.9 GB", "3.9 + 0.9 GB", "見送り", "4.4 GB"],
     ["D1A-E4B v0.6.1", "アダプター", "6 + 1 GB", "—", "プレビュー", "—"],
+    ["D1A-E2B-it QAT", "アダプター", "—", "2.9 + 0.9 GB", "—", "4.6 GB"],
     ["D1A-E2B-it v0.6", "アダプター", "3.5 + 0.9 GB", "2.5 + 0.9 GB", "3.5 GB", "2.6 GB"],
     ["D1A-E2B v0.6.1", "アダプター", "3.5 + 0.9 GB", "—", "あり", "—"],
     ["D1A-12B", "—", "計画中", "計画中", "—", "—"],
   ],
-  buildsNote: "MLX のサイズ: モデル + 写真・音声・動画のエンコーダー。-it のチャット用ビルドはアダプターから手元で作ります（scripts/export_mlx.py --unmerged）。",
+  buildsNote: "MLX のサイズ: モデル + 写真・音声・動画のエンコーダー。v0.6 の -it のチャット用ビルドはアダプターから手元で作ります（scripts/export_mlx.py --unmerged）。QAT のビルドはアダプター非合成のまま、Google の 4 ビットの格子そのままで公開しています（8 ビットや int8 のビルドはありません）。",
   s6: "6. 12B の計画",
   s6body: "D1A-12B は、4 ビット向けに学習（QAT）した Gemma 4 12B-it に D1A を載せ、判断・チャット・画像・音声を1つのモデルでこなす計画です。コードは準備済み（12B への移植と 4 ビット変換は統合済み）で、学習の試運転も2回とも成功しています。学習予算の承認まで保留中です。",
   plan: [
@@ -374,12 +383,13 @@ export function Models() {
         <Section title={t.s4}>
           <p>{t.s4body}</p>
           <ScoresChart t={t} />
+          <p>{t.s4qat}</p>
           <div className="overflow-x-auto rounded-xl border border-border">
             <table className="w-full text-[13px]">
-              <thead><tr className="border-b border-border text-left text-[12px]"><th className={th} /><th className={th}>D1A-E2B-it v0.6</th><th className={th}>D1A-E4B-it v0.6</th></tr></thead>
+              <thead><tr className="border-b border-border text-left text-[12px]"><th className={th} /><th className={th}>D1A-E2B-it v0.6</th><th className={th}>D1A-E4B-it v0.6</th><th className={th}>D1A-E4B-it QAT</th></tr></thead>
               <tbody>
-                {t.s4table.map(([k, a, b]) => (
-                  <tr key={k} className="border-b border-border last:border-0"><td className="px-3 py-1.5 text-foreground">{k}</td><td className="px-3 py-1.5">{a}</td><td className="px-3 py-1.5">{b}</td></tr>
+                {t.s4table.map(([k, a, b, c]) => (
+                  <tr key={k} className="border-b border-border last:border-0"><td className="px-3 py-1.5 text-foreground">{k}</td><td className="px-3 py-1.5">{a}</td><td className="px-3 py-1.5">{b}</td><td className="px-3 py-1.5">{c}</td></tr>
                 ))}
               </tbody>
             </table>
