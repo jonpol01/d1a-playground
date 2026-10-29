@@ -40,6 +40,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **The Learning page edits the gate's two new settings** (#107, d1a#364): `promotion.min_held_out`, the held-out pull
+  requests the gate needs before it may promote, and `schedule.growth`, how much the outcomes must grow before the gate
+  runs again. The schedule rows say that either trigger now waits for that growth.
 - **The models page lists the QAT builds** (`/models`, English and Japanese, #105). D1A-E2B-it QAT and D1A-E4B-it QAT join
   the family diagram (a third trunk under E2B and E4B: Google's 4-bit quantization-aware-trained -it), the scores section
   (D1A-E4B-it QAT against v0.6, and a column in its table) and the builds table; D1A-E4B-it QAT is the newest. Each trunk
