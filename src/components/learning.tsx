@@ -21,9 +21,11 @@ const FIELDS: [string, string][] = [
   ["promotion.questions", "Questions that learn (comma-separated; empty = all)"],
   ["promotion.min_outcomes", "Fit outcomes a question needs before it learns (≥ 10)"],
   ["promotion.held_out", "Share of pull requests the gate holds out (0.1–0.5)"],
+  ["promotion.min_held_out", "Held-out pull requests the gate needs before it may promote (≥ 10)"],
   ["promotion.ci_level", "Gate interval (0.9, 0.95 or 0.99)"],
-  ["schedule.daily_at", "Run the gate daily after (HH:MM, this machine's time; empty = never)"],
-  ["schedule.after_new_outcomes", "…or after this many new outcomes (≥ 1; empty = never)"],
+  ["schedule.daily_at", "Run the gate daily after (HH:MM, this machine's time; empty = never), once grown enough (below)"],
+  ["schedule.after_new_outcomes", "…or after this many new outcomes (≥ 1; empty = never), once grown enough"],
+  ["schedule.growth", "…and only once outcomes grew by this share since the last run (0–4; 0 = every trigger runs it)"],
   ["replay.enabled", "Replay earlier outcomes when the model changes"],
   ["replay.per_tick_cap", "Replays per 15-minute tick (1–500)"],
 ];
