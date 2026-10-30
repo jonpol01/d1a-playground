@@ -14,6 +14,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Issue outcomes still match when the decision log is reworded** (`scripts/pr_outcomes.py`, d1a#377): with
+  `D1A_LOG_REWRITE` set, the live GitHub issue title is reworded with the same rules before it is matched to the logged call.
 - **Three more live checks in the smoke test** (`scripts/openai_smoke.mjs`):
   - a tool call cut off by `max_tokens` must leave no Gemma markup in the text (d1a#278);
   - embeddings asked for in base64, as the openai Node SDK and n8n always do, must decode to the float vectors (d1a#282);
