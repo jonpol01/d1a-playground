@@ -305,3 +305,26 @@ class Polling(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RewordedTitles(unittest.TestCase):
+    def test_issue_titles_are_matched_as_the_log_rewords_them(self):
+        """With D1A_LOG_REWRITE the model server logs an issue's title reworded; the live GitHub title must be reworded
+        the same way before matching, or that issue's outcomes are lost."""
+        import types
+        fake = types.ModuleType("d1a.learning.feedback")
+        fake.load_rewrite = lambda: ["rules"]
+        fake.reword = lambda text, rules: text.replace("Northwind ", "") if rules else text
+        saved = {k: sys.modules.get(k) for k in ("d1a", "d1a.learning", "d1a.learning.feedback")}
+        sys.modules.update({"d1a": types.ModuleType("d1a"), "d1a.learning": types.ModuleType("d1a.learning"), "d1a.learning.feedback": fake})
+        gh, pr_outcomes.gh = pr_outcomes.gh, lambda path, jq: [{"title": "Northwind board crash", "user": {"login": "me"},
+                                                                  "repository_url": "https://api.github.com/repos/o/r", "number": 7}]
+        try:
+            pr_outcomes.__dict__.pop("_RULES", None)
+            found = pr_outcomes.find_issues(["o"], datetime(2026, 10, 1, tzinfo=timezone.utc))
+        finally:
+            pr_outcomes.gh = gh; pr_outcomes.__dict__.pop("_RULES", None)
+            for k, v in saved.items():
+                if v is None: sys.modules.pop(k, None)
+                else: sys.modules[k] = v
+        self.assertEqual(found, {("board crash", "me"): [("o/r", 7)]})
