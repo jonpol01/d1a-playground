@@ -166,8 +166,20 @@ def find_issues(owners, since):
     for owner in owners:
         q = urllib.parse.quote(f"user:{owner} is:issue updated:>={since:%Y-%m-%d}")
         for it in gh(f"search/issues?q={q}&per_page=100", ".items[]"):
-            found.setdefault((it["title"], (it.get("user") or {}).get("login", "")), []).append((it["repository_url"].split("/repos/", 1)[1], it["number"]))
+            title = reworded(it["title"])   # the log keeps its titles reworded (D1A_LOG_REWRITE): match them the same way
+            found.setdefault((title, (it.get("user") or {}).get("login", "")), []).append((it["repository_url"].split("/repos/", 1)[1], it["number"]))
     return found
+
+
+def reworded(text):
+    """`text` as the model server's decision log records it: with D1A_LOG_REWRITE set, the same rules (d1a.learning.feedback)."""
+    try:
+        from d1a.learning.feedback import load_rewrite, reword
+    except ImportError:   # a d1a without D1A_LOG_REWRITE: the log is not reworded either
+        return text
+    global _RULES
+    if "_RULES" not in globals(): _RULES = load_rewrite()
+    return reword(text, _RULES)
 
 
 def wanted(c, next_ts, done, now, srcs):

@@ -72,7 +72,7 @@ for case in clean override; do   # every uv call sees the cache: .demo's by defa
   [ "$calls" -ge 2 ] && [ "$seen" = "$calls" ] || fail $case "uv did not use the cache $want"
 done
 
-printf 'PORT=3999\nLABEL_OUTCOMES=1\nFEEDBACK_LOG=%s\nOUTCOME_CALIBRATOR=%s\nMODEL_RUN=JohnP1/d1a-e4b-mlx-q8@v0.5\n' "$T/log.jsonl" "$T/cal.json" > "$T/app/.demo/mini.env"
+printf 'PORT=3999\nLABEL_OUTCOMES=1\nFEEDBACK_LOG=%s\nOUTCOME_CALIBRATOR=%s\nMODEL_RUN=JohnP1/d1a-e4b-mlx-q8@v0.5\nLOG_REWRITE=%s\n' "$T/log.jsonl" "$T/cal.json" "$T/rewrite.json" > "$T/app/.demo/mini.env"
 run promote FAIL_UV=   # the 15-minute self-learning tick replaces the 04:00 promote (d1a#233)
 agent="$T/home/Library/LaunchAgents/io.github.jonpol01.d1a-promote.plist"
 [ "$(cat "$T/promote.status")" = 0 ] && [ -f "$agent" ] || fail promote "did not write the learning agent"
@@ -84,6 +84,9 @@ grep -q "StartInterval" "$agent" && ! grep -q "StartCalendarInterval" "$agent" |
 grep -A1 "<key>D1A_LEARNING</key>" "$T/home/Library/LaunchAgents/io.github.jonpol01.d1a-model.plist" | grep -qF "<string>$T/app/.demo/learning.json</string>" || fail promote "the model server does not read the settings file (its learned flags and rules)"
 grep -qF "config init --file $T/app/.demo/learning.json" "$T/promote" || fail promote "did not create the settings file"
 grep -qF 'promotion.questions=["type","blast","sev"]' "$T/promote" || fail promote "did not set the questions that learn"
+for agent in model outcomes; do   # LOG_REWRITE: the log keeps general wording, and the outcome poster matches issue titles worded the same (d1a#377)
+  grep -qF "<key>D1A_LOG_REWRITE</key><string>$T/rewrite.json</string>" "$T/home/Library/LaunchAgents/io.github.jonpol01.d1a-$agent.plist" || fail promote "the $agent agent has no D1A_LOG_REWRITE"
+done
 run promote2 FAIL_UV=   # a reinstall never overwrites the maintainer's settings
 ! grep -q "config init" "$T/promote2" || fail promote2 "re-created the settings file on reinstall"
 printf 'PORT=3999\n' > "$T/app/.demo/mini.env"
@@ -130,6 +133,7 @@ run openai_off FAIL_UV=   # without OPENAI_PORT the agent goes, and nothing list
 [ ! -f "$agent" ] && [ -n "$(last openai_off "bootout .*/io.github.jonpol01.d1a-openai$")" ] || fail openai_off "left the OpenAI port agent"
 ! grep -q 'embed\]' "$T/openai_off" || fail openai_off "installed the embed extra without EMBED_GGUF"
 ! grep -q "D1A_CHAT_CONTEXT" "$T/home/Library/LaunchAgents/io.github.jonpol01.d1a-model.plist" || fail openai_off "set a chat context cap nobody asked for"
+! grep -q "D1A_LOG_REWRITE" "$T/home/Library/LaunchAgents/io.github.jonpol01.d1a-model.plist" || fail openai_off "rewords the log without LOG_REWRITE"
 
 run bootstrap FAIL_UV= FAIL_BOOTSTRAP=2   # launchd refuses the first two bootstraps: start waits and tries again (2026-10-15)
 [ "$(cat "$T/bootstrap.status")" = 0 ] || fail bootstrap "a refused bootstrap ended the start"

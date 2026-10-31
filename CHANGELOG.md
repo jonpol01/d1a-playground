@@ -14,6 +14,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Issue outcomes still match when the decision log is reworded** (`scripts/pr_outcomes.py`, d1a#377): with
+  `D1A_LOG_REWRITE` set, the live GitHub issue title is reworded with the same rules before it is matched to the logged call.
 - **Three more live checks in the smoke test** (`scripts/openai_smoke.mjs`):
   - a tool call cut off by `max_tokens` must leave no Gemma markup in the text (d1a#278);
   - embeddings asked for in base64, as the openai Node SDK and n8n always do, must decode to the float vectors (d1a#282);
@@ -40,6 +42,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **D1A pinned to `1daab721`** (d1a#377): `D1A_LOG_REWRITE` can keep the self-learning decision log in general wording.
+  The new `.demo/mini.env` setting `LOG_REWRITE=<file>` (a private JSON list of `{"pattern", "replace"}` rules) passes it to
+  the model server, and to the outcome poster, which rewords issue titles with the same rules before matching them.
+  Unset, nothing changes.
 - **The Learning page edits the gate's two new settings** (#107, d1a#364): `promotion.min_held_out`, the held-out pull
   requests the gate needs before it may promote, and `schedule.growth`, how much the outcomes must grow before the gate
   runs again. The schedule rows say that either trigger now waits for that growth.
