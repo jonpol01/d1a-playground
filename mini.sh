@@ -30,6 +30,8 @@
 #   CHAT_CONTEXT= (D1A_CHAT_CONTEXT, e.g. 32768: the longest prompt + max_tokens one chat may ask for; a longer one gets a
 #   400 at once, which Hermes answers by compressing. Unset: the model's context, 131,072 for D1A-E4B-it, where one
 #   prompt holds the model ~9 minutes and every other chat waits; d1a#318)
+#   LOG_REWRITE= (D1A_LOG_REWRITE, d1a#377: a private JSON list of {"pattern", "replace"} rules. With FEEDBACK_LOG, the model
+#   server logs each decision's text in general wording, and the outcome poster rewords issue titles the same way to match)
 #   EMBED_REF= (reference vectors, {"texts": [...], "vectors": [...]}, e.g. LM Studio's for the same GGUF: the smoke test's
 #   OpenAI check then requires the served embeddings to match them, cosine >= 0.999)
 # The old names of three settings, KEV_PORT, KEV_PREFIX_CACHE and KEV_PREFIX_MAX_TOKENS, still work: install, reinstall and
@@ -55,7 +57,7 @@ PROMOTE_LABEL="io.github.jonpol01.d1a-promote"     # LABEL_OUTCOMES=1 and OUTCOM
 # the default model: the MLX 8-bit build on Apple Silicon (4.2 GB, parity-checked), the PyTorch checkpoint elsewhere
 if [ "$(uname -sm)" = "Darwin arm64" ]; then DEFAULT_MODEL_RUN="JohnP1/d1a-e2b-mlx-q8"; else DEFAULT_MODEL_RUN="JohnP1/d1a-e2b"; fi
 D1A_REPO="https://github.com/jonpol01/d1a"
-D1A_SHA="4c051ef279682041cb9706445ad1054622f7c9a3"   # the D1A model server this playground is tested against
+D1A_SHA="1daab721aaeade1158e9a356c263ae58ecf61e62"   # the D1A model server this playground is tested against
 PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 
 say() { printf '\033[1m[mini]\033[0m %s\n' "$*"; }
@@ -63,7 +65,8 @@ die() { printf '\033[31m[mini] error:\033[0m %s\n' "$*" >&2; exit 1; }
 
 # the settings .demo/mini.env holds, in the order save_env writes them
 ENV_KEYS="MODEL_RUN MODEL_PORT PORT HOST D1A_BASE_PATH PYTORCH_MPS_HIGH_WATERMARK_RATIO PYTORCH_MPS_LOW_WATERMARK_RATIO MODEL_PREFIX_CACHE
-MODEL_PREFIX_MAX_TOKENS MEDIA IDLE_UNLOAD FEEDBACK_LOG OUTCOME_CALIBRATOR LABEL_OUTCOMES OPENAI_PORT OPENAI_HOST EMBED_GGUF EMBED_REF CHAT_CONTEXT"
+MODEL_PREFIX_MAX_TOKENS MEDIA IDLE_UNLOAD FEEDBACK_LOG OUTCOME_CALIBRATOR LABEL_OUTCOMES OPENAI_PORT OPENAI_HOST EMBED_GGUF EMBED_REF CHAT_CONTEXT
+LOG_REWRITE"
 
 # the settings' old names, from when the model server was Kev's: still read, and mini.env's lines are renamed (migrate_env)
 OLD_NAMES="KEV_PORT:MODEL_PORT KEV_PREFIX_CACHE:MODEL_PREFIX_CACHE KEV_PREFIX_MAX_TOKENS:MODEL_PREFIX_MAX_TOKENS"
@@ -129,6 +132,7 @@ load_env() {
   OPENAI_PORT="${OPENAI_PORT:-}"; OPENAI_HOST="${OPENAI_HOST:-::}"; EMBED_GGUF="${EMBED_GGUF:-}"; EMBED_REF="${EMBED_REF:-}"
   CHAT_CONTEXT="${CHAT_CONTEXT:-}"
   FEEDBACK_LOG="${FEEDBACK_LOG:-}"; OUTCOME_CALIBRATOR="${OUTCOME_CALIBRATOR:-}"; LABEL_OUTCOMES="${LABEL_OUTCOMES:-0}"
+  LOG_REWRITE="${LOG_REWRITE:-}"
   LEARNING="$STATE/learning.json"; TRAINED_DIR="$STATE/trained"   # the self-learning settings and the trained manifests (d1a#233)
 }
 
@@ -240,6 +244,10 @@ write_agents() {
   # self-learning (d1a.learning.feedback): log every decision and take outcomes at POST /v1/feedback; apply a fitted calibrator
   [ -n "$FEEDBACK_LOG" ] && ENV_XML+="    <key>D1A_FEEDBACK_LOG</key><string>$FEEDBACK_LOG</string>
 "
+  # the log keeps general wording (d1a#377); the outcome poster below rewords issue titles with the same rules
+  local rewrite_xml=""; [ -n "$LOG_REWRITE" ] && rewrite_xml="    <key>D1A_LOG_REWRITE</key><string>$LOG_REWRITE</string>"
+  [ -n "$rewrite_xml" ] && ENV_XML+="$rewrite_xml
+"
   [ -n "$OUTCOME_CALIBRATOR" ] && ENV_XML+="    <key>D1A_OUTCOME_CALIBRATOR</key><string>$OUTCOME_CALIBRATOR</string>
 "
   # the learned flags and decode rules in the self-learning settings (d1a#237, #252, #296), re-read when the file changes
@@ -299,6 +307,7 @@ write_agents() {
   <dict>
     <key>PATH</key><string>$path</string>
     <key>D1A_LEARNING</key><string>$LEARNING</string>
+$rewrite_xml
   </dict>
   <key>RunAtLoad</key><true/>
   <key>StartInterval</key><integer>900</integer>
