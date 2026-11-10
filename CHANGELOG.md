@@ -102,6 +102,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- **The model server answers at full speed under launchd** (jonpol01/d1a#17). `mini.sh` wrote its LaunchAgents with no
+  `ProcessType`, and launchd throttles the CPU of such a job. A decision on MLX is about half Python graph building, so
+  the model server ran at half speed: D1A-E2B-it QAT v0.7 on an Apple M1 Max answered 4.7 decisions a second (p50 0.20 s)
+  under the default class, and 9.5 (p50 0.10 s) as `Interactive`, against 10.4 from a shell. The model, web and OpenAI-port
+  agents are now `Interactive`; the periodic outcome and learning agents keep the default class. Answers are unchanged:
+  only the scheduling class changes.
+
 - **`mini.sh start` survives launchd's "Bootstrap failed: 5".** Right after a `stop`, launchd refused to load an agent
   again while its bootout was still finishing. Under `set -e` the start ended there and every agent stayed down: on the
   serving Mac on 2026-10-15, after an evaluation window, the restart failed until it was run again by hand five minutes
