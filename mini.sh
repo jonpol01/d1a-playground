@@ -206,8 +206,6 @@ build_web() {   # after stop: npm ci and next build replace the files the runnin
     MEDIA_API="http://127.0.0.1:$MODEL_PORT" npm run build >/dev/null)
 }
 
-# The serving agents run as ProcessType Interactive: launchd's default class throttles a job's CPU, and a decision on MLX
-# is about half Python graph building, so the model server answered at half speed (4.7 vs 9.5 req/s, jonpol01/d1a#17).
 plist() {   # label, then program arguments; environment from the ENV_* variables below
   local label="$1"; shift
   local args="" a; for a in "$@"; do args+="    <string>$a</string>"$'\n'; done
@@ -227,7 +225,6 @@ $ENV_XML  </dict>
   <key>RunAtLoad</key><true/>
   <key>KeepAlive</key><true/>
   <key>ThrottleInterval</key><integer>10</integer>
-  <key>ProcessType</key><string>Interactive</string>
   <key>StandardOutPath</key><string>$LOGS/${label##*.}.log</string>
   <key>StandardErrorPath</key><string>$LOGS/${label##*.}.log</string>
 </dict>

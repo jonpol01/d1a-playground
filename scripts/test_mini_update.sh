@@ -60,9 +60,6 @@ grep -qx "current at the model's bootout: none" "$T/clean" || fail clean "switch
 [ "$(readlink "$V/current")" = "${PIN:0:12}-serve-$(CH)" ] && [ "$(readlink "$V/previous")" = "$APP/.demo/d1a-venv" ] && [ -x "$APP/.demo/d1a-venv/bin/python" ] \
   || fail clean "current/previous: $(readlink "$V/current") / $(readlink "$V/previous")"
 grep -qF "<string>$V/current/bin/python</string>" "$T/home/Library/LaunchAgents/io.github.jonpol01.d1a-model.plist" || fail clean "the model agent does not run current's python"
-for agent in model web; do   # launchd's default class throttles the CPU: the model server answered at half speed (d1a#17)
-  grep -qF "<key>ProcessType</key><string>Interactive</string>" "$T/home/Library/LaunchAgents/io.github.jonpol01.d1a-$agent.plist" || fail clean "the $agent agent is not ProcessType Interactive"
-done
 grep -q "^uv pip install .* -c $APP/scripts/d1a-constraints.txt d1a\[serve\] @ git+" "$T/clean" || fail clean "did not install with the tested environment's constraints"
 run same FAIL_UV=   # the pin it runs: nothing to install
 [ "$(cat "$T/same.status")" = 0 ] && [ -z "$(last same "^uv pip install")" ] && [ "$(readlink "$V/current")" = "${PIN:0:12}-serve-$(CH)" ] || fail same "reinstalled the pin it runs"
