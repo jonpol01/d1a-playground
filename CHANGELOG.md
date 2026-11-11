@@ -42,6 +42,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **D1A pinned to `22d53bf5`** (d1a#394): with a model folder that carries `media_pad_row.safetensors`, photos, voice
+  and video read Gemma 4's per-layer pad row as stored instead of from the 4-bit table; on D1A-E2B-it QAT the largest
+  change against full precision goes 0.140 → 0.085. The quality gate on the D1A-E4B-it QAT build from `1daab721`: every
+  text demo and the labeler replay answer bit for bit the same; the 14 media demos move (largest 0.11, one top answer:
+  an intact parcel in a mailbox, delivery locker → mailbox), so a host's demo baseline is recorded again.
 - **D1A pinned to `1daab721`** (d1a#377): `D1A_LOG_REWRITE` can keep the self-learning decision log in general wording.
   The new `.demo/mini.env` setting `LOG_REWRITE=<file>` (a private JSON list of `{"pattern", "replace"}` rules) passes it to
   the model server, and to the outcome poster, which rewords issue titles with the same rules before matching them.
