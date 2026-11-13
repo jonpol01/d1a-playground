@@ -22,6 +22,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   `mini.env` and the web app's LaunchAgent readable by your user only, never prints the token, and hands it to the smoke
   test, which checks that the label check refuses a request without it. Unset, nothing changes, and `mini.sh` says the
   pages are open. SECURITY.md lists what it does not cover.
+- **`mini.sh` warns when the write token guards one run only:** a token given to `update` or `reinstall` on the command
+  line that `.demo/mini.env` does not hold. The next plain update would open the pages again. The test that every write route
+  checks the token now also reads `PUT`, `PATCH`, `DELETE` and `export const` handlers, and reports a re-exported one.
 
 ### Added
 
