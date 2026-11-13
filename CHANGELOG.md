@@ -69,6 +69,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **D1A pinned to `082cfbfa`** (d1a#400): outcomes posted with `src: "judge"` count only for a reader that names that
+  source; a reader that names none counts every other source, as before the judge existed. No answer moves. The quality
+  gate on the D1A-E4B-it QAT build, the serving host's files checked by sha256: every demo, photos, voice and video
+  included, and the labeler replay answer bit for bit the same (0 flips, max |dp| 0, 237 requests); all-text latency
+  1.004 against a base/base floor of 0.998. With the live decode rule (the serving host's learning settings), the same
+  59 severity answers flip P2 → P1 as on `e9482b75`, and nothing else moves. D1A's dependencies do not change, so
+  `scripts/d1a-constraints.txt` stays as recorded.
 - **D1A pinned to `e9482b75`** (d1a#398, d1a#397): the model server decodes a photo only as JPEG, PNG or WebP, the
   formats the API documents, before any other Pillow decoder runs; another format or a photo that does not decode gets a
   422 instead of a 500. The page always sends JPEG. The quality gate on the D1A-E4B-it QAT build from `22d53bf5`, the
