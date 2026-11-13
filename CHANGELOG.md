@@ -69,6 +69,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **D1A pinned to `c54b87d8`** (d1a#401): POST /v1/feedback refuses an outcome for a replayed decision with a
+  422 that names the original decision, to post it to; before, the outcome was stored but never read, because a replay
+  takes its original's outcomes. The Review page and `scripts/pr_outcomes.py` already skip replays, so neither posts
+  one. No answer moves. The quality gate on the D1A-E4B-it QAT build, the serving host's files checked by sha256:
+  every demo, photos, voice and video included, and the labeler replay answer bit for bit the same (0 flips, max |dp| 0,
+  237 requests); all-text latency 1.010 against a base/base floor of 1.000. With the live decode rule, the same 59
+  severity answers flip P2 → P1 as on `082cfbfa`, and nothing else moves. D1A's dependencies do not change, so
+  `scripts/d1a-constraints.txt` stays as recorded.
 - **D1A pinned to `082cfbfa`** (d1a#400): outcomes posted with `src: "judge"` count only for a reader that names that
   source; a reader that names none counts every other source, as before the judge existed. No answer moves. The quality
   gate on the D1A-E4B-it QAT build, the serving host's files checked by sha256: every demo, photos, voice and video
