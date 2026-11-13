@@ -113,4 +113,13 @@ chmod 644 "$T/state/mini.env" "$T/state/mini.env.before-rename"
 SCRIPT='load_env; check_write_token' mini >/dev/null || fail "a good token was refused"
 [ "$(mode "$T/state/mini.env")" = "-rw-------" ] && [ "$(mode "$T/state/mini.env.before-rename")" = "-rw-------" ] \
   || fail "a hand-edited mini.env with a token stays $(mode "$T/state/mini.env") / $(mode "$T/state/mini.env.before-rename")"
+# a token that only the command line of reinstall (update runs it) gave guards that run alone: said; held in the file, or on
+# install (which saves it), nothing is said
+printf 'PORT=3999\n' > "$T/state/mini.env"
+out="$(SCRIPT='load_env; check_write_token reinstall' mini WRITE_TOKEN=$TOKEN)"
+case "$out" in *"WRITE_TOKEN is not in $T/state/mini.env, so it guards this run only"*) ;; *) fail "a token from the command line alone went unsaid: $out" ;; esac
+case "$out" in *"$TOKEN"*) fail "the warning printed the token: $out" ;; esac
+[ -z "$(SCRIPT='load_env; check_write_token install' mini WRITE_TOKEN=$TOKEN)" ] || fail "install, which saves the token, warned"
+printf 'PORT=3999\nWRITE_TOKEN=%s\n' "$TOKEN" > "$T/state/mini.env"
+[ -z "$(SCRIPT='load_env; check_write_token reinstall' mini)" ] || fail "a token held in mini.env was warned about"
 echo "mini.sh mini.env: OK under $(bash --version | head -1)"

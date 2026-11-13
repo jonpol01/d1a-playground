@@ -160,13 +160,17 @@ save_env() {   # one KEY=value line per setting, the value shell-quoted (%q), so
   (umask 077; for k in $ENV_KEYS; do eval "printf '%s=%q\\n' $k \"\${$k-}\""; done >"$ENVFILE")
 }
 
-check_write_token() {   # install, reinstall and update, before anything else: the token goes into the web app's LaunchAgent as
-  # it is (XML, so a safe alphabet), a short one is guessable, and the files that hold it are this user's only (a hand-edited
+check_write_token() {   # install, reinstall and update ($1), before anything else: the token goes into the web app's LaunchAgent
+  # as it is (XML, so a safe alphabet), a short one is guessable, and the files that hold it are this user's only (a hand-edited
   # mini.env never passes save_env)
   [ -n "$WRITE_TOKEN" ] || return 0
   local re='^[A-Za-z0-9._~-]{16,}$' f
   [[ "$WRITE_TOKEN" =~ $re ]] || die "WRITE_TOKEN must be at least 16 of A-Z a-z 0-9 . _ ~ - (e.g. openssl rand -hex 24)"
   for f in "$ENVFILE" "$ENVFILE.before-rename"; do [ ! -f "$f" ] || chmod 600 "$f"; done
+  # only install saves the settings: a token reinstall (or update, which runs it) has from the command line alone guards this
+  # run, and the next plain update opens the pages again
+  [ "${1:-}" != reinstall ] || grep -q '^WRITE_TOKEN=..' "$ENVFILE" 2>/dev/null \
+    || say "warning: WRITE_TOKEN is not in $ENVFILE, so it guards this run only and the next update opens /learning and /review again: add it there"
 }
 
 domain() { if launchctl print "gui/$(id -u)" >/dev/null 2>&1; then echo "gui/$(id -u)"; else echo "user/$(id -u)"; fi; }
@@ -496,7 +500,7 @@ status() {
 
 case "${1:-status}" in install|reinstall|update) migrate_env ;; esac
 load_env
-case "${1:-status}" in install|reinstall|update) check_write_token ;; esac
+case "${1:-status}" in install|reinstall|update) check_write_token "${1:-status}" ;; esac
 case "${1:-status}" in
   install)
     save_env

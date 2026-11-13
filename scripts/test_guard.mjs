@@ -85,17 +85,37 @@ test("the right token does not let another site's request through", () => {
   assert.equal(writeRefusal(post({ "content-type": "text/plain", authorization: `Bearer ${TOKEN}` }), TOKEN)?.status, 415);
 });
 
-test("every POST route checks writeRefusal, and the label check's sample checks the token", () => {
+// A route file's write handlers (POST, PUT, PATCH, DELETE) that do not start with writeRefusal, as a function or a const;
+// a handler re-exported under a method's name cannot be read here, so it is reported too.
+const WRITE = "POST|PUT|PATCH|DELETE";
+function uncheckedWrites(src) {
+  const out = [];
+  for (const m of src.matchAll(new RegExp(String.raw`export\s*\{[^}]*\bas\s+(${WRITE})\b`, "g"))) out.push(`${m[1]} (re-exported: write it as a function)`);
+  for (const m of src.matchAll(new RegExp(String.raw`export\s+(?:async\s+)?(?:function\s+(${WRITE})\b|const\s+(${WRITE})\s*=)`, "g"))) {
+    const body = src.slice(m.index + m[0].length).split(/\nexport\s/)[0];
+    if (!/= writeRefusal\(req\);[^\n]*\n\s*if \(refused\) return refused;/.test(body) || /crossSiteRefusal\(/.test(body)) out.push(m[1] ?? m[2]);
+  }
+  return out;
+}
+
+test("the route check catches a write handler in any form that skips writeRefusal", () => {
+  const checked = "(req: Request) {\n  const refused = writeRefusal(req);\n  if (refused) return refused;\n  return Response.json({});\n}\n";
+  assert.deepEqual(uncheckedWrites(`export async function POST${checked}export async function PATCH${checked}`), []);
+  assert.deepEqual(uncheckedWrites(`export const PUT = async ${checked.replace("{", "=> {")}`), []);
+  assert.deepEqual(uncheckedWrites("export async function DELETE(req: Request) {\n  return Response.json({});\n}\n"), ["DELETE"]);
+  assert.deepEqual(uncheckedWrites("export const PUT = async (req: Request) => Response.json({});\n"), ["PUT"]);
+  assert.deepEqual(uncheckedWrites("export function PATCH(req: Request) {\n  const refused = crossSiteRefusal(req);\n  if (refused) return refused;\n}\n"), ["PATCH"]);
+  assert.deepEqual(uncheckedWrites("async function handler() {}\nexport { handler as POST };\n"), ["POST (re-exported: write it as a function)"]);
+  assert.deepEqual(uncheckedWrites("export async function GET() {\n  return Response.json({});\n}\n"), []);
+});
+
+test("every write route checks writeRefusal, and the label check's sample checks the token", () => {
   const routes = [];
   const walk = (dir) => { for (const e of readdirSync(dir, { withFileTypes: true })) e.isDirectory() ? walk(`${dir}/${e.name}`) : e.name === "route.ts" && routes.push(`${dir}/${e.name}`); };
   walk(new URL("../src/app/api", import.meta.url).pathname);
-  const posts = routes.filter((f) => /export async function POST\b/.test(readFileSync(f, "utf8")));
-  assert.ok(posts.length >= 2, posts.join(", "));
-  for (const f of posts) {
-    const body = readFileSync(f, "utf8").split(/export async function POST\b/)[1];
-    assert.match(body, /= writeRefusal\(req\);[^\n]*\n\s*if \(refused\) return refused;/, `${f}: POST does not start with writeRefusal`);
-    assert.doesNotMatch(body, /crossSiteRefusal\(/, `${f}: POST checks crossSiteRefusal alone`);
-  }
+  const writes = routes.filter((f) => new RegExp(String.raw`export\s+(?:async\s+)?(?:function|const)\s+(?:${WRITE})\b`).test(readFileSync(f, "utf8")));
+  assert.ok(writes.length >= 2, writes.join(", "));
+  for (const f of routes) assert.deepEqual(uncheckedWrites(readFileSync(f, "utf8")), [], `${f}: a write handler does not start with writeRefusal`);
   const review = readFileSync(routes.find((f) => f.endsWith("/api/review/route.ts")), "utf8").split(/export async function GET\b/)[1].split(/export async function/)[0];
   assert.match(review, /= tokenRefusal\(req\);[^\n]*\n\s*if \(refused\) return refused;/, "GET /api/review does not check the token");
 });
