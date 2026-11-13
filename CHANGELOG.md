@@ -14,6 +14,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Security
 
+- **Patched development dependencies** (`package-lock.json` only; `package.json` unchanged): undici 7.30.1, hono 4.13.16,
+  @hono/node-server 2.1.6, systeminformation 5.33.16, qs 6.16.1, fast-uri 3.1.9, body-parser 2.4.0 and zod 4.6.6. Each
+  is the oldest release that fixes its advisory. They come in through the `shadcn` and `eslint` tooling, which the
+  running app never loads, but `npm ci` installs them on the serving Mac. 19 of the 21 open Dependabot alerts are fixed,
+  and `npm audit` drops from 20 to 13 findings. What remains has no fix yet:
+  - minimatch 10 under typescript-eslint and ts-morph, whose newest releases still require it;
+  - deepmerge, which has no fixed release;
+  - shadcn's own zod 3 (`npm audit` only), which no 3.x release fixes.
 - **A write token for the Learning page and the PR label check** (`WRITE_TOKEN` in `.demo/mini.env`, #77). Until now
   anyone on the network who could reach the web app could change the self-learning settings and post labels marked human:
   the cross-site check stops other websites only. With the token set, `POST /api/learning`, `POST /api/review` and the
