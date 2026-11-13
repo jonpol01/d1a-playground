@@ -69,6 +69,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **D1A pinned to `e9482b75`** (d1a#398, d1a#397): the model server decodes a photo only as JPEG, PNG or WebP, the
+  formats the API documents, before any other Pillow decoder runs; another format or a photo that does not decode gets a
+  422 instead of a 500. The page always sends JPEG. The quality gate on the D1A-E4B-it QAT build from `22d53bf5`, the
+  serving host's files checked by sha256: every demo, photos, voice and video included, and the labeler replay answer
+  bit for bit the same (0 flips, max |dp| 0, 237 requests); all-text latency 0.995 against a base/base floor of 1.003.
 - **D1A pinned to `22d53bf5`** (d1a#394): with a model folder that carries `media_pad_row.safetensors`, photos, voice
   and video read Gemma 4's per-layer pad row as stored instead of from the 4-bit table; on D1A-E2B-it QAT the largest
   change against full precision goes 0.140 → 0.085. The quality gate on the D1A-E4B-it QAT build from `1daab721`: every
