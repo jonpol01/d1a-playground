@@ -14,6 +14,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Security
 
+- **Pillow 13.0.0 in the tested environment** (`scripts/d1a-constraints.txt`, which every launcher installs). 12.3.0 has
+  more than 40 published advisories that 13.0.0 fixes, most in decoders that read the photos the Photo check sends (heap
+  overflows in TIFF, BMP and JPEG 2000 among them). Pillow only decodes the photo there; resizing runs in torchvision.
+  12.3.0 and 13.0.0 decode every sample photo, and its JPEG re-encode, to identical pixels, so no answer moves.
+  Only Pillow changes: the other patch-level fixes come with the next pin move, which records the file again.
 - **Patched development dependencies** (`package-lock.json` only; `package.json` unchanged): undici 7.30.1, hono 4.13.16,
   @hono/node-server 2.1.6, systeminformation 5.33.16, qs 6.16.1, fast-uri 3.1.9, body-parser 2.4.0 and zod 4.6.6. Each
   is the oldest release that fixes its advisory. They come in through the `shadcn` and `eslint` tooling, which the
