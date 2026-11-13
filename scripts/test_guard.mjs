@@ -99,9 +99,9 @@ function uncheckedWrites(src) {
 }
 
 test("the route check catches a write handler in any form that skips writeRefusal", () => {
-  const checked = "(req: Request) {\n  const refused = writeRefusal(req);\n  if (refused) return refused;\n  return Response.json({});\n}\n";
-  assert.deepEqual(uncheckedWrites(`export async function POST${checked}export async function PATCH${checked}`), []);
-  assert.deepEqual(uncheckedWrites(`export const PUT = async ${checked.replace("{", "=> {")}`), []);
+  const body = "{\n  const refused = writeRefusal(req);\n  if (refused) return refused;\n  return Response.json({});\n}\n";
+  assert.deepEqual(uncheckedWrites(`export async function POST(req: Request) ${body}export async function PATCH(req: Request) ${body}`), []);
+  assert.deepEqual(uncheckedWrites(`export const PUT = async (req: Request) => ${body}`), []);
   assert.deepEqual(uncheckedWrites("export async function DELETE(req: Request) {\n  return Response.json({});\n}\n"), ["DELETE"]);
   assert.deepEqual(uncheckedWrites("export const PUT = async (req: Request) => Response.json({});\n"), ["PUT"]);
   assert.deepEqual(uncheckedWrites("export function PATCH(req: Request) {\n  const refused = crossSiteRefusal(req);\n  if (refused) return refused;\n}\n"), ["PATCH"]);
