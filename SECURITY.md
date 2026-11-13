@@ -92,8 +92,24 @@ For example: script injection through a demo's input or a loaded pull request, a
   - `POST /api/review` records an outcome (`src` human) for one of its sampled decisions, with that decision's own options only.
 
   Both refuse a request from another site (`Sec-Fetch-Site`) and a body that is not JSON, so a page elsewhere cannot write
-  through a visitor's browser. Anyone who can reach the web app directly can still use them, as they can the model: keep the
-  app on `127.0.0.1`, or let only people you trust reach it.
+  through a visitor's browser.
+- **The write token.** Without it, anyone who can reach the web app directly can use both routes, as they can the model.
+  - **Setting it:** add `WRITE_TOKEN` (16 or more characters, e.g. `openssl rand -hex 24`) to `.demo/mini.env`, then run
+    `./mini.sh update`.
+  - **What it guards:** both writes, and `GET /api/review`, the sample of pull requests read from the decision log. Each needs
+    `Authorization: Bearer <token>`. The pages ask for the token once per browser and keep it in that browser's
+    `localStorage`.
+  - **Where it is kept:** `mini.sh` keeps it in `.demo/mini.env` and in the web app's LaunchAgent, both readable by your user
+    only. It never prints the token.
+  - **What it does not cover:**
+    - **Plain HTTP.** Over plain HTTP (for example a port-80 proxy) the token crosses your network in clear text.
+    - **The browser origin.** `localStorage` is shared with every page served from the same origin.
+    - **The first update after setting it.** If a step after the stop fails, `mini.sh` restores the agents that ran before,
+      which have no token.
+    - **The model routes.** `/model/v1/systemone` and the others stay open, as the demos need them. With `FEEDBACK_LOG`,
+      anyone who can use the demos can add decisions to the log. An outcome can still come only through these two routes
+      or the outcome poster, since the web app does not forward `/v1/feedback`, and neither does the OpenAI port.
+  - **Without a token:** keep the app on `127.0.0.1`, or let only people you trust reach it.
 - **`/api/hw` runs fixed system commands** (`lsof`, `ioreg`, `memory_pressure`, `sysctl`, `footprint`, `nvidia-smi`) with fixed arguments. No request input reaches them.
 - **What leaves your machine:**
   - Text, photos and voice clips you enter go only to your model server.

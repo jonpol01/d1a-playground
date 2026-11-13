@@ -37,7 +37,7 @@ launchctl() {   # FAIL_BOOTSTRAP=n: the first n bootstraps fail as launchd does 
 }
 sleep() { :; }
 node() {   # NODE_VERSION: what node -p reports; SMOKE_EXIT: what the demo smoke test exits with
-  case "${1:-}" in -p) echo "${NODE_VERSION:-22.11.0}" ;; */demo_smoke.mjs) return "${SMOKE_EXIT:-0}" ;; esac
+  case "${1:-}" in -p) echo "${NODE_VERSION:-22.11.0}" ;; */demo_smoke.mjs) local t; t="$(printenv WRITE_TOKEN || true)"; echo "smoke token=${t:-none} args=$*" >> "$CALLS"; return "${SMOKE_EXIT:-0}" ;; esac
 }
 curl() { case "$*" in *v1/systemone*) return "${ANSWER_EXIT:-0}" ;; esac; }; plutil() { :; }   # ANSWER_EXIT: a decision fails
 export -f uv npm launchctl node curl plutil sleep
@@ -89,6 +89,24 @@ for agent in model outcomes; do   # LOG_REWRITE: the log keeps general wording, 
 done
 run promote2 FAIL_UV=   # a reinstall never overwrites the maintainer's settings
 ! grep -q "config init" "$T/promote2" || fail promote2 "re-created the settings file on reinstall"
+web="$T/home/Library/LaunchAgents/io.github.jonpol01.d1a-web.plist"
+! grep -q "WRITE_TOKEN" "$web" && grep -q "note: /learning and /review take changes from anyone" "$T/promote2.out" \
+  || fail promote2 "without WRITE_TOKEN: a token in the web agent, or no word that the write pages are open"
+grep -q "^smoke token=none " "$T/promote2" || fail promote2 "the smoke test got a token nobody set"
+TOKEN=0123456789abcdef0123; printf 'WRITE_TOKEN=%s\n' "$TOKEN" >> "$T/app/.demo/mini.env"; chmod 644 "$T/app/.demo/mini.env"
+run token FAIL_UV=   # WRITE_TOKEN: the web app gets it, in an agent only this user can read, and so does the smoke test
+[ "$(cat "$T/token.status")" = 0 ] || fail token "did not reinstall"
+grep -A0 "<key>WRITE_TOKEN</key>" "$web" | grep -qF "<string>$TOKEN</string>" || fail token "the web agent has no WRITE_TOKEN"
+[ "$(ls -l "$web" | cut -c1-10)" = "-rw-------" ] && [ "$(ls -l "$T/app/.demo/mini.env" | cut -c1-10)" = "-rw-------" ] \
+  || fail token "the web agent or mini.env can be read by others: $(ls -l "$web" "$T/app/.demo/mini.env")"
+for agent in model outcomes promote; do ! grep -q "WRITE_TOKEN" "$T/home/Library/LaunchAgents/io.github.jonpol01.d1a-$agent.plist" || fail token "the $agent agent has the token"; done
+grep -q "^smoke token=$TOKEN " "$T/token" && ! grep -q -- "$TOKEN" "$T/token.out" && ! grep "^smoke " "$T/token" | grep -q "args=.*$TOKEN" \
+  || fail token "the smoke test did not get the token by its environment, or the output shows it"
+! grep -q "note: /learning and /review take changes" "$T/token.out" || fail token "said the write pages are open"
+printf 'PORT=3999\nWRITE_TOKEN=short\n' > "$T/app/.demo/mini.env"
+run badtoken FAIL_UV=   # a token the agent's XML cannot hold as it is, or a short one, stops the update before anything changes
+[ "$(cat "$T/badtoken.status")" != 0 ] && grep -q "WRITE_TOKEN must be at least 16" "$T/badtoken.out" && ! grep -q "^uv \|^launchctl \|^npm " "$T/badtoken" \
+  || fail badtoken "a bad WRITE_TOKEN went ahead: $(cat "$T/badtoken.status")"
 printf 'PORT=3999\n' > "$T/app/.demo/mini.env"
 
 # a Mac set up before the rename, its mini.env with the KEV_* names: update (reinstall) renames them in the file, keeps the

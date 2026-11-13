@@ -1,10 +1,11 @@
-import { crossSiteRefusal, modelApiUrl } from "@/lib/guard";
+import { modelApiUrl, tokenRefusal, writeRefusal } from "@/lib/guard";
 import { readFile } from "node:fs/promises";
 import { candidates, feedbackBody, parseJsonl, sample, TARGET } from "@/lib/review";
 
 // The human check of the PR labeler's labels (d1a-playground#29). GET: the sample, read from the model server's decision
 // log on this machine (only the fields the page shows leave it). POST {decision_id, labels}: one checked decision,
-// forwarded to the model server's POST /v1/feedback as src=human. Off (404) unless mini.sh passes REVIEW_FEEDBACK_LOG.
+// forwarded to the model server's POST /v1/feedback as src=human. Off (404) unless mini.sh passes REVIEW_FEEDBACK_LOG. With
+// WRITE_TOKEN set, both need it (src/lib/guard.ts tokenRefusal).
 export const dynamic = "force-dynamic";
 
 const MODEL_API = modelApiUrl();
@@ -21,8 +22,10 @@ async function current() {
 
 const off = () => Response.json({ error: "the review is off: start the web app with REVIEW_FEEDBACK_LOG (mini.sh: LABEL_OUTCOMES=1)" }, { status: 404 });
 
-export async function GET() {
+export async function GET(req: Request) {
   if (!LOG) return off();
+  const refused = tokenRefusal(req);   // the sample shows pull requests' text from the decision log
+  if (refused) return refused;
   try {
     const { pool, items } = await current();
     return Response.json({
@@ -36,7 +39,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   if (!LOG) return off();
-  const refused = crossSiteRefusal(req);
+  const refused = writeRefusal(req);
   if (refused) return refused;
   let posted: unknown;
   try { posted = await req.json(); } catch { return Response.json({ error: "body must be JSON" }, { status: 400 }); }

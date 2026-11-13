@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { BASE_PATH } from "@/lib/d1a";
 import { QUESTIONS, UNSURE, type Item, type Question } from "@/lib/review";
+import { tokenFetch } from "@/lib/write-token";
 
 // The human check of the PR labeler's labels (d1a-playground#29): one pull request at a time, D1A's and the reviewer's
 // label per question, and the maintainer's pick (or "unsure"), posted through /api/review to the model server as src=human.
@@ -17,7 +18,7 @@ export function Review() {
   const [expanded, setExpanded] = useState<string | null>(null);   // the decision whose whole body is shown
 
   const load = useCallback(async (next?: number) => {
-    const r = await fetch(`${BASE_PATH}/api/review`, { cache: "no-store" });
+    const r = await tokenFetch(`${BASE_PATH}/api/review`, { cache: "no-store" });
     const body = await r.json().catch(() => ({ error: `HTTP ${r.status}` }));
     if (!r.ok) { setError(body.error ?? `HTTP ${r.status}`); return; }
     setData(body); setError("");
@@ -33,7 +34,7 @@ export function Review() {
     if (!item) return;
     setBusy(true);
     const labels = Object.fromEntries(QUESTIONS.map((q) => [q, picks[q] ?? UNSURE]));
-    const r = await fetch(`${BASE_PATH}/api/review`, { method: "POST", headers: { "Content-Type": "application/json" },
+    const r = await tokenFetch(`${BASE_PATH}/api/review`, { method: "POST", headers: { "Content-Type": "application/json" },
                                                        body: JSON.stringify({ decision_id: item.decision_id, labels }) });
     const body = await r.json().catch(() => ({}));
     setBusy(false);

@@ -5,13 +5,14 @@
 # still loads. The settings' old names (KEV_PORT, KEV_PREFIX_CACHE, KEV_PREFIX_MAX_TOKENS) still work: alone they are
 # read, the new name wins over the old, a file that still has them is the record for the new names, and migrate_env
 # renames them in the file (values as they were, a copy kept once, nothing more on a second run). Run by CI's Linux and
-# mini-macos (bash 3.2) jobs, and by hand.
+# mini-macos (bash 3.2) jobs, and by hand. WRITE_TOKEN: mini.env is this user's only, the token never shows in a warning, and
+# install, reinstall and update refuse a short or unsafe one and make a hand-edited file this user's only.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"; T="$(mktemp -d)"; trap 'rm -rf "$T"' EXIT
-{ grep -E '^(say\(\)|OLD_NAMES=)' "$ROOT/mini.sh"
+{ grep -E '^(say\(\)|die\(\)|OLD_NAMES=)' "$ROOT/mini.sh"
   awk '/^ENV_KEYS=/ {on=1} on {print} on && /"$/ {exit}' "$ROOT/mini.sh"
-  for f in has_old_names rename_old_lines migrate_env load_env save_env; do awk -v f="$f" '$0 ~ "^"f"\\(\\) \\{" {on=1} on {print} on && /^\}/ {exit}' "$ROOT/mini.sh"; done; } > "$T/env.sh"
-for f in has_old_names rename_old_lines migrate_env load_env save_env; do grep -q "^$f() {" "$T/env.sh" || { echo "FAIL: mini.sh has no $f"; exit 1; }; done
+  for f in has_old_names rename_old_lines migrate_env load_env save_env check_write_token; do awk -v f="$f" '$0 ~ "^"f"\\(\\) \\{" {on=1} on {print} on && /^\}/ {exit}' "$ROOT/mini.sh"; done; } > "$T/env.sh"
+for f in has_old_names rename_old_lines migrate_env load_env save_env check_write_token; do grep -q "^$f() {" "$T/env.sh" || { echo "FAIL: mini.sh has no $f"; exit 1; }; done
 grep -q '^OLD_NAMES=' "$T/env.sh" || { echo "FAIL: mini.sh has no OLD_NAMES"; exit 1; }
 fail() { echo "FAIL: $*"; exit 1; }
 mini() { (cd "$T" && env "$@" bash -c 'set -euo pipefail; STATE="$PWD/state"; ENVFILE="$STATE/mini.env"; DEFAULT_MODEL_RUN=default/run; . ./env.sh; '"$SCRIPT") 2>&1; }
@@ -86,4 +87,30 @@ rm -f "$T/state/mini.env.before-rename"; printf 'MODEL_PORT=7\nKEV_PORT=8\nKEV_P
 SCRIPT='migrate_env' mini >/dev/null
 [ "$(cat "$T/state/mini.env")" = "$(printf 'MODEL_PORT=7\nMODEL_PREFIX_CACHE=9')" ] || fail "a twin before the old line, or a last line without a newline: $(cat "$T/state/mini.env")"
 rm -f "$T/state/mini.env"; out="$(SCRIPT='migrate_env' mini)"; [ -z "$out" ] && [ ! -e "$T/state/mini.env" ] || fail "migrate_env made a file out of nothing"
+
+# WRITE_TOKEN: saved and read back; mini.env is this user's only, also when it was readable by others before the save
+mode() { ls -l "$1" | cut -c1-10; }
+TOKEN=0123456789abcdef0123; rm -f "$T/state/mini.env"
+SCRIPT='load_env; save_env' mini WRITE_TOKEN=$TOKEN >/dev/null
+[ "$(mode "$T/state/mini.env")" = "-rw-------" ] || fail "a new mini.env is $(mode "$T/state/mini.env")"
+[ "$(SCRIPT='load_env; echo "$WRITE_TOKEN"' mini)" = "$TOKEN" ] || fail "WRITE_TOKEN did not survive a save and a load"
+chmod 644 "$T/state/mini.env"; SCRIPT='load_env; save_env' mini >/dev/null
+[ "$(mode "$T/state/mini.env")" = "-rw-------" ] || fail "save_env left mini.env $(mode "$T/state/mini.env")"
+# a different token on the command line is ignored, said so, and neither token is printed
+out="$(SCRIPT='load_env' mini WRITE_TOKEN=fedcba9876543210fedc)"
+case "$out" in *"WRITE_TOKEN=(not shown) from the command line is ignored"*) ;; *) fail "an ignored WRITE_TOKEN went unsaid: $out" ;; esac
+case "$out" in *"$TOKEN"*|*fedcba9876543210fedc*) fail "a warning printed a token: $out" ;; esac
+# check_write_token: none is fine; a short one or one with characters the agent's XML cannot hold as they are is refused,
+# without printing it; a good one makes a hand-edited mini.env (and the copy migrate_env keeps) this user's only
+SCRIPT='WRITE_TOKEN=; check_write_token; echo fine' mini | grep -qx fine || fail "no token was refused"
+for bad in short-token-15c "0123456789abcdef<x>" "0123456789abcdef&amp;" "0123456789 abcdefgh"; do
+  if out="$(SCRIPT="WRITE_TOKEN='$bad'; check_write_token" mini)"; then fail "WRITE_TOKEN=$bad was taken"; fi
+  case "$out" in *"must be at least 16 of"*) ;; *) fail "WRITE_TOKEN=$bad: $out" ;; esac
+  case "$out" in *"$bad"*) fail "the refusal printed the token: $out" ;; esac
+done
+printf 'WRITE_TOKEN=%s\n' "$TOKEN" > "$T/state/mini.env"; cp "$T/state/mini.env" "$T/state/mini.env.before-rename"
+chmod 644 "$T/state/mini.env" "$T/state/mini.env.before-rename"
+SCRIPT='load_env; check_write_token' mini >/dev/null || fail "a good token was refused"
+[ "$(mode "$T/state/mini.env")" = "-rw-------" ] && [ "$(mode "$T/state/mini.env.before-rename")" = "-rw-------" ] \
+  || fail "a hand-edited mini.env with a token stays $(mode "$T/state/mini.env") / $(mode "$T/state/mini.env.before-rename")"
 echo "mini.sh mini.env: OK under $(bash --version | head -1)"

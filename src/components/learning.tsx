@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import { BASE_PATH } from "@/lib/d1a";
+import { tokenFetch } from "@/lib/write-token";
 
 // The Learning page (d1a#233): the self-learning settings with an edit form, and what the loop is doing. Every change goes
 // through d1a's own validation (`config set --source page`); a value out of range is refused and nothing is written.
@@ -61,7 +62,7 @@ export function Learning() {
     const set = Object.fromEntries(Object.entries(edit).map(([k, t]) => [k, parse(k, t, get(data.settings!, k))]));
     if (!Object.keys(set).length) return;
     setBusy(true); setNote("");
-    const r = await fetch(`${BASE_PATH}/api/learning`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ set }) });
+    const r = await tokenFetch(`${BASE_PATH}/api/learning`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ set }) });
     const body = await r.json().catch(() => ({ error: `HTTP ${r.status}` }));
     setBusy(false);
     if (!r.ok) { setNote(`Not saved: ${body.error}`); return; }
