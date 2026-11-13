@@ -15,6 +15,9 @@
 // of those questions as moved by the calibrator, and does not fail on it: the self-learning loop promoted a calibration on
 // held-out outcomes, so the served answer moved on purpose (d1a-playground#93). Any other move still exits 3.
 //
+// WRITE_TOKEN in the environment (mini.sh passes the deployment's; never an argument, so it stays out of the process list):
+// the review route must refuse a request without it (401) and serve the sample with it.
+//
 // A request passes when it answers (HTTP 200), every question gets an answer of its type with probabilities that sum to
 // 1, and every choice (a choice's option, a score's level, a yes/no answer's side of 0.5) is the baseline's. Probability
 // moves are reported, not failed. Photos and voice clips go as the sample files: the UI re-encodes them in the browser
@@ -31,6 +34,7 @@ const record = flags.includes("--record"), list = flags.includes("--list"), noMe
 const BASELINE = resolve(flags.find((f) => f.startsWith("--baseline="))?.slice(11) || join(ROOT, "scripts/demo-baseline.json"));
 const NAME = relative(process.cwd(), BASELINE) || BASELINE;
 const CAL = flags.find((f) => f.startsWith("--calibrator="))?.slice(13);
+const TOKEN = process.env.WRITE_TOKEN ?? "";
 const calSha = CAL ? (existsSync(CAL) ? createHash("sha256").update(readFileSync(CAL)).digest("hex") : "none") : null;
 const SIDECAR = `${BASELINE}.calibrator`;
 const then = CAL && !record && existsSync(SIDECAR) ? JSON.parse(readFileSync(SIDECAR, "utf8")) : null;
@@ -115,12 +119,16 @@ if (!record) failures.push(...(await reviewCheck()));
 async function reviewCheck() {
   const errs = [], page = await fetch(`${base}/review`).catch((e) => ({ ok: false, status: e.message }));
   if (!page.ok || !(await page.text()).includes("PR label check")) errs.push(`review page: HTTP ${page.status}`);
-  const r = await fetch(`${base}/api/review`, { cache: "no-store" }).catch((e) => ({ ok: false, status: e.message, json: async () => ({}) }));
-  const j = await r.json().catch(() => ({}));
-  const shaped = r.ok && j.target === 50 && Array.isArray(j.items) && j.items.length <= 50 && j.items.every((i) => i.group && i.options?.sev && i.pr);
+  const get = (headers = {}) => fetch(`${base}/api/review`, { cache: "no-store", headers }).catch((e) => ({ ok: false, status: e.message, json: async () => ({}) }));
+  let r = await get(), j = await r.json().catch(() => ({}));
   const off = r.status === 404 && /review is off/.test(j.error ?? "");
+  if (TOKEN && !off) {   // the token is in force: without it, refused; with it, the sample
+    if (r.status !== 401) errs.push(`review route: HTTP ${r.status} without the write token (WRITE_TOKEN is set: want 401)`);
+    r = await get({ authorization: `Bearer ${TOKEN}` }); j = await r.json().catch(() => ({}));
+  }
+  const shaped = r.ok && j.target === 50 && Array.isArray(j.items) && j.items.length <= 50 && j.items.every((i) => i.group && i.options?.sev && i.pr);
   if (!shaped && !off) errs.push(`review route: HTTP ${r.status} ${JSON.stringify(j).slice(0, 120)}`);
-  console.log(`review: page ${page.status}, route ${off ? "off (404)" : shaped ? `${j.done}/${j.target} checked, ${j.items.length} in the sample` : "BAD"}`);
+  console.log(`review: page ${page.status}, route ${off ? "off (404)" : shaped ? `${j.done}/${j.target} checked, ${j.items.length} in the sample${TOKEN ? ", token checked" : ""}` : "BAD"}`);
   return errs.map((e) => `review | ${e}`);
 }
 

@@ -12,6 +12,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Security
+
+- **A write token for the Learning page and the PR label check** (`WRITE_TOKEN` in `.demo/mini.env`, #77). Until now
+  anyone on the network who could reach the web app could change the self-learning settings and post labels marked human:
+  the cross-site check stops other websites only. With the token set, `POST /api/learning`, `POST /api/review` and the
+  label check's sample (`GET /api/review`) need `Authorization: Bearer <token>`. Each browser asks for it once and keeps
+  it. `mini.sh` refuses a token shorter than 16 characters or one with characters outside `A-Z a-z 0-9 . _ ~ -`, keeps
+  `mini.env` and the web app's LaunchAgent readable by your user only, never prints the token, and hands it to the smoke
+  test, which checks that the label check refuses a request without it. Unset, nothing changes, and `mini.sh` says the
+  pages are open. SECURITY.md lists what it does not cover.
+
 ### Added
 
 - **Issue outcomes still match when the decision log is reworded** (`scripts/pr_outcomes.py`, d1a#377): with

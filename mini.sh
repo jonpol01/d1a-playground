@@ -32,6 +32,9 @@
 #   prompt holds the model ~9 minutes and every other chat waits; d1a#318)
 #   LOG_REWRITE= (D1A_LOG_REWRITE, d1a#377: a private JSON list of {"pattern", "replace"} rules. With FEEDBACK_LOG, the model
 #   server logs each decision's text in general wording, and the outcome poster rewords issue titles the same way to match)
+#   WRITE_TOKEN= (at least 16 of A-Z a-z 0-9 . _ ~ -, e.g. openssl rand -hex 24: the Learning page's changes and the PR label
+#   check then need it, entered once per browser; unset, anyone who reaches the web app can make them. Add the line to
+#   .demo/mini.env, then update: a value given to update alone lasts one run)
 #   EMBED_REF= (reference vectors, {"texts": [...], "vectors": [...]}, e.g. LM Studio's for the same GGUF: the smoke test's
 #   OpenAI check then requires the served embeddings to match them, cosine >= 0.999)
 # The old names of three settings, KEV_PORT, KEV_PREFIX_CACHE and KEV_PREFIX_MAX_TOKENS, still work: install, reinstall and
@@ -66,7 +69,7 @@ die() { printf '\033[31m[mini] error:\033[0m %s\n' "$*" >&2; exit 1; }
 # the settings .demo/mini.env holds, in the order save_env writes them
 ENV_KEYS="MODEL_RUN MODEL_PORT PORT HOST D1A_BASE_PATH PYTORCH_MPS_HIGH_WATERMARK_RATIO PYTORCH_MPS_LOW_WATERMARK_RATIO MODEL_PREFIX_CACHE
 MODEL_PREFIX_MAX_TOKENS MEDIA IDLE_UNLOAD FEEDBACK_LOG OUTCOME_CALIBRATOR LABEL_OUTCOMES OPENAI_PORT OPENAI_HOST EMBED_GGUF EMBED_REF CHAT_CONTEXT
-LOG_REWRITE"
+LOG_REWRITE WRITE_TOKEN"
 
 # the settings' old names, from when the model server was Kev's: still read, and mini.env's lines are renamed (migrate_env)
 OLD_NAMES="KEV_PORT:MODEL_PORT KEV_PREFIX_CACHE:MODEL_PREFIX_CACHE KEV_PREFIX_MAX_TOKENS:MODEL_PREFIX_MAX_TOKENS"
@@ -121,7 +124,9 @@ load_env() {
     for k in $ENV_KEYS; do
       eval "[ -n \"\${_cli_$k+x}\" ]" || continue
       eval "cli=\"\$_cli_$k\"; file=\"\${$k-}\"; given=\"\${_given_$k:-$k}\""
-      [ "$cli" = "$file" ] || say "warning: $given=$cli from the command line is ignored: $ENVFILE sets $k=$file (edit it, then ./mini.sh update)"
+      [ "$cli" != "$file" ] || continue
+      [ "$k" != WRITE_TOKEN ] || { cli="(not shown)"; file="(not shown)"; }   # a secret: never in the output or a log
+      say "warning: $given=$cli from the command line is ignored: $ENVFILE sets $k=$file (edit it, then ./mini.sh update)"
     done
   fi
   MODEL_RUN="${MODEL_RUN:-$DEFAULT_MODEL_RUN}"; MODEL_PORT="${MODEL_PORT:-8009}"; PORT="${PORT:-3031}"; HOST="${HOST:-127.0.0.1}"; D1A_BASE_PATH="${D1A_BASE_PATH:-}"
@@ -132,7 +137,7 @@ load_env() {
   OPENAI_PORT="${OPENAI_PORT:-}"; OPENAI_HOST="${OPENAI_HOST:-::}"; EMBED_GGUF="${EMBED_GGUF:-}"; EMBED_REF="${EMBED_REF:-}"
   CHAT_CONTEXT="${CHAT_CONTEXT:-}"
   FEEDBACK_LOG="${FEEDBACK_LOG:-}"; OUTCOME_CALIBRATOR="${OUTCOME_CALIBRATOR:-}"; LABEL_OUTCOMES="${LABEL_OUTCOMES:-0}"
-  LOG_REWRITE="${LOG_REWRITE:-}"
+  LOG_REWRITE="${LOG_REWRITE:-}"; WRITE_TOKEN="${WRITE_TOKEN:-}"
   LEARNING="$STATE/learning.json"; TRAINED_DIR="$STATE/trained"   # the self-learning settings and the trained manifests (d1a#233)
 }
 
@@ -147,10 +152,21 @@ learning_init() {   # the self-learning settings, created once with this deploym
   say "self-learning settings: $LEARNING (edit on the Learning page or with: $PY -m d1a.learning.feedback config set --file $LEARNING key=value)"
 }
 
-save_env() {   # one KEY=value line per setting, the value shell-quoted (%q), so a space or a $( in it reads back as itself
+save_env() {   # one KEY=value line per setting, the value shell-quoted (%q), so a space or a $( in it reads back as itself;
+  # only this user can read it (WRITE_TOKEN), made so before anything is written to it
   local k
   mkdir -p "$STATE"
-  for k in $ENV_KEYS; do eval "printf '%s=%q\\n' $k \"\${$k-}\""; done >"$ENVFILE"
+  [ ! -f "$ENVFILE" ] || chmod 600 "$ENVFILE"
+  (umask 077; for k in $ENV_KEYS; do eval "printf '%s=%q\\n' $k \"\${$k-}\""; done >"$ENVFILE")
+}
+
+check_write_token() {   # install, reinstall and update, before anything else: the token goes into the web app's LaunchAgent as
+  # it is (XML, so a safe alphabet), a short one is guessable, and the files that hold it are this user's only (a hand-edited
+  # mini.env never passes save_env)
+  [ -n "$WRITE_TOKEN" ] || return 0
+  local re='^[A-Za-z0-9._~-]{16,}$' f
+  [[ "$WRITE_TOKEN" =~ $re ]] || die "WRITE_TOKEN must be at least 16 of A-Z a-z 0-9 . _ ~ - (e.g. openssl rand -hex 24)"
+  for f in "$ENVFILE" "$ENVFILE.before-rename"; do [ ! -f "$f" ] || chmod 600 "$f"; done
 }
 
 domain() { if launchctl print "gui/$(id -u)" >/dev/null 2>&1; then echo "gui/$(id -u)"; else echo "user/$(id -u)"; fi; }
@@ -273,6 +289,12 @@ write_agents() {
     <key>LEARNING_STATUS</key><string>$(dirname "$FEEDBACK_LOG")/learning-status.json</string>
     <key>LEARNING_PY</key><string>$PY</string>
 "
+  # the token those two pages' writes and the label check's sample need (check_write_token vetted it); the agent that holds
+  # it is this user's only, made so before it is written
+  [ -n "$WRITE_TOKEN" ] && ENV_XML+="    <key>WRITE_TOKEN</key><string>$WRITE_TOKEN</string>
+"
+  [ "$LABEL_OUTCOMES" != 1 ] || [ -n "$WRITE_TOKEN" ] || say "note: /learning and /review take changes from anyone who can reach the web app; set WRITE_TOKEN in $ENVFILE to require a token"
+  touch "$AGENTS/$WEB_LABEL.plist"; chmod 600 "$AGENTS/$WEB_LABEL.plist"
   plist "$WEB_LABEL" "$(command -v node)" "$ROOT/node_modules/next/dist/bin/next" start -p "$PORT" -H "$HOST" >"$AGENTS/$WEB_LABEL.plist"
   plutil -lint "$AGENTS/$MODEL_LABEL.plist" "$AGENTS/$WEB_LABEL.plist" >/dev/null
   if [ -n "$OPENAI_PORT" ]; then
@@ -408,7 +430,7 @@ smoke() {   # every demo's examples through the web app, checked against the bas
   local media=""; [ "$MEDIA" = 1 ] || media="--no-media"   # a string, not an array: bash 3.2 under set -u calls an empty array unbound
   local baseline=""; [ ! -f "$STATE/demo-baseline.json" ] || baseline="--baseline=$STATE/demo-baseline.json"
   local cal=""; [ -z "$OUTCOME_CALIBRATOR" ] || cal="--calibrator=$OUTCOME_CALIBRATOR"   # answers a newer calibrator moved are reported, not failed (#93)
-  node "$ROOT/scripts/demo_smoke.mjs" "$url" $media $baseline $cal || rc=$?
+  WRITE_TOKEN="$WRITE_TOKEN" node "$ROOT/scripts/demo_smoke.mjs" "$url" $media $baseline $cal || rc=$?   # by env: not in ps
   [ "$rc" != 3 ] || { SMOKE_MOVED=1; die "demo smoke test: every demo answers, but some answers differ from the baseline; if the change is expected, record it: node scripts/demo_smoke.mjs $url $media --baseline=$STATE/demo-baseline.json${cal:+ $cal} --record"; }
   [ "$rc" = 0 ] || die "demo smoke test FAILED: a demo no longer answers (scripts/demo_smoke.mjs)"
   [ -n "$OPENAI_PORT" ] || return 0
@@ -474,6 +496,7 @@ status() {
 
 case "${1:-status}" in install|reinstall|update) migrate_env ;; esac
 load_env
+case "${1:-status}" in install|reinstall|update) check_write_token ;; esac
 case "${1:-status}" in
   install)
     save_env

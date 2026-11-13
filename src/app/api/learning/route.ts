@@ -1,4 +1,4 @@
-import { crossSiteRefusal } from "@/lib/guard";
+import { writeRefusal } from "@/lib/guard";
 import { execFile } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import { parseShow, summarize } from "@/lib/learning";
@@ -6,8 +6,9 @@ import { parseShow, summarize } from "@/lib/learning";
 // The Learning page (d1a#233). GET: the self-learning settings in force (through d1a's own `config show`, so this page
 // never disagrees with the jobs), their recent changes, and the tick's status. POST {set: {key: value}}: one change,
 // through `config set --source page`, which validates the whole file first and writes nothing when a value is out of
-// range. Off (404) unless mini.sh passes LEARNING_FILE. Decision logging is not a setting here: /review and the outcome
-// poster read that log, so it stays an environment setting of the model server (D1A_FEEDBACK_LOG).
+// range; with WRITE_TOKEN set, it needs the token (src/lib/guard.ts). Off (404) unless mini.sh passes LEARNING_FILE.
+// Decision logging is not a setting here: /review and the outcome poster read that log, so it stays an environment
+// setting of the model server (D1A_FEEDBACK_LOG).
 export const dynamic = "force-dynamic";
 
 const FILE = process.env.LEARNING_FILE ?? "";
@@ -50,7 +51,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   if (!FILE) return off();
-  const refused = crossSiteRefusal(req);
+  const refused = writeRefusal(req);
   if (refused) return refused;
   let body: { set?: Record<string, unknown> };
   try { body = await req.json(); } catch { return Response.json({ error: "body must be JSON" }, { status: 400 }); }

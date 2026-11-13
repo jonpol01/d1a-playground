@@ -21,7 +21,10 @@ function answer(q, flip) {   // a well-formed answer; flip picks the other side
 }
 
 // mode: "" answers, "flip" answers every question the other way, "fail" answers the first request with a 500; with "cal"
-// in it, the audit block (asked for with x-d1a-audit: on) says every question was calibrated
+// in it, the audit block (asked for with x-d1a-audit: on) says every question was calibrated. The review route is off,
+// unless mode has "review" (it serves a sample to anyone) or "token" (only with Bearer TOKEN, else 401 as the app does)
+const TOKEN = "0123456789abcdef0123";
+const SAMPLE = { target: 50, done: 0, items: [{ group: "o/r#1", options: { sev: ["P0", "P1"] }, pr: { title: "t" } }] };
 async function standIn(mode) {
   let n = 0;
   const srv = http.createServer((req, res) => {
@@ -29,7 +32,12 @@ async function standIn(mode) {
     req.on("end", () => {
       const json = (s, j) => { res.writeHead(s, { "content-type": "application/json" }); res.end(JSON.stringify(j)); };
       if (req.url === "/review") { res.writeHead(200, { "content-type": "text/html" }); return res.end("<h1>PR label check</h1>"); }
-      if (req.url === "/api/review") return json(404, { error: "review is off" });
+      if (req.url === "/api/review") {
+        if (mode.includes("token") && req.headers.authorization !== `Bearer ${TOKEN}`) {
+          res.writeHead(401, { "content-type": "application/json", "www-authenticate": "Bearer" }); return res.end("{}");
+        }
+        return mode.includes("review") || mode.includes("token") ? json(200, SAMPLE) : json(404, { error: "review is off" });
+      }
       if (req.url !== "/model/v1/systemone") return json(404, { error: "not here" });
       if (mode === "fail" && n++ === 0) return json(500, { error: "model server down" });
       const { questions } = JSON.parse(raw);
@@ -41,11 +49,12 @@ async function standIn(mode) {
   return srv;
 }
 
-async function smoke(mode, ...flags) {
-  const srv = await standIn(mode);
+async function smoke(mode, ...flags) {   // a flag {env} adds to the smoke test's environment
+  const srv = await standIn(mode), env = { ...process.env, WRITE_TOKEN: "" };
+  for (const f of flags.filter((f) => typeof f === "object")) Object.assign(env, f.env);
   try {
-    return await new Promise((ok) => execFile(process.execPath, [SMOKE, `http://127.0.0.1:${srv.address().port}`, "--no-media", ...flags],
-      { timeout: 120_000 }, (err, stdout, stderr) => ok({ code: err ? err.code : 0, out: stdout + stderr })));
+    return await new Promise((ok) => execFile(process.execPath, [SMOKE, `http://127.0.0.1:${srv.address().port}`, "--no-media", ...flags.filter((f) => typeof f === "string")],
+      { timeout: 120_000, env }, (err, stdout, stderr) => ok({ code: err ? err.code : 0, out: stdout + stderr })));
   } finally { srv.close(); }
 }
 
@@ -91,4 +100,30 @@ test("answers a newer calibrator moved are reported, not failed; other moves sti
   const uncalibrated = await smoke("flip", `--baseline=${plain}`, `--calibrator=${cal}`);
   assert.equal(uncalibrated.code, 3, uncalibrated.out);
   assert.doesNotMatch(uncalibrated.out, /MOVED BY THE CALIBRATOR/);
+});
+
+test("with WRITE_TOKEN, the review route must refuse a request without it and serve the sample with it", async () => {
+  const file = join(mkdtempSync(join(tmpdir(), "smoke-token-")), "baseline.json");
+  assert.equal((await smoke("", "--record", `--baseline=${file}`)).code, 0);
+  const env = { env: { WRITE_TOKEN: TOKEN } };
+
+  const guarded = await smoke("token", `--baseline=${file}`, env);
+  assert.equal(guarded.code, 0, guarded.out);
+  assert.match(guarded.out, /review: page 200, route 0\/50 checked, 1 in the sample, token checked/);
+
+  const open = await smoke("review", `--baseline=${file}`, env);   // the token is set but the route does not ask for it
+  assert.equal(open.code, 1, open.out);
+  assert.match(open.out, /review route: HTTP 200 without the write token \(WRITE_TOKEN is set: want 401\)/);
+
+  const missing = await smoke("token", `--baseline=${file}`);   // the deployment has a token, the smoke test was not given it
+  assert.equal(missing.code, 1, missing.out);
+  assert.match(missing.out, /review route: HTTP 401/);
+
+  const off = await smoke("", `--baseline=${file}`, env);   // review off: nothing to guard
+  assert.equal(off.code, 0, off.out);
+  assert.match(off.out, /route off \(404\)/);
+
+  const plain = await smoke("review", `--baseline=${file}`);   // no token anywhere: as before
+  assert.equal(plain.code, 0, plain.out);
+  assert.doesNotMatch(plain.out, /token checked/);
 });
