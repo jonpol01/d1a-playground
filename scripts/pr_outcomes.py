@@ -14,6 +14,11 @@ follow on GitHub:
 - human: a person (any account that is not a bot) changing a type, blast-radius or severity label after the decision;
   the PR's or issue's own author until AUTHOR_LEAD after the first labeler call is not one (an agent session opening it).
   d1a.learning.feedback ranks these above the reviewer's, whatever arrives last.
+- reviewer-blind: the review bot's labels on a PR of the blind arm (`"blind": true` on the mirror line). On such a PR the
+  labeler applies none of D1A's type, blast or P answers, so the review bot decides without seeing them. The live
+  settings name their sources, so these outcomes reach no calibrator unless a reader names them. Lines written since the
+  arm started carry `blind` true or false. The arm is fixed per PR by blind_arm(); a line whose flag disagrees with it, or
+  a blind PR where a bot adds a type, blast or P label in the labeler's write window, is reported in the summary.
 A decision's window closes at the next labeler call on the same pull request (a new head), so a later head's labels are
 never counted against it. Nothing is written to GitHub. Posted outcomes are remembered in --state, so each is sent once.
 
@@ -28,6 +33,7 @@ every 24th (6-hourly) until --days. A window that closed more than a day ago was
 not polled for a person's labels any more.
 """
 import argparse
+import hashlib
 import json
 import os
 import subprocess
@@ -55,10 +61,35 @@ BACKOFF = ((timedelta(days=1), 1), (timedelta(days=3), 4))   # (decision younger
 OLD_EVERY = 24
 CLOSED = timedelta(days=1)           # a window closed this long ago has been read whole: no person's label can land in it
 ISSUE_KIND = "kind: github-issue"    # the issue labeler's state header line
+BLIND_SRC = "reviewer-blind"         # the review bot's labels on a blind-arm PR: it never saw D1A's answer
+BLIND_SHARE = 30                     # percent of PRs in the blind arm (d1a-research plans/2026-11-14-blind-reviewer-arm.md)
+UNREVIEWED = timedelta(days=1)       # a blind PR whose last call is this old with no review of it counts as unreviewed
 
 
 def ts(s):
     return datetime.fromisoformat(s.replace("Z", "+00:00"))
+
+
+def blind_arm(repo, number):
+    """Whether pull request `repo`#`number` is in the blind arm: the plan's fixed hash, so anyone can check the labeler."""
+    return int(hashlib.sha256(f"{repo}#{number}".lower().encode()).hexdigest(), 16) % 100 < BLIND_SHARE
+
+
+def is_blind(call):
+    return call.get("blind") is True
+
+
+def sources(call, srcs):
+    """The sources a decision can get an outcome from: on a blind-arm line the reviewer's is reviewer-blind."""
+    return tuple(BLIND_SRC if s == "reviewer" else s for s in srcs) if is_blind(call) else srcs
+
+
+def leaks(events, call_times):
+    """Type, blast or P labels a bot added in the labeler's write window around one of its calls: on a blind PR, D1A's
+    answer shown. The review bot adding one in the same seconds by chance is also listed, for a person to look at."""
+    calls = [ts(t) for t in call_times]
+    return [e for e in events if e["event"] == "labeled" and e["actor"].endswith("[bot]") and any(f(e["label"]) for f in FAMILIES.values())
+            and any(c - CALL_LEAD <= ts(e["created_at"]) <= c + timedelta(seconds=2) for c in calls)]
 
 
 def labels_at(events, when):
@@ -106,7 +137,7 @@ def outcomes(decision, next_ts, events, reviews, call_times=(), author=None):
                     and not any(c - CALL_LEAD <= ts(e["created_at"]) <= c + timedelta(seconds=2) for c in calls)]
             if adds: got[q] = adds[-1]["label"]
             elif q in standing: got[q] = standing[q]
-        if got: out.append(("reviewer", got))
+        if got: out.append((BLIND_SRC if is_blind(decision) else "reviewer", got))
     human = [e for e in events if not e["actor"].endswith("[bot]") and t0 < ts(e["created_at"]) and (end is None or ts(e["created_at"]) < end)
              and not (author and e["actor"] == author and ts(e["created_at"]) <= opened)   # by itself, not by t0: the order may vary
              and any(f(e["label"]) for f in FAMILIES.values())]
@@ -241,6 +272,32 @@ def summary(calls, posted, now, days=14):
     return out
 
 
+def blind_summary(calls, posted, now, leaked):
+    """The blind arm since its first flagged line: PRs per arm (first labeled since then), blind PRs reviewed and still
+    unreviewed after UNREVIEWED, and the PRs its read excludes: a flag missing, changing or disagreeing with blind_arm()
+    (or blind on a PR first labeled before the arm), and the leaks found. None before the arm starts."""
+    flagged = [c for c in calls if "blind" in c]
+    if not flagged: return None
+    start = min(c["ts"] for c in flagged)
+    by_pr = {}
+    for c in sorted(calls, key=lambda c: c["ts"]): by_pr.setdefault((c["repo"], c["number"]), []).append(c)
+    out = {"since": start, "share": BLIND_SHARE, "blind_prs": 0, "shown_prs": 0, "reviewed": 0, "unreviewed": 0,
+           "mismatch": [], "leaks": sorted(leaked)}
+    for (repo, number), seq in by_pr.items():
+        key = f"{repo}#{number}"
+        if ts(seq[0]["ts"]) < ts(start):   # labeled before the arm: never in it
+            if any(is_blind(c) for c in seq): out["mismatch"].append(key)
+            continue
+        arm = blind_arm(repo, number)
+        if any(c.get("blind") is not arm for c in seq): out["mismatch"].append(key); continue   # excluded from the read
+        if not arm: out["shown_prs"] += 1; continue
+        out["blind_prs"] += 1
+        if any(BLIND_SRC in posted.get(c.get("decision_id"), {}) for c in seq): out["reviewed"] += 1
+        last = seq[-1]
+        if BLIND_SRC not in posted.get(last.get("decision_id"), {}) and now - ts(last["ts"]) > UNREVIEWED: out["unreviewed"] += 1
+    return out
+
+
 def main(argv=None, now=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--decisions", default="/Users/Shared/d1a/labeler-decisions.jsonl")
@@ -269,20 +326,29 @@ def main(argv=None, now=None):
             hits = found.get((c["title"], c["author"]), [])
             if len(hits) == 1: items.setdefault(hits[0], (issue_history, ("human",), []))[2].append(c)
     sent = 0
+    leaks_path = state_path.parent / "blind-leaks.json"   # {"<repo>#<number>": [label, ...]}: kept, the events are read only while polled
+    leaked = json.loads(leaks_path.read_text()) if leaks_path.exists() else {}
 
     def save():   # also before a stop: the outcomes posted so far in this run are not posted again
         if a.dry_run: return
         state_path.parent.mkdir(parents=True, exist_ok=True); state_path.write_text(json.dumps(posted, indent=1) + "\n")
-        (state_path.parent / "outcomes-summary.json").write_text(json.dumps({"ts": now.isoformat(), "families": summary(calls, posted, now, a.days)}, indent=1) + "\n")
+        if leaked: leaks_path.write_text(json.dumps(leaked, indent=1) + "\n")
+        (state_path.parent / "outcomes-summary.json").write_text(json.dumps({"ts": now.isoformat(), "families": summary(calls, posted, now, a.days),
+                                                                              "blind": blind_summary(calls, posted, now, leaked)}, indent=1) + "\n")
 
     for (repo, number), (history, srcs, seq) in items.items():
         todo = [(c, seq[i + 1]["ts"] if i + 1 < len(seq) else None) for i, c in enumerate(seq)]
         todo = [(c, next_ts) for c, next_ts in todo if c.get("decision_id") and ts(c["ts"]) >= since
-                and wanted(c, next_ts, posted.get(c["decision_id"], {}), now, srcs)]
+                and wanted(c, next_ts, posted.get(c["decision_id"], {}), now, sources(c, srcs))]
         if not any(due(c, now, f"{repo}#{number}") for c, _ in todo): continue
         try: events, reviews, author = history(repo, number)
         except (RuntimeError, subprocess.TimeoutExpired, json.JSONDecodeError) as e:
             print(f"skip {repo}#{number}: {e}", file=sys.stderr); continue
+        if any(is_blind(c) for c in seq):
+            shown = sorted({e["label"] for e in leaks(events, [x["ts"] for x in seq])})
+            if shown and leaked.get(f"{repo}#{number}") != shown:
+                leaked[f"{repo}#{number}"] = shown
+                print(f"{repo}#{number} blind arm: a bot added {shown} in the labeler's write window", file=sys.stderr)
         for c, next_ts in todo:
             done = posted.setdefault(c["decision_id"], {})
             for src, labels in outcomes(c, next_ts, events, reviews, [x["ts"] for x in seq], author):
