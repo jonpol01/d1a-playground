@@ -102,6 +102,12 @@ def labels_at(events, when):
     return labels
 
 
+def added_by(events, label, when):
+    """Who last added `label` at or before `when` (None if no event says)."""
+    adds = [e for e in events if e["event"] == "labeled" and e["label"] == label and ts(e["created_at"]) <= when]
+    return max(adds, key=lambda e: e["created_at"])["actor"] if adds else None
+
+
 def family_labels(labels, families):
     """{question: label} for each family with exactly one label."""
     out = {}
@@ -136,7 +142,9 @@ def outcomes(decision, next_ts, events, reviews, call_times=(), author=None):
                     and FAMILIES[q](e["label"]) and lo <= ts(e["created_at"]) <= hi
                     and not any(c - CALL_LEAD <= ts(e["created_at"]) <= c + timedelta(seconds=2) for c in calls)]
             if adds: got[q] = adds[-1]["label"]
-            elif q in standing: got[q] = standing[q]
+            # on a blind PR a label kept is the bot's answer only if the bot set it: one the author or a person set was in
+            # view when it reviewed, so it is neither unanchored nor necessarily its own
+            elif q in standing and (not is_blind(decision) or added_by(events, standing[q], hi) == REVIEWER): got[q] = standing[q]
         if got: out.append((BLIND_SRC if is_blind(decision) else "reviewer", got))
     human = [e for e in events if not e["actor"].endswith("[bot]") and t0 < ts(e["created_at"]) and (end is None or ts(e["created_at"]) < end)
              and not (author and e["actor"] == author and ts(e["created_at"]) <= opened)   # by itself, not by t0: the order may vary
