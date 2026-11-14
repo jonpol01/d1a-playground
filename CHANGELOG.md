@@ -12,6 +12,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **The outcome poster credits a blind PR's labels to the review bot only when the bot set them** (`scripts/pr_outcomes.py`,
+  d1a-playground#128). On a blind-arm PR where the review bot added no label of a family, the poster fell back to the label
+  standing there. That label could be the author's or a person's, set before the review and in the bot's view, and it was
+  posted as the bot's unanchored `reviewer-blind` answer. Now a kept label counts only if the bot added it. Ordinary PRs
+  are unchanged.
+
 ### Security
 
 - **Pillow 13.0.0 in the tested environment** (`scripts/d1a-constraints.txt`, which every launcher installs). 12.3.0 has

@@ -354,6 +354,12 @@ class BlindArm(unittest.TestCase):
         got = outcomes(self.call(self.LATER, "head2", True), None, self.EVENTS, self.REVIEWS, [self.CALL, self.LATER])
         self.assertEqual(got, [("reviewer-blind", self.ANSWER)])
 
+    def test_a_label_the_bot_did_not_set_on_a_blind_pr_is_not_posted_as_its_answer(self):
+        # the author set type/docs when opening the PR; the review bot adds only blast and P and leaves it standing
+        events = [ev2("2026-11-20T02:58:00Z", "type/docs", PERSON)] + [e for e in self.EVENTS if e["label"] != "type/bug"]
+        got = outcomes(self.call(self.CALL, "head1", True), self.LATER, events, self.REVIEWS, [self.CALL, self.LATER], PERSON)
+        self.assertEqual(got, [("reviewer-blind", {"blast": "review:blast-contained", "sev": "P3"})])
+
     def test_the_arm_is_the_plans_fixed_hash(self):
         self.assertTrue(pr_outcomes.blind_arm("o/r", 2)); self.assertFalse(pr_outcomes.blind_arm("o/r", 1))
         self.assertEqual(pr_outcomes.blind_arm("jonpol01/d1a", 403), pr_outcomes.blind_arm("JonPol01/D1A", 403))   # case-blind
