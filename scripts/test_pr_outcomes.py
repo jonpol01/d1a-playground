@@ -328,3 +328,77 @@ class RewordedTitles(unittest.TestCase):
                 if v is None: sys.modules.pop(k, None)
                 else: sys.modules[k] = v
         self.assertEqual(found, {("board crash", "me"): [("o/r", 7)]})
+
+
+class BlindArm(unittest.TestCase):
+    """d1a-research plans/2026-11-14-blind-reviewer-arm.md: on a blind PR the labeler applies none of D1A's type, blast or P
+    answers, so the review bot's labels are unanchored and post as reviewer-blind."""
+    CALL, REVIEW, LATER, REVIEW2 = "2026-11-20T03:00:00Z", "2026-11-20T03:04:00Z", "2026-11-20T05:00:00Z", "2026-11-20T05:06:00Z"
+    REVIEWS = [{"user": BOT, "commit_id": "head1", "submitted_at": REVIEW}, {"user": BOT, "commit_id": "head2", "submitted_at": REVIEW2}]
+    EVENTS = [ev2("2026-11-20T02:59:55Z", "size/S", BOT),                                               # the labeler: no D1A label
+              ev2("2026-11-20T03:04:03Z", "type/bug", BOT), ev2("2026-11-20T03:04:03Z", "review:blast-contained", BOT),
+              ev2("2026-11-20T03:04:04Z", "P3", BOT)]                                                   # the review bot, on its own
+    ANSWER = {"type": "type/bug", "blast": "review:blast-contained", "sev": "P3"}
+
+    def call(self, at, head, blind):
+        return {"ts": at, "head_sha": head, "applied_labels": ["size/S"], "blind": blind}
+
+    def test_a_blind_first_head_with_no_standing_labels_posts_the_reviewers_adds_as_reviewer_blind(self):
+        got = outcomes(self.call(self.CALL, "head1", True), self.LATER, self.EVENTS, self.REVIEWS, [self.CALL, self.LATER])
+        self.assertEqual(got, [("reviewer-blind", self.ANSWER)])
+        ordinary = outcomes(self.call(self.CALL, "head1", False), self.LATER, self.EVENTS, self.REVIEWS, [self.CALL, self.LATER])
+        self.assertEqual(ordinary, [("reviewer", self.ANSWER)])
+
+    def test_a_blind_later_head_where_the_reviewer_keeps_its_own_labels(self):
+        # no event on head2: the review bot set its labels again (GitHub records nothing); its own earlier ones stand
+        got = outcomes(self.call(self.LATER, "head2", True), None, self.EVENTS, self.REVIEWS, [self.CALL, self.LATER])
+        self.assertEqual(got, [("reviewer-blind", self.ANSWER)])
+
+    def test_the_arm_is_the_plans_fixed_hash(self):
+        self.assertTrue(pr_outcomes.blind_arm("o/r", 2)); self.assertFalse(pr_outcomes.blind_arm("o/r", 1))
+        self.assertEqual(pr_outcomes.blind_arm("jonpol01/d1a", 403), pr_outcomes.blind_arm("JonPol01/D1A", 403))   # case-blind
+        self.assertAlmostEqual(sum(pr_outcomes.blind_arm("o/r", n) for n in range(10000)) / 10000, 0.30, delta=0.01)
+
+    def test_a_bot_label_of_d1as_families_in_the_labelers_window_is_a_leak(self):
+        self.assertEqual(pr_outcomes.leaks(self.EVENTS, [self.CALL, self.LATER]), [])   # size/S is not D1A's answer
+        shown = self.EVENTS + [ev2("2026-11-20T04:59:50Z", "type/feature", BOT)]
+        self.assertEqual([e["label"] for e in pr_outcomes.leaks(shown, [self.CALL, self.LATER])], ["type/feature"])
+
+    def test_the_summary_counts_the_arms_and_lists_flag_problems(self):
+        now = datetime(2026, 11, 25, tzinfo=timezone.utc)
+        line = lambda t, n, d, **kw: {"ts": t, "repo": "o/r", "number": n, "decision_id": d, "applied_labels": ["size/S"], **kw}
+        calls = [line("2026-11-19T00:00:00Z", 1, "a"),                    # before the arm: no flag, never in it
+                 line("2026-11-19T01:00:00Z", 3, "b"), line("2026-11-20T01:00:00Z", 3, "b2", blind=True),   # switched mid-PR
+                 line("2026-11-20T00:00:00Z", 2, "c", blind=True),       # blind, reviewed
+                 line("2026-11-20T00:00:00Z", 8, "d", blind=True),       # blind, never reviewed
+                 line("2026-11-20T00:00:00Z", 9, "e", blind=False),      # the hash says blind: a mismatch
+                 line("2026-11-20T00:00:00Z", 4, "f", blind=False)]      # shown, as the hash says
+        posted = {"c": {"reviewer-blind": self.ANSWER}}
+        s = pr_outcomes.blind_summary(calls, posted, now, {"o/r#2": ["type/bug"]})
+        self.assertEqual({k: s[k] for k in ("since", "blind_prs", "shown_prs", "reviewed", "unreviewed", "leaks")},
+                         {"since": "2026-11-20T00:00:00Z", "blind_prs": 2, "shown_prs": 1, "reviewed": 1, "unreviewed": 1, "leaks": ["o/r#2"]})
+        self.assertEqual(sorted(s["mismatch"]), ["o/r#3", "o/r#9"])
+        self.assertIsNone(pr_outcomes.blind_summary(calls[:1], {}, now, {}))   # no flagged line yet: the arm has not started
+
+    def test_main_posts_reviewer_blind_once_and_records_it(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            decisions, state = Path(tmp) / "decisions.jsonl", Path(tmp) / "posted.json"
+            decisions.write_text(json.dumps({"repo": "o/r", "number": 2, "decision_id": "d-b", **self.call(self.CALL, "head1", True)}) + "\n")
+            sent = []
+            fake_open = lambda req, timeout: (sent.append(json.loads(req.data)), mock.MagicMock(status=200, __enter__=lambda s: s, __exit__=lambda *a: None))[1]
+            args = ["--decisions", str(decisions), "--state", str(state), "--log", str(Path(tmp) / "none.jsonl")]
+            with mock.patch.object(pr_outcomes, "pr_history", return_value=(self.EVENTS, self.REVIEWS[:1], PERSON)), \
+                 mock.patch("urllib.request.urlopen", fake_open):
+                self.assertEqual(pr_outcomes.main(args, now=pr_outcomes.ts("2026-11-20T03:30:00Z")), 0)
+                self.assertEqual(pr_outcomes.main(args, now=pr_outcomes.ts("2026-11-20T03:45:00Z")), 0)   # done: not posted again
+            summary = json.loads((Path(tmp) / "outcomes-summary.json").read_text())
+        self.assertEqual([(b["src"], b["labels"]) for b in sent], [("reviewer-blind", self.ANSWER)])
+        self.assertEqual(summary["blind"]["reviewed"], 1)
+        self.assertEqual(summary["blind"]["mismatch"], [])
+
+    def test_a_blind_decision_is_done_once_its_reviewer_blind_outcome_is_posted(self):
+        # otherwise it would be polled for a "reviewer" outcome that never comes, until --days
+        c, now = self.call(self.CALL, "head1", True), pr_outcomes.ts("2026-11-23T00:00:00Z")
+        done = {"reviewer-blind": self.ANSWER}
+        self.assertEqual(pr_outcomes.wanted(c, self.LATER, done, now, pr_outcomes.sources(c, ("reviewer", "human"))), [])
+        self.assertEqual(pr_outcomes.sources(self.call(self.CALL, "head1", False), ("reviewer", "human")), ("reviewer", "human"))

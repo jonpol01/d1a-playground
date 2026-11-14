@@ -41,6 +41,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Blind-arm outcomes** (`scripts/pr_outcomes.py`, d1a#299). On a PR whose mirror line says `"blind": true`, the
+  labeler shows none of D1A's type, blast or P answers, so the review bot labels it without seeing them. Its labels there
+  post as `src` reviewer-blind, not reviewer. The live settings name their sources, so these reach no calibrator.
+  - `outcomes-summary.json` gains a `blind` section: PRs per arm, blind PRs reviewed and still unreviewed after a day,
+    and the PRs to leave out (a flag that disagrees with the arm's fixed hash, or a bot label of D1A's families in the
+    labeler's write window).
+  - Lines without the flag are read as before.
 - **Issue outcomes still match when the decision log is reworded** (`scripts/pr_outcomes.py`, d1a#377): with
   `D1A_LOG_REWRITE` set, the live GitHub issue title is reworded with the same rules before it is matched to the logged call.
 - **Three more live checks in the smoke test** (`scripts/openai_smoke.mjs`):
