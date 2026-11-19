@@ -21,6 +21,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `SHOGI_URL` (mini.sh setting): a shogi page served by its own static server, shown under `/shogi` with a header link and
   asking D1A through this app's `/model` proxy. Unset, there is no route and no link.
 
+### Changed
+
+- **The "About D1A" box and the Architecture page describe the current model.** They described the one-epoch D1A-E2B v0.1
+  prototype, with a comparison against another hosted model. The About box now says what D1A takes in and returns and
+  where it runs, and links D1A's model list. The Architecture page gives D1A-E4B-it QAT's backbone, adapter, head and
+  temperature, a serving path that fits PyTorch and MLX servers, and where D1A runs (PyTorch, Apple Silicon, Android).
+
 ### Fixed
 
 - **The outcome poster credits a blind PR's labels to the review bot only when the bot set them** (`scripts/pr_outcomes.py`,
