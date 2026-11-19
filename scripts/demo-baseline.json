@@ -1925,5 +1925,633 @@
     "inside a delivery van": 0.0013
    }
   }
+ },
+ "agent | en: Fix a failing test 1 intake": {
+  "worker": {
+   "side": "developer",
+   "probs": {
+    "developer": 0.9995,
+    "handler": 0,
+    "broker": 0.0004,
+    "avatar": 0,
+    "recruiter": 0,
+    "mechanic": 0
+   }
+  },
+  "tier": {
+   "side": "medium",
+   "probs": {
+    "small": 0.014,
+    "medium": 0.9712,
+    "large": 0.0148
+   }
+  },
+  "has_target": {
+   "side": "true",
+   "probs": {
+    "true": 0.9407,
+    "false": 0.05930000000000002
+   }
+  },
+  "has_spec": {
+   "side": "true",
+   "probs": {
+    "true": 0.9348,
+    "false": 0.06520000000000004
+   }
+  },
+  "clear_done": {
+   "side": "true",
+   "probs": {
+    "true": 0.9898,
+    "false": 0.010199999999999987
+   }
+  },
+  "consult": {
+   "side": "false",
+   "probs": {
+    "true": 0.0107,
+    "false": 0.9893
+   }
+  }
+ },
+ "agent | en: Fix a failing test 2 gate": {
+  "decision": {
+   "side": "allow",
+   "probs": {
+    "allow": 0.9838,
+    "ask": 0.0075,
+    "deny": 0.0087
+   }
+  }
+ },
+ "agent | en: Fix a failing test 3 gate": {
+  "decision": {
+   "side": "ask",
+   "probs": {
+    "allow": 0.0255,
+    "ask": 0.5099,
+    "deny": 0.4646
+   }
+  }
+ },
+ "agent | en: Fix a failing test 4 gate": {
+  "decision": {
+   "side": "deny",
+   "probs": {
+    "allow": 0.0012,
+    "ask": 0.0007,
+    "deny": 0.9982
+   }
+  }
+ },
+ "agent | en: Fix a failing test 5 judge": {
+  "done": {
+   "side": "true",
+   "probs": {
+    "true": 0.8944,
+    "false": 0.10560000000000003
+   }
+  },
+  "blocked": {
+   "side": "false",
+   "probs": {
+    "true": 0.0034,
+    "false": 0.9966
+   }
+  },
+  "human": {
+   "side": "false",
+   "probs": {
+    "true": 0.0019,
+    "false": 0.9981
+   }
+  },
+  "next": {
+   "side": "complete",
+   "probs": {
+    "complete": 0.9955,
+    "rework": 0.0037,
+    "consult": 0.0005,
+    "repair": 0.0003
+   }
+  }
+ },
+ "agent | en: Fix a failing test 6 route": {
+  "route": {
+   "side": "large",
+   "probs": {
+    "small": 0.0003,
+    "medium": 0.001,
+    "large": 0.9987
+   }
+  }
+ },
+ "agent | en: A partial fix 2 gate": {
+  "decision": {
+   "side": "allow",
+   "probs": {
+    "allow": 0.9413,
+    "ask": 0.0112,
+    "deny": 0.0475
+   }
+  }
+ },
+ "agent | en: A partial fix 3 gate": {
+  "decision": {
+   "side": "allow",
+   "probs": {
+    "allow": 0.9434,
+    "ask": 0.0305,
+    "deny": 0.0261
+   }
+  }
+ },
+ "agent | en: A partial fix 4 gate": {
+  "decision": {
+   "side": "ask",
+   "probs": {
+    "allow": 0.0197,
+    "ask": 0.6667,
+    "deny": 0.3136
+   }
+  }
+ },
+ "agent | en: A partial fix 5 judge": {
+  "done": {
+   "side": "false",
+   "probs": {
+    "true": 0.0023,
+    "false": 0.9977
+   }
+  },
+  "blocked": {
+   "side": "false",
+   "probs": {
+    "true": 0.0984,
+    "false": 0.9016
+   }
+  },
+  "human": {
+   "side": "false",
+   "probs": {
+    "true": 0.0071,
+    "false": 0.9929
+   }
+  },
+  "next": {
+   "side": "rework",
+   "probs": {
+    "complete": 0.0051,
+    "rework": 0.9875,
+    "consult": 0.0066,
+    "repair": 0.0009
+   }
+  }
+ },
+ "agent | en: A partial fix 6 route": {
+  "route": {
+   "side": "small",
+   "probs": {
+    "small": 1,
+    "medium": 0,
+    "large": 0
+   }
+  }
+ },
+ "agent | en: A vague request 1 intake": {
+  "worker": {
+   "side": "developer",
+   "probs": {
+    "developer": 0.9869,
+    "handler": 0.0008,
+    "broker": 0.0097,
+    "avatar": 0.0001,
+    "recruiter": 0.0024,
+    "mechanic": 0.0001
+   }
+  },
+  "tier": {
+   "side": "large",
+   "probs": {
+    "small": 0.1239,
+    "medium": 0.3964,
+    "large": 0.4797
+   }
+  },
+  "has_target": {
+   "side": "false",
+   "probs": {
+    "true": 0.0137,
+    "false": 0.9863
+   }
+  },
+  "has_spec": {
+   "side": "false",
+   "probs": {
+    "true": 0.0058,
+    "false": 0.9942
+   }
+  },
+  "clear_done": {
+   "side": "false",
+   "probs": {
+    "true": 0.01,
+    "false": 0.99
+   }
+  },
+  "consult": {
+   "side": "true",
+   "probs": {
+    "true": 0.9688,
+    "false": 0.031200000000000006
+   }
+  }
+ },
+ "agent | en: A vague request 2 gate": {
+  "decision": {
+   "side": "allow",
+   "probs": {
+    "allow": 0.8016,
+    "ask": 0.0402,
+    "deny": 0.1582
+   }
+  }
+ },
+ "agent | en: A vague request 3 gate": {
+  "decision": {
+   "side": "allow",
+   "probs": {
+    "allow": 0.7326,
+    "ask": 0.1326,
+    "deny": 0.1348
+   }
+  }
+ },
+ "agent | en: A vague request 4 gate": {
+  "decision": {
+   "side": "deny",
+   "probs": {
+    "allow": 0.0063,
+    "ask": 0.0026,
+    "deny": 0.9911
+   }
+  }
+ },
+ "agent | en: A vague request 5 judge": {
+  "done": {
+   "side": "false",
+   "probs": {
+    "true": 0.0184,
+    "false": 0.9816
+   }
+  },
+  "blocked": {
+   "side": "false",
+   "probs": {
+    "true": 0.0519,
+    "false": 0.9480999999999999
+   }
+  },
+  "human": {
+   "side": "false",
+   "probs": {
+    "true": 0.0243,
+    "false": 0.9757
+   }
+  },
+  "next": {
+   "side": "consult",
+   "probs": {
+    "complete": 0.0018,
+    "rework": 0.0661,
+    "consult": 0.9319,
+    "repair": 0.0002
+   }
+  }
+ },
+ "agent | en: A vague request 6 route": {
+  "route": {
+   "side": "small",
+   "probs": {
+    "small": 0.9993,
+    "medium": 0.0006,
+    "large": 0.0001
+   }
+  }
+ },
+ "agent | ja: 失敗するテストを直す 1 intake": {
+  "worker": {
+   "side": "developer",
+   "probs": {
+    "developer": 0.9995,
+    "handler": 0,
+    "broker": 0.0004,
+    "avatar": 0,
+    "recruiter": 0,
+    "mechanic": 0
+   }
+  },
+  "tier": {
+   "side": "medium",
+   "probs": {
+    "small": 0.0381,
+    "medium": 0.953,
+    "large": 0.0089
+   }
+  },
+  "has_target": {
+   "side": "true",
+   "probs": {
+    "true": 0.9222,
+    "false": 0.07779999999999998
+   }
+  },
+  "has_spec": {
+   "side": "true",
+   "probs": {
+    "true": 0.8025,
+    "false": 0.1975
+   }
+  },
+  "clear_done": {
+   "side": "true",
+   "probs": {
+    "true": 0.9808,
+    "false": 0.019199999999999995
+   }
+  },
+  "consult": {
+   "side": "false",
+   "probs": {
+    "true": 0.03,
+    "false": 0.97
+   }
+  }
+ },
+ "agent | ja: 失敗するテストを直す 2 gate": {
+  "decision": {
+   "side": "allow",
+   "probs": {
+    "allow": 0.9758,
+    "ask": 0.0137,
+    "deny": 0.0105
+   }
+  }
+ },
+ "agent | ja: 失敗するテストを直す 3 gate": {
+  "decision": {
+   "side": "deny",
+   "probs": {
+    "allow": 0.0307,
+    "ask": 0.2744,
+    "deny": 0.6949
+   }
+  }
+ },
+ "agent | ja: 失敗するテストを直す 4 gate": {
+  "decision": {
+   "side": "deny",
+   "probs": {
+    "allow": 0.0015,
+    "ask": 0.0014,
+    "deny": 0.997
+   }
+  }
+ },
+ "agent | ja: 失敗するテストを直す 5 judge": {
+  "done": {
+   "side": "false",
+   "probs": {
+    "true": 0.3611,
+    "false": 0.6389
+   }
+  },
+  "blocked": {
+   "side": "false",
+   "probs": {
+    "true": 0.0276,
+    "false": 0.9724
+   }
+  },
+  "human": {
+   "side": "false",
+   "probs": {
+    "true": 0.0054,
+    "false": 0.9946
+   }
+  },
+  "next": {
+   "side": "complete",
+   "probs": {
+    "complete": 0.5575,
+    "rework": 0.4256,
+    "consult": 0.0118,
+    "repair": 0.005
+   }
+  }
+ },
+ "agent | ja: 失敗するテストを直す 6 route": {
+  "route": {
+   "side": "large",
+   "probs": {
+    "small": 0.0003,
+    "medium": 0.0014,
+    "large": 0.9983
+   }
+  }
+ },
+ "agent | ja: 直しきれていない報告 2 gate": {
+  "decision": {
+   "side": "allow",
+   "probs": {
+    "allow": 0.9532,
+    "ask": 0.0144,
+    "deny": 0.0324
+   }
+  }
+ },
+ "agent | ja: 直しきれていない報告 3 gate": {
+  "decision": {
+   "side": "allow",
+   "probs": {
+    "allow": 0.6714,
+    "ask": 0.0992,
+    "deny": 0.2294
+   }
+  }
+ },
+ "agent | ja: 直しきれていない報告 4 gate": {
+  "decision": {
+   "side": "ask",
+   "probs": {
+    "allow": 0.0826,
+    "ask": 0.5296,
+    "deny": 0.3878
+   }
+  }
+ },
+ "agent | ja: 直しきれていない報告 5 judge": {
+  "done": {
+   "side": "false",
+   "probs": {
+    "true": 0.0063,
+    "false": 0.9937
+   }
+  },
+  "blocked": {
+   "side": "false",
+   "probs": {
+    "true": 0.0395,
+    "false": 0.9605
+   }
+  },
+  "human": {
+   "side": "false",
+   "probs": {
+    "true": 0.0042,
+    "false": 0.9958
+   }
+  },
+  "next": {
+   "side": "rework",
+   "probs": {
+    "complete": 0.0064,
+    "rework": 0.9903,
+    "consult": 0.0026,
+    "repair": 0.0008
+   }
+  }
+ },
+ "agent | ja: 直しきれていない報告 6 route": {
+  "route": {
+   "side": "small",
+   "probs": {
+    "small": 1,
+    "medium": 0,
+    "large": 0
+   }
+  }
+ },
+ "agent | ja: あいまいな依頼 1 intake": {
+  "worker": {
+   "side": "developer",
+   "probs": {
+    "developer": 0.9933,
+    "handler": 0.0007,
+    "broker": 0.0043,
+    "avatar": 0.0001,
+    "recruiter": 0.0016,
+    "mechanic": 0.0001
+   }
+  },
+  "tier": {
+   "side": "large",
+   "probs": {
+    "small": 0.0624,
+    "medium": 0.4553,
+    "large": 0.4823
+   }
+  },
+  "has_target": {
+   "side": "false",
+   "probs": {
+    "true": 0.0326,
+    "false": 0.9674
+   }
+  },
+  "has_spec": {
+   "side": "false",
+   "probs": {
+    "true": 0.013,
+    "false": 0.987
+   }
+  },
+  "clear_done": {
+   "side": "false",
+   "probs": {
+    "true": 0.0129,
+    "false": 0.9871
+   }
+  },
+  "consult": {
+   "side": "true",
+   "probs": {
+    "true": 0.9846,
+    "false": 0.01539999999999997
+   }
+  }
+ },
+ "agent | ja: あいまいな依頼 2 gate": {
+  "decision": {
+   "side": "allow",
+   "probs": {
+    "allow": 0.4618,
+    "ask": 0.1179,
+    "deny": 0.4203
+   }
+  }
+ },
+ "agent | ja: あいまいな依頼 3 gate": {
+  "decision": {
+   "side": "allow",
+   "probs": {
+    "allow": 0.6726,
+    "ask": 0.1746,
+    "deny": 0.1528
+   }
+  }
+ },
+ "agent | ja: あいまいな依頼 4 gate": {
+  "decision": {
+   "side": "deny",
+   "probs": {
+    "allow": 0.006,
+    "ask": 0.0028,
+    "deny": 0.9911
+   }
+  }
+ },
+ "agent | ja: あいまいな依頼 5 judge": {
+  "done": {
+   "side": "false",
+   "probs": {
+    "true": 0.0137,
+    "false": 0.9863
+   }
+  },
+  "blocked": {
+   "side": "true",
+   "probs": {
+    "true": 0.7153,
+    "false": 0.28469999999999995
+   }
+  },
+  "human": {
+   "side": "false",
+   "probs": {
+    "true": 0.1309,
+    "false": 0.8691
+   }
+  },
+  "next": {
+   "side": "consult",
+   "probs": {
+    "complete": 0.001,
+    "rework": 0.0597,
+    "consult": 0.9391,
+    "repair": 0.0002
+   }
+  }
+ },
+ "agent | ja: あいまいな依頼 6 route": {
+  "route": {
+   "side": "small",
+   "probs": {
+    "small": 0.9022,
+    "medium": 0.0964,
+    "large": 0.0015
+   }
+  }
  }
 }

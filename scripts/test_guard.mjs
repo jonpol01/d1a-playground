@@ -2,7 +2,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { readdirSync, readFileSync } from "node:fs";
-import { crossSiteRefusal, modelApiUrl, proxyRewrites, tokenRefusal, writeRefusal } from "../src/lib/guard.ts";
+import { crossSiteRefusal, modelApiUrl, proxyRewrites, shogiRewrites, tokenRefusal, writeRefusal } from "../src/lib/guard.ts";
 
 const MODEL_ROUTES = ["v1/models", "v1/systemone", "v1/systemone/permute", "v1/systemone/separate"];
 const rules = () => proxyRewrites("http://127.0.0.1:8009", "http://127.0.0.1:8010");
@@ -118,4 +118,11 @@ test("every write route checks writeRefusal, and the label check's sample checks
   for (const f of routes) assert.deepEqual(uncheckedWrites(readFileSync(f, "utf8")), [], `${f}: a write handler does not start with writeRefusal`);
   const review = readFileSync(routes.find((f) => f.endsWith("/api/review/route.ts")), "utf8").split(/export async function GET\b/)[1].split(/export async function/)[0];
   assert.match(review, /= tokenRefusal\(req\);[^\n]*\n\s*if \(refused\) return refused;/, "GET /api/review does not check the token");
+});
+
+test("the shogi page is forwarded only when SHOGI_URL is set, and only under /shogi", () => {
+  assert.deepEqual(shogiRewrites(""), []);
+  const r = shogiRewrites("http://127.0.0.1:8036/");
+  assert.deepEqual(r.map((x) => x.source), ["/shogi", "/shogi/:path*"]);
+  assert.ok(r.every((x) => x.destination.startsWith("http://127.0.0.1:8036/")));
 });

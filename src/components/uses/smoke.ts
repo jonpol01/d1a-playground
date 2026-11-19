@@ -2,6 +2,7 @@
 // questions, presets and state builders (exported from their modules), so the smoke test cannot drift from the UI.
 import { MODEL, type Question } from "@/lib/d1a";
 import type { Lang } from "@/lib/i18n";
+import { AGENT_Q, AGENT_TEXT, AGENT_USE_CASE, agentSteps } from "@/components/uses/agent";
 import { BULK_TEXT, INBOX_TEXT, LABEL_Q, RERANK_TEXT, splitBlocks, splitLines, splitPassages, TRIAGE_Q } from "@/components/uses/batch";
 import { describe, MOVE_Q } from "@/components/uses/control";
 import { CLIPS, PHOTO_Q, PHOTOS, VIDEOS, VOICE_Q } from "@/components/uses/media";
@@ -29,6 +30,8 @@ export function smokeRequests(langs: Lang[] = ["en", "ja"]): SmokeRequest[] {
     const rr = RERANK_TEXT[lang];
     splitPassages(rr.passages).forEach((p, i) => out.push(text("rerank", `${lang}: passage ${i + 1}`, p, { answers: { type: "noul", instructions: rr.ask(rr.query) } })));
     splitLines(BULK_TEXT[lang].reviews).forEach((r, i) => out.push(text("bulk", `${lang}: row ${i + 1}`, r, LABEL_Q)));
+    AGENT_TEXT[lang].presets.forEach((s) => agentSteps(s).forEach((st, i) =>
+      out.push(text("agent", `${lang}: ${s.name} ${i + 1} ${st.kind}`, st.state, AGENT_Q[st.kind], AGENT_USE_CASE))));
   }
   PRESETS.forEach((p) => out.push(text("pr-labeler", p.name, prState(p.pr), PR_Q)));
   // Control runs live with a moving target; fixed positions cover its three cases: left, right, on target, with and without the hint.

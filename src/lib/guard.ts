@@ -18,6 +18,13 @@ export function modelApiUrl(env: Record<string, string | undefined> = process.en
   return env.MODEL_API ?? env.KEV_API ?? "http://127.0.0.1:8009";
 }
 
+/** The optional shogi page (SHOGI_URL, its own static server): only /shogi and below are forwarded, nothing else. Unset: none. */
+export function shogiRewrites(shogiUrl: string) {
+  if (!shogiUrl) return [];
+  const base = shogiUrl.replace(/\/+$/, "");
+  return [{ source: "/shogi", destination: `${base}/` }, { source: "/shogi/:path*", destination: `${base}/:path*` }];
+}
+
 export function proxyRewrites(modelApi: string, mediaApi: string) {
   return [
     ...MODEL_PROXY_PATHS.flatMap((proxy) => MODEL_ROUTES.map((p) => ({ source: `/${proxy}/${p}`, destination: `${modelApi}/${p}` }))),
