@@ -61,9 +61,9 @@ function ModelDiagram({ t }: { t: Text }) {
         <rect x={8} y={20} width={300} height={190} rx={16} className="fill-card stroke-border" />
         <text x={24} y={46} className="font-heading fill-foreground text-[15px] font-semibold">Gemma 4 E4B-it</text>
         <text x={24} y={64} className="fill-muted-foreground text-[11px]">{t.backboneSub}</text>
-        {Array.from({ length: 35 }, (_, i) => {
-          const global = i % 5 === 4;
-          return <rect key={i} x={24 + i * 7.6} y={80} width={5.6} height={global ? 58 : 40} y2={0} rx={1.5} fill={global ? C.q : "var(--muted-foreground)"} opacity={global ? 0.9 : 0.35} />;
+        {Array.from({ length: 42 }, (_, i) => {
+          const global = i % 6 === 5;
+          return <rect key={i} x={24 + i * 6.4} y={80} width={4.6} height={global ? 58 : 40} y2={0} rx={1.5} fill={global ? C.q : "var(--muted-foreground)"} opacity={global ? 0.9 : 0.35} />;
         })}
         <text x={24} y={156} className="fill-muted-foreground text-[11px]">{t.layers}</text>
         <rect x={24} y={168} width={268} height={30} rx={8} fill={`color-mix(in oklch, ${C.lora} 14%, var(--card))`} stroke={C.lora} />
