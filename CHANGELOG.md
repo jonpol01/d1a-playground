@@ -27,6 +27,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   prototype, with a comparison against another hosted model. The About box now says what D1A takes in and returns and
   where it runs, and links D1A's model list. The Architecture page gives D1A-E4B-it QAT's backbone, adapter, head and
   temperature, a serving path that fits PyTorch and MLX servers, and where D1A runs (PyTorch, Apple Silicon, Android).
+- **A `MEDIA_DEMOS=0` build no longer promises photo, voice and video.** The headline's "three of them read a photo, a
+  voice note or a video" shows only when those demos do, and the page description names no count.
 
 ### Fixed
 
