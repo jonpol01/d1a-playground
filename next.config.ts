@@ -16,7 +16,8 @@ const SHOGI_URL = process.env.SHOGI_URL ?? "";
 
 const nextConfig: NextConfig = {
   basePath,
-  env: { NEXT_PUBLIC_BASE_PATH: basePath, NEXT_PUBLIC_SHOGI: SHOGI_URL ? "1" : "" },
+  // MEDIA_DEMOS=0: hide the photo, voice and video demos (a model server that cannot answer them)
+  env: { NEXT_PUBLIC_BASE_PATH: basePath, NEXT_PUBLIC_SHOGI: SHOGI_URL ? "1" : "", NEXT_PUBLIC_MEDIA_DEMOS: process.env.MEDIA_DEMOS ?? "" },
   reactCompiler: true,
   // d1a.media loads its model on the first photo/voice request after an idle spell (15-30 s); the default 30 s proxy
   // timeout would cut that request off
