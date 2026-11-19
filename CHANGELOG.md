@@ -12,6 +12,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- Demo 14, An agent's day: one task through an agent factory (intake, every tool call, a judge of the report, a router),
+  each step one D1A call with D1A's own agent presets and their fail-safe advice; with its smoke requests.
+- `SHOGI_URL` (mini.sh setting): a shogi page served by its own static server, shown under `/shogi` with a header link and
+  asking D1A through this app's `/model` proxy. Unset, there is no route and no link.
+
 ### Fixed
 
 - **The outcome poster credits a blind PR's labels to the review bot only when the bot set them** (`scripts/pr_outcomes.py`,

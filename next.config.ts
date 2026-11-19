@@ -1,6 +1,6 @@
 // Modified from Kev (https://github.com/jaredpalmer/kev), Copyright 2026 Jared Palmer, Apache-2.0.
 // Changes for the D1A playground by John Soliva, 2026.
-import { modelApiUrl, proxyRewrites } from "./src/lib/guard";
+import { modelApiUrl, proxyRewrites, shogiRewrites } from "./src/lib/guard";
 import type { NextConfig } from "next";
 
 // FastAPI (d1a.serving.serve) is proxied under /model so the browser never deals with CORS or ports.
@@ -10,10 +10,13 @@ const MEDIA_API = process.env.MEDIA_API ?? "http://127.0.0.1:8010";
 // Optional sub-path, e.g. D1A_BASE_PATH=/d1a behind a reverse proxy. Set it for both `next build` (the client bundle
 // inlines it) and `next start` (which reads this file again).
 const basePath = process.env.D1A_BASE_PATH ?? "";
+// Optional: a shogi page served by its own static server (SHOGI_URL), shown under /shogi with a header link. Unset, there is
+// no /shogi route and no link. The page asks D1A through this app's /model proxy, like the demos.
+const SHOGI_URL = process.env.SHOGI_URL ?? "";
 
 const nextConfig: NextConfig = {
   basePath,
-  env: { NEXT_PUBLIC_BASE_PATH: basePath },
+  env: { NEXT_PUBLIC_BASE_PATH: basePath, NEXT_PUBLIC_SHOGI: SHOGI_URL ? "1" : "" },
   reactCompiler: true,
   // d1a.media loads its model on the first photo/voice request after an idle spell (15-30 s); the default 30 s proxy
   // timeout would cut that request off
@@ -25,7 +28,7 @@ const nextConfig: NextConfig = {
   async rewrites() {
     // With a basePath, Next prefixes the source (/d1a/model/...) and leaves the external destination alone. Only the routes
     // the pages call (src/lib/guard.ts): never the model server's POST /v1/feedback.
-    return proxyRewrites(MODEL_API, MEDIA_API);
+    return [...proxyRewrites(MODEL_API, MEDIA_API), ...shogiRewrites(SHOGI_URL)];
   },
 };
 

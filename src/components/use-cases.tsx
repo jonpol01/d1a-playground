@@ -2,10 +2,11 @@
 
 import { useEffect, useState, useSyncExternalStore, type ComponentType, type CSSProperties, type ReactNode } from "react";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, Camera, Clapperboard, Gamepad2, GitPullRequest, Mic, Gauge, Inbox, ListOrdered, Route, ShieldCheck, Star, Tags, Wrench, type LucideIcon } from "lucide-react";
-import { api, START_HINT } from "@/lib/d1a";
+import { ArrowLeft, ArrowRight, Bot, Camera, Clapperboard, Gamepad2, GitPullRequest, Mic, Gauge, Inbox, ListOrdered, Route, ShieldCheck, Star, Tags, Wrench, type LucideIcon } from "lucide-react";
+import { api, BASE_PATH, START_HINT } from "@/lib/d1a";
 import { LANGS, setLang, useHtmlLang, useLang, useText, type Lang } from "@/lib/i18n";
 import { HwMonitor, type ModelMeta } from "@/components/hw-monitor";
+import { AgentDemo } from "@/components/uses/agent";
 import { BulkDemo, InboxDemo, RerankDemo } from "@/components/uses/batch";
 import { ControlDemo } from "@/components/uses/control";
 import { PhotoDemo, VideoDemo, VoiceDemo } from "@/components/uses/media";
@@ -29,6 +30,7 @@ const DEMOS: Demo[] = [
   { id: "voice", accent: "#be185d", Icon: Mic, outcomes: ["urgent?", "intent"], Component: VoiceDemo },
   { id: "prlabel", accent: "#16a34a", Icon: GitPullRequest, outcomes: ["type", "blast", "P0–P4"], Component: PRLabelDemo },
   { id: "video", accent: "#9333ea", Icon: Clapperboard, outcomes: ["damaged?", "where?"], Component: VideoDemo },
+  { id: "agent", accent: "#2563eb", Icon: Bot, outcomes: ["intake", "gate", "judge", "route"], Component: AgentDemo },
 ];
 
 const DEMO_TEXT: Record<Lang, Record<string, DemoText>> = {
@@ -59,6 +61,8 @@ const DEMO_TEXT: Record<Lang, Record<string, DemoText>> = {
       line: "The model reads a pull request (title, description, changed files) and answers the three questions a labeling job asks on every open PR: what kind of change, how far a mistake would spread, and how serious the problem is. Answers below p 0.7 are flagged for a human." },
     video: { title: "Video check", input: "video", caption: "Watch a short delivery clip: is the parcel damaged, and where was it left?",
       line: "The model watches a short clip, 16 frames each with its timestamp, and answers the same typed questions as for a photo. Gemma 4's own vision encoder reads the frames; there is no captioning step, and the sound is not used." },
+    agent: { title: "An agent's day", input: "task + tool calls", caption: "Run one task through an agent factory, every step decided by D1A.",
+      line: "Intake picks the worker and model size and whether to ask first, every tool call is gated allow, ask or deny, a judge reads the worker's report, and a router sizes the next prompt; each step is one D1A call, and an unsure answer always takes the safer action." },
   },
   ja: {
     routing: { title: "モデルの振り分け", input: "プロンプト", caption: "各プロンプトを、処理できる一番安いモデルに送ります。",
@@ -87,26 +91,28 @@ const DEMO_TEXT: Record<Lang, Record<string, DemoText>> = {
       line: "モデルがプルリクエスト（タイトル、説明、変更ファイル）を読み、ラベル付けジョブが開いている PR ごとに聞く3つの質問に答えます。どんな変更か、間違いがどこまで広がるか、どれだけ深刻な問題か。確率が 0.7 未満の答えは人の確認に回します。" },
     video: { title: "動画チェック", input: "動画", caption: "短い配達動画から、荷物の破損と置き場所を確認します。",
       line: "モデルが短い動画をタイムスタンプ付きの 16 フレームとして見て、写真と同じ型付きの質問に答えます。フレームは Gemma 4 自身の画像エンコーダーが読み、キャプション生成の段階はありません。音声は使いません。" },
+    agent: { title: "エージェントの 1 日", input: "タスク + ツール呼び出し", caption: "1 つのタスクをエージェントの流れに通し、各段階を D1A が判断します。",
+      line: "受付が作業者とモデルの大きさ、先に確認するかを決め、ツール呼び出しを 1 つずつ実行・確認・拒否に分け、判定役が作業者の報告を読み、振り分けが次のプロンプトの段階を決めます。各段階は D1A への 1 回の問い合わせで、自信のない答えは必ず安全な方の動作になります。" },
   },
 };
 
 const UI_EN = {
-  heroA: "Thirteen jobs for a ", heroB: "small decision model", heroC: ".",
+  heroA: "Fourteen jobs for a ", heroB: "small decision model", heroC: ".",
   heroSub: "One document and a few typed questions in, a calibrated probability for every option out, in well under a second. Pick a use case: every example is live and editable, three of them read a photo, a voice note or a video, and one labels pull requests.",
   down: "The model server is not answering on port 8009, so the demos cannot run.",
   lmstudio: "LM Studio mode: answers come from a prompted chat model, not the trained checkpoint. Probabilities are the chat model's letter probabilities, uncalibrated.",
-  all: "All", useCases: "Use cases", architecture: "Architecture", language: "Language",
+  all: "All", useCases: "Use cases", architecture: "Architecture", shogi: "Shogi", language: "Language",
   pill: { connecting: "connecting to the model server…", down: "model server not reachable", lm: "LM Studio mode", up: "server connected" },
   englishNote: "",
 };
 const UI: Record<Lang, typeof UI_EN> = {
   en: UI_EN,
   ja: {
-    heroA: "", heroB: "小さな判断モデル", heroC: "に任せる13の仕事",
+    heroA: "", heroB: "小さな判断モデル", heroC: "に任せる14の仕事",
     heroSub: "1つの文書といくつかの型付きの質問を入れると、すべての選択肢に較正済みの確率が返ってきます。1秒もかかりません。ユースケースを選んでください。どの例もライブで動き、自由に編集できます。うち3つは写真・音声メモ・動画を読み取り、1つはプルリクエストにラベルを付けます。",
     down: "モデルサーバー（ポート 8009）が応答しないため、デモを実行できません。",
     lmstudio: "LM Studio モード: 答えは学習済みのチェックポイントではなく、プロンプトで指示したチャットモデルから返っています。確率はチャットモデルの選択肢記号の確率で、較正されていません。",
-    all: "一覧", useCases: "ユースケース", architecture: "アーキテクチャ", language: "言語",
+    all: "一覧", useCases: "ユースケース", architecture: "アーキテクチャ", shogi: "将棋", language: "言語",
     pill: { connecting: "モデルサーバーに接続中…", down: "モデルサーバーに接続できません", lm: "LM Studio モード", up: "サーバー接続済み" },
     englishNote: "※ プロトタイプのモデルは英語のデータで学習しています。日本語の例文でも動きますが、答えを安定させるため、質問文と選択肢の説明を英語のまま送っているデモがあります。",
   },
@@ -301,6 +307,7 @@ export function UseCases() {
               <span className="font-heading text-[15px] font-medium tracking-tight">playground</span>
             </a>
             <div className="flex min-w-0 flex-wrap items-center gap-2">
+              {process.env.NEXT_PUBLIC_SHOGI && <a href={`${BASE_PATH}/shogi/`} className="rounded-full border border-border bg-background/70 px-3 py-1 text-[12px] text-muted-foreground shadow-xs backdrop-blur hover:text-foreground">{t.shogi} →</a>}
               <Link href="/architecture" className="rounded-full border border-border bg-background/70 px-3 py-1 text-[12px] text-muted-foreground shadow-xs backdrop-blur hover:text-foreground">{t.architecture} →</Link>
               <LangSwitch />
               <StatusPill model={model} />
