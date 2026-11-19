@@ -169,6 +169,8 @@ git clone https://github.com/jonpol01/d1a-playground.git ~/d1a-playground && cd 
 
 **リバースプロキシの下、サブパスで公開する場合。** `D1A_BASE_PATH=/d1a` でビルドすると（初回のインストールでは `D1A_BASE_PATH=/d1a ./mini.sh install`。`.demo/mini.env` ができた後はそのファイルが記録なので、そこに設定してください。食い違うコマンドラインの値は、警告を出して無視されます）、ページ、アセット、モデル API のプロキシ（`/d1a/model/...`）、`/d1a/api/hw` のすべてが `/d1a` の下で提供されます。プロキシでは `/d1a` で始まるパスを、パスを変えずに `http://127.0.0.1:3031` に転送してください（例: `http://<your-mac-ip>/d1a`）。`next build` と `next start` の両方に同じ `D1A_BASE_PATH` が必要です（mini.sh は両方に設定します）。`.demo/mini.env` を書き換えたら `./mini.sh update` で反映します。
 
+**写真・音声・動画に答えないモデルサーバーの場合。** PyTorch の D1A サーバーは、デモ 10・11・13 に2つ目のプロセス（`d1a.serving.media`）がないと答えられません。それがないサーバーの隣では `MEDIA_DEMOS=0` でビルドしてください（`MEDIA_DEMOS=0 npm run build`）。ページはこの3つのデモを外し、失敗するだけのデモを見せません。見出しの数も表示するデモの数になります。
+
 ## 必要なもの・制限事項・トラブルシューティング
 
 メモリや速度の目安、LM Studio モード、制限事項、トラブルシューティング、開発手順は [README.md](README.md)（英語）を参照してください。要点: Apple Silicon（MLX、既定）ではダウンロード約 4 GB、メモリ約 3〜4 GB です。それ以外（PyTorch）ではモデルサーバーがアイドル時に約 12 GB、ピーク時に約 15 GB のメモリを使います（M1 Max 64 GB、PyTorch MPS で計測）。学習データは主に英語で、v0.6 から日本語（JGLUE）が加わりました。

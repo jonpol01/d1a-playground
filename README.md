@@ -224,6 +224,8 @@ After `install`, `reinstall` and `update`, and on `./mini.sh smoke`, the demo sm
 
 **Behind a reverse proxy, under a sub-path.** Build with `D1A_BASE_PATH=/d1a` (`D1A_BASE_PATH=/d1a ./mini.sh install` on a first install; once `.demo/mini.env` exists it is the record, so set it there: a command-line value it contradicts is ignored, with a warning) and the app serves everything under `/d1a`: pages, assets, the model API proxy (`/d1a/model/...`) and `/d1a/api/hw`. Point the proxy's `/d1a` prefix at `http://127.0.0.1:3031` with the path unchanged, e.g. `http://<your-mac-ip>/d1a`. `next build` and `next start` both need the same `D1A_BASE_PATH` (mini.sh sets it for both), so change it with `./mini.sh update` after editing `.demo/mini.env`.
 
+**A model server without photos, voice and video.** A PyTorch D1A server answers demos 10, 11 and 13 only with a second process (`d1a.serving.media`). Next to a server without one, build with `MEDIA_DEMOS=0` (`MEDIA_DEMOS=0 npm run build`): the page then leaves those three demos out instead of showing demos that can only fail, and the headline counts the ones it shows.
+
 ## Development
 
 ```bash

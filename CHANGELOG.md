@@ -14,6 +14,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- `MEDIA_DEMOS=0` (build time): leave out the photo, voice and video demos next to a model server that cannot answer
+  them (a PyTorch server without `d1a.serving.media`); the headline counts the demos shown.
 - Demo 14, An agent's day: one task through an agent factory (intake, every tool call, a judge of the report, a router),
   each step one D1A call with D1A's own agent presets and their fail-safe advice; with its smoke requests.
 - `SHOGI_URL` (mini.sh setting): a shogi page served by its own static server, shown under `/shogi` with a header link and

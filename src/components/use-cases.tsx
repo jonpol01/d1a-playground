@@ -4,6 +4,7 @@ import { useEffect, useState, useSyncExternalStore, type ComponentType, type CSS
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, Bot, Camera, Clapperboard, Gamepad2, GitPullRequest, Mic, Gauge, Inbox, ListOrdered, Route, ShieldCheck, Star, Tags, Wrench, type LucideIcon } from "lucide-react";
 import { api, BASE_PATH, START_HINT } from "@/lib/d1a";
+import { countWord, visibleDemos } from "@/lib/demos";
 import { LANGS, setLang, useHtmlLang, useLang, useText, type Lang } from "@/lib/i18n";
 import { HwMonitor, type ModelMeta } from "@/components/hw-monitor";
 import { AgentDemo } from "@/components/uses/agent";
@@ -16,7 +17,7 @@ import { EvalsDemo, GateDemo, GuardrailsDemo, RoutingDemo, ToolGateDemo } from "
 type Demo = { id: string; accent: string; Icon: LucideIcon; outcomes: string[]; Component: ComponentType };
 type DemoText = { title: string; caption: string; line: string; input: string };
 
-const DEMOS: Demo[] = [
+const ALL_DEMOS: Demo[] = [
   { id: "routing", accent: "#7c3aed", Icon: Route, outcomes: ["small", "medium", "large"], Component: RoutingDemo },
   { id: "guardrails", accent: "#059669", Icon: ShieldCheck, outcomes: ["allow", "block"], Component: GuardrailsDemo },
   { id: "tools", accent: "#d97706", Icon: Wrench, outcomes: ["allow", "ask", "deny"], Component: ToolGateDemo },
@@ -32,6 +33,8 @@ const DEMOS: Demo[] = [
   { id: "video", accent: "#9333ea", Icon: Clapperboard, outcomes: ["damaged?", "where?"], Component: VideoDemo },
   { id: "agent", accent: "#2563eb", Icon: Bot, outcomes: ["intake", "gate", "judge", "route"], Component: AgentDemo },
 ];
+// MEDIA_DEMOS=0 builds (a model server without media) leave photo, voice and video out (src/lib/demos.ts)
+const DEMOS = visibleDemos(ALL_DEMOS);
 
 const DEMO_TEXT: Record<Lang, Record<string, DemoText>> = {
   en: {
@@ -97,7 +100,7 @@ const DEMO_TEXT: Record<Lang, Record<string, DemoText>> = {
 };
 
 const UI_EN = {
-  heroA: "Fourteen jobs for a ", heroB: "small decision model", heroC: ".",
+  heroA: `${countWord(DEMOS.length)} jobs for a `, heroB: "small decision model", heroC: ".",
   heroSub: "One document and a few typed questions in, a calibrated probability for every option out, in well under a second. Pick a use case: every example is live and editable, three of them read a photo, a voice note or a video, and one labels pull requests.",
   down: "The model server is not answering on port 8009, so the demos cannot run.",
   lmstudio: "LM Studio mode: answers come from a prompted chat model, not the trained checkpoint. Probabilities are the chat model's letter probabilities, uncalibrated.",
@@ -108,7 +111,7 @@ const UI_EN = {
 const UI: Record<Lang, typeof UI_EN> = {
   en: UI_EN,
   ja: {
-    heroA: "", heroB: "小さな判断モデル", heroC: "に任せる14の仕事",
+    heroA: "", heroB: "小さな判断モデル", heroC: `に任せる${DEMOS.length}の仕事`,
     heroSub: "1つの文書といくつかの型付きの質問を入れると、すべての選択肢に較正済みの確率が返ってきます。1秒もかかりません。ユースケースを選んでください。どの例もライブで動き、自由に編集できます。うち3つは写真・音声メモ・動画を読み取り、1つはプルリクエストにラベルを付けます。",
     down: "モデルサーバー（ポート 8009）が応答しないため、デモを実行できません。",
     lmstudio: "LM Studio モード: 答えは学習済みのチェックポイントではなく、プロンプトで指示したチャットモデルから返っています。確率はチャットモデルの選択肢記号の確率で、較正されていません。",
