@@ -38,7 +38,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Fixed
 
 - **The hardware monitor fills in on a Linux GPU server.** On ARM Linux the CPU card showed "unknown"; it now shows the
-  machine's product name. A GPU that shares the system's memory now shows its processes' memory in use. When the model
+  machine's product name. When the model
   server's own process is out of sight (another container), the memory card shows the memory in use on the machine
   instead of a dash. The latency bars no longer run past a narrow card.
 - **The outcome poster credits a blind PR's labels to the review bot only when the bot set them** (`scripts/pr_outcomes.py`,

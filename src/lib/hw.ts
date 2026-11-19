@@ -20,13 +20,6 @@ export function chipName(model: string | null | undefined, product: string | nul
   return p || null;
 }
 
-/** GPU memory in use, summed over `nvidia-smi --query-compute-apps=pid,used_memory --format=csv,noheader,nounits`
- * (MiB): for a GPU that shares the system's memory, whose memory.used reads [N/A]. */
-export function gpuAppsMemBytes(csv: string | null | undefined): number | null {
-  const mib = (csv ?? "").split("\n").map((l) => Number(l.split(",")[1])).filter((n) => Number.isFinite(n) && n >= 0);
-  return mib.length ? mib.reduce((a, n) => a + n, 0) * 1024 ** 2 : null;
-}
-
 /** Memory in use on the machine that runs this app, from its total and free share. */
 export function hostMemUsedBytes(hw: Pick<Hw, "ramBytes" | "memFreePct">): number | null {
   return hw.memFreePct == null ? null : Math.round(hw.ramBytes * (1 - hw.memFreePct / 100));
