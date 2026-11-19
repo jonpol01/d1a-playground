@@ -51,6 +51,8 @@ export const AGENT_Q: Record<"intake" | "gate" | "judge" | "route", Record<strin
 };
 /** Every preset is asked with the routing use case (d1a.agents.presets.USE_CASES): one temperature fits them all. */
 export const AGENT_USE_CASE = "routing";
+/** Where D1A's docs say how to put these checkpoints in front of a real agent (the MCP tools and the Claude Code hook). */
+const AGENT_DOCS = "https://github.com/jonpol01/d1a/blob/main/docs/USAGE.md#from-agents-mcp";
 
 export const gateState = (card: string, command: string) => `agent: developer\ncard: ${card.trim()}\ncommand: ${command.trim()}`;
 export const judgeState = (card: string, report: string) => `${card.trim()}\n\nReport:\n${report.trim()}`;
@@ -106,7 +108,7 @@ type Scenario = { name: string; card: string; commands: string; report: string; 
 export const AGENT_TEXT: Record<Lang, {
   presets: Scenario[]; cardField: string; cardHint: string; commandsField: string; commandsHint: string; reportField: string;
   reportHint: string; promptField: string; promptHint: string; run: string; busy: string; empty: string;
-  kinds: Record<Kind, string>; actions: Record<string, string>; why: string; policy: string;
+  kinds: Record<Kind, string>; actions: Record<string, string>; why: string; policy: string; real: string; realLink: string;
 }> = {
   en: {
     presets: [
@@ -124,7 +126,7 @@ export const AGENT_TEXT: Record<Lang, {
         prompt: "Rewrite this sentence to sound friendlier." },
     ],
     cardField: "Task card", cardHint: "what the user asked the agent to do",
-    commandsField: "Tool calls the worker wants to run", commandsHint: "one per line; each is gated",
+    commandsField: "Tool calls the worker wants to run", commandsHint: "one per line; each is gated, none is run",
     reportField: "The worker's report", reportHint: "the judge reads it against the card",
     promptField: "A follow-up prompt", promptHint: "routed to a model tier",
     run: "Run the agent's day", busy: "Running…",
@@ -134,6 +136,8 @@ export const AGENT_TEXT: Record<Lang, {
       rework: "send it back", repair: "hand to mechanic", small: "small model", medium: "medium model", large: "large model" },
     why: "The action is the fail-safe default (d1a.agents.presets.advise): an unsure answer asks, routes up or keeps the card open, never the reverse.",
     policy: "Same questions, wording and use case as D1A's MCP tools and the Claude Code gate hook.",
+    real: "Decisions only: this page runs none of these commands. In a real agent, D1A sits in front of the tool calls. With D1A's Claude Code hook, Claude Code itself enforces the answer before anything runs: \"deny\" blocks the command and \"ask\" waits for your OK (\"allow\" lets it through only when you switch that on). With D1A's MCP tools, any agent can ask the same four checkpoints and get the same fail-safe advice.",
+    realLink: "How to connect an agent",
   },
   ja: {
     presets: [
@@ -151,7 +155,7 @@ export const AGENT_TEXT: Record<Lang, {
         prompt: "この文をもっと親しみやすく書き直してください。" },
     ],
     cardField: "タスクカード", cardHint: "ユーザーがエージェントに頼んだこと",
-    commandsField: "作業者が実行したいツール呼び出し", commandsHint: "1 行に 1 つ。それぞれを判定します",
+    commandsField: "作業者が実行したいツール呼び出し", commandsHint: "1 行に 1 つ。それぞれを判定し、実行はしません",
     reportField: "作業者の報告", reportHint: "判定役がカードと照らして読みます",
     promptField: "続きのプロンプト", promptHint: "モデルの段階に振り分けます",
     run: "エージェントの 1 日を実行", busy: "実行中…",
@@ -161,6 +165,8 @@ export const AGENT_TEXT: Record<Lang, {
       rework: "差し戻す", repair: "mechanic に回す", small: "小さいモデル", medium: "中くらいのモデル", large: "大きいモデル" },
     why: "動作は安全側の既定値です（d1a.agents.presets.advise）。自信のない答えは確認する、上の段階に回す、カードを開いたままにする方に倒れ、その逆にはなりません。",
     policy: "質問、文言、use case は D1A の MCP ツールと Claude Code のゲートフックと同じです。",
+    real: "判定だけを表示します。このページはコマンドを1つも実行しません。実際のエージェントでは、D1A がツール呼び出しの前に入ります。D1A の Claude Code フックでは、何かが実行される前に Claude Code 自身が判定に従います。「deny」ならコマンドを止め、「ask」ならあなたの確認を待ちます（「allow」で通すのは、その設定を有効にしたときだけです）。D1A の MCP ツールを使えば、どのエージェントでも同じ4つのチェックポイントを問い合わせ、同じ安全側の助言を受け取れます。",
+    realLink: "エージェントへのつなぎ方",
   },
 };
 
@@ -240,6 +246,9 @@ export function AgentDemo() {
         </Field>
         <RunBar onRun={run} busy={busy} label={t.run} busyLabel={t.busy} />
         <ErrorNote error={error} />
+        <p className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-[12px] leading-5 text-muted-foreground">
+          {t.real} <a className="font-medium text-foreground underline underline-offset-2" href={AGENT_DOCS} target="_blank" rel="noreferrer">{t.realLink} →</a>
+        </p>
       </>}
       right={steps.length ? <>
         <ol className="flex flex-col gap-3">

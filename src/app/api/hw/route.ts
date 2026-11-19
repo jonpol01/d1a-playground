@@ -2,7 +2,7 @@ import { execFile } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import os from "node:os";
 import { modelApiUrl } from "@/lib/guard";
-import type { Hw } from "@/lib/hw";
+import { chipName, gpuAppsMemBytes, type Hw } from "@/lib/hw";
 
 // Live machine stats for the hardware monitor, read from the host that runs this app (and, when MODEL_API is local,
 // the model server's process). Only cheap, unprivileged commands; each has a short timeout, a missing tool or a
@@ -69,9 +69,11 @@ async function mac(base: Hw): Promise<Hw> {
 
 async function linux(base: Hw): Promise<Hw> {
   const target = serverTarget();
-  const [smi, meminfo, pid] = await Promise.all([
+  const [smi, apps, meminfo, product, pid] = await Promise.all([
     run("nvidia-smi", ["--query-gpu=name,utilization.gpu,memory.used,memory.total,temperature.gpu,power.draw", "--format=csv,noheader,nounits"]),
+    run("nvidia-smi", ["--query-compute-apps=pid,used_memory", "--format=csv,noheader,nounits"]),
     readFile("/proc/meminfo", "utf8").catch(() => null),
+    readFile("/sys/class/dmi/id/product_name", "utf8").catch(() => null),
     target.local ? serverPid(target.port) : Promise.resolve(null),
   ]);
   const status = pid ? await readFile(`/proc/${pid}/status`, "utf8").catch(() => null) : null;
@@ -81,11 +83,13 @@ async function linux(base: Hw): Promise<Hw> {
   const rss = num(status ? /^VmRSS:\s+(\d+) kB/m.exec(status)?.[1] : null);
   return {
     ...base,
+    chip: chipName(base.chip, product),
     memFreePct: total && avail != null ? Math.round((avail / total) * 100) : null,
     swapUsedBytes: swapTotal != null && swapFree != null ? (swapTotal - swapFree) * 1024 : null,
     gpu: g && g.length >= 6 ? {
       name: g[0] || null, cores: null, utilPct: num(g[1]),
-      memUsedBytes: num(g[2]) != null ? num(g[2])! * UNITS.MB : null, memTotalBytes: num(g[3]) != null ? num(g[3])! * UNITS.MB : null,
+      // a GPU that shares the system's memory reports memory.used as [N/A]: count its processes' memory instead
+      memUsedBytes: num(g[2]) != null ? num(g[2])! * UNITS.MB : gpuAppsMemBytes(apps), memTotalBytes: num(g[3]) != null ? num(g[3])! * UNITS.MB : null,
       tempC: num(g[4]), powerW: num(g[5]),
     } : base.gpu,
     server: { local: target.local, pid, memBytes: rss != null ? rss * 1024 : null },

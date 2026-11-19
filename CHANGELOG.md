@@ -23,6 +23,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **The agent demo says what it does and what a real agent does.** It shows D1A's decisions and runs none of the
+  commands; a note says how D1A's Claude Code hook and MCP tools put the same checkpoints in front of a real agent's tool
+  calls, with a link to D1A's docs.
 - **The "About D1A" box and the Architecture page describe the current model.** They described the one-epoch D1A-E2B v0.1
   prototype, with a comparison against another hosted model. The About box now says what D1A takes in and returns and
   where it runs, and links D1A's model list. The Architecture page gives D1A-E4B-it QAT's backbone, adapter, head and
@@ -34,6 +37,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- **The hardware monitor fills in on a Linux GPU server.** On ARM Linux the CPU card showed "unknown"; it now shows the
+  machine's product name. A GPU that shares the system's memory now shows its processes' memory in use. When the model
+  server's own process is out of sight (another container), the memory card shows the memory in use on the machine
+  instead of a dash. The latency bars no longer run past a narrow card.
 - **The outcome poster credits a blind PR's labels to the review bot only when the bot set them** (`scripts/pr_outcomes.py`,
   d1a-playground#128). On a blind-arm PR where the review bot added no label of a family, the poster fell back to the label
   standing there. That label could be the author's or a person's, set before the review and in the bot's view, and it was

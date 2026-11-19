@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { Activity, ChevronDown, Cpu, Gpu, MemoryStick, Server, Zap, type LucideIcon } from "lucide-react";
-import type { Hw } from "@/lib/hw";
+import { hostMemUsedBytes, type Hw } from "@/lib/hw";
 import { BASE_PATH } from "@/lib/d1a";
 import { useText, type Lang } from "@/lib/i18n";
 import { useSamples, type Sample } from "@/lib/metrics";
@@ -18,7 +18,7 @@ const TEXT_EN = {
   connecting: "connecting…", rtt: (ms: string) => `round trip ${ms} ms`, waiting: "waiting for a request",
   status: ["Excellent", "Good", "Moderate", "Slow"],
   qps: "questions/s", tps: (n: string) => `${n} input tokens/s · last 30 s`, idle: "idle",
-  inUse: "in use", cores: (n: number) => `${n}-core`, serverMem: "model server", remote: "model server on another host",
+  inUse: "in use", cores: (n: number) => `${n}-core`, serverMem: "model server", hostMem: "in use on this machine", remote: "model server on another host",
   free: (n: number) => `${n}% free`, swap: (s: string) => `swap ${s}`, load: "load", threads: (n: number) => `${n} cores`,
 };
 const TEXT: Record<Lang, typeof TEXT_EN> = {
@@ -29,7 +29,7 @@ const TEXT: Record<Lang, typeof TEXT_EN> = {
     connecting: "接続中…", rtt: (ms: string) => `往復 ${ms} ms`, waiting: "リクエスト待ち",
     status: ["非常に速い", "速い", "普通", "遅い"],
     qps: "質問/秒", tps: (n: string) => `入力トークン ${n}/秒 · 直近30秒`, idle: "待機中",
-    inUse: "使用中", cores: (n: number) => `${n} コア`, serverMem: "モデルサーバー", remote: "モデルサーバーは別のホスト",
+    inUse: "使用中", cores: (n: number) => `${n} コア`, serverMem: "モデルサーバー", hostMem: "このマシンで使用中", remote: "モデルサーバーは別のホスト",
     free: (n: number) => `空き ${n}%`, swap: (s: string) => `スワップ ${s}`, load: "負荷", threads: (n: number) => `${n} コア`,
   },
 };
@@ -59,11 +59,11 @@ const barColor = (ratio: number) => (ratio < 0.4 ? "#10b981" : ratio < 0.7 ? "#4
 function Spark({ samples }: { samples: Sample[] }) {
   const max = Math.max(1, ...samples.map((s) => s.latencyMs));
   return (
-    <div className="flex h-7 items-end gap-px" aria-hidden>
+    <div className="flex h-7 w-full items-end gap-px overflow-hidden" aria-hidden>
       {Array.from({ length: 40 }, (_, i) => {
         const s = samples[i - (40 - samples.length)];
         const ratio = s ? s.latencyMs / max : 0;
-        return <span key={i} className="w-[3px] shrink-0 rounded-[1px] transition-all duration-150" style={{ height: s ? Math.max(2, ratio * 28) : 1, background: s ? barColor(ratio) : "var(--border)" }} />;
+        return <span key={i} className="min-w-px max-w-[3px] flex-1 rounded-[1px] transition-all duration-150" style={{ height: s ? Math.max(2, ratio * 28) : 1, background: s ? barColor(ratio) : "var(--border)" }} />;
       })}
     </div>
   );
@@ -147,7 +147,7 @@ export function HwMonitor({ model }: { model: ModelMeta | { error: string } | nu
             <div className="mt-1.5 h-1 w-full rounded-full bg-muted" aria-hidden><div className="h-full rounded-full bg-indigo-500 transition-[width] duration-500" style={{ width: `${gpuUtil ?? 0}%` }} /></div>
           </Row>
           <Row Icon={MemoryStick} color="#a855f7" title={t.memory}
-            value={hw?.server.memBytes != null ? <>{bytes(hw.server.memBytes)} <span className="text-[11px] font-normal text-muted-foreground">{t.serverMem}</span></> : hw && !hw.server.local ? <span className="text-[12px] font-normal text-muted-foreground">{t.remote}</span> : DASH}
+            value={hw?.server.memBytes != null ? <>{bytes(hw.server.memBytes)} <span className="text-[11px] font-normal text-muted-foreground">{t.serverMem}</span></> : hw && !hw.server.local ? <span className="text-[12px] font-normal text-muted-foreground">{t.remote}</span> : hw && hostMemUsedBytes(hw) != null ? <>{bytes(hostMemUsedBytes(hw)!)} <span className="text-[11px] font-normal text-muted-foreground">{t.hostMem}</span></> : DASH}
             sub={[hw?.memFreePct != null ? t.free(hw.memFreePct) : null, hw?.swapUsedBytes != null ? t.swap(bytes(hw.swapUsedBytes)) : null].filter(Boolean).join(" · ") || DASH} />
           <Row Icon={Cpu} color="#f59e0b" title={t.cpu}
             value={hw?.load1 != null ? <>{hw.load1.toFixed(2)} <span className="text-[11px] font-normal text-muted-foreground">{t.load}</span></> : DASH}

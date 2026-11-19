@@ -31,6 +31,8 @@ jobs:
       - run: node --test scripts/test_demos.mjs
       # the Architecture page's model diagram draws the layer count and sliding/global schedule its captions name
       - run: node --test scripts/test_architecture.mjs
+      # the hardware monitor's fallbacks: an unnamed ARM CPU, a GPU on the system's memory, a model server out of sight
+      - run: node --test scripts/test_hw.mjs
       # the pages send the write token, ask for it once when refused, and keep only one the server took (src/lib/write-token.ts)
       - run: node --test scripts/test_write_token.mjs
       # the OpenAI port passes only chat, embeddings and the model list, and streams as they come (scripts/openai_port.mjs)
