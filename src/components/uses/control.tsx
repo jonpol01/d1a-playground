@@ -35,7 +35,7 @@ const CONTROL_EN = {
   stats: { last: "last decision", avg: "avg latency (last 20)", rate: "decisions / s", skipped: "ticks skipped", on: "on target" },
   skippedOf: (a: number, b: number) => `${a} of ${b}`, onPct: (n: number) => `${n}% of ticks`,
   stateTitle: "state sent on the last decision",
-  note: (hz: number) => `The loop ticks at ${hz} Hz, but a new state is sent only when the previous answer has come back, so the decision rate is set by the model's latency and ticks in between are skipped rather than queued. With the direction spelled out the prototype checkpoint follows well; with positions only it has to compare two numbers itself and often drifts left.`,
+  note: (hz: number) => `The loop ticks at ${hz} Hz, but a new state is sent only when the previous answer has come back, so the decision rate is set by the model's latency and ticks in between are skipped rather than queued. Spelling out the direction saves the model a step; with positions only, it has to compare two numbers itself.`,
 };
 const CONTROL_TEXT: Record<Lang, typeof CONTROL_EN> = {
   en: CONTROL_EN,
@@ -46,7 +46,7 @@ const CONTROL_TEXT: Record<Lang, typeof CONTROL_EN> = {
     stats: { last: "直近の判断", avg: "平均レイテンシ（直近20回）", rate: "判断 / 秒", skipped: "スキップしたティック", on: "ターゲット上" },
     skippedOf: (a: number, b: number) => `${b} 中 ${a}`, onPct: (n: number) => `ティックの ${n}%`,
     stateTitle: "直近の判断で送った state（英語のまま送っています）",
-    note: (hz: number) => `ループは ${hz} Hz で回りますが、新しい state を送るのは前の答えが返ってきてからです。そのため判断の頻度はモデルのレイテンシで決まり、その間のティックはキューに積まずにスキップします。方向を書き添えるとプロトタイプはよく追従します。位置だけだと2つの数を自分で比べる必要があり、左に流れがちです。`,
+    note: (hz: number) => `ループは ${hz} Hz で回りますが、新しい state を送るのは前の答えが返ってきてからです。そのため判断の頻度はモデルのレイテンシで決まり、その間のティックはキューに積まずにスキップします。方向を書き添えると、モデルの手間が1つ減ります。位置だけだと、モデルが2つの数を自分で比べる必要があります。`,
   },
 };
 

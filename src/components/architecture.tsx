@@ -5,11 +5,12 @@ import Link from "next/link";
 import { LangSwitch, LicensesLink } from "@/components/use-cases";
 import { useHtmlLang, useText, type Lang } from "@/lib/i18n";
 
-// One page on how D1A works, from the input layout to the roadmap. Numbers are the prototype checkpoint's
-// (JohnP1/d1a-e2b, see its model card) and the model code at the commit demo.sh pins (d1a/backends/torch.py in
-// jonpol01/d1a). The UI names only D1A; the upstream credit lives in the repository (README, NOTICE).
+// One page on how D1A works, from the input layout to where it runs. Numbers are D1A-E4B-it QAT's
+// (JohnP1/d1a-e4b-it-qat: adapter_config.json, d1a_config.json), Gemma 4 E4B-it's config, and the model code at the
+// commit demo.sh pins (d1a/backends/torch.py and mlx.py in jonpol01/d1a). The UI names only D1A; the upstream credit lives in the repository (README, NOTICE).
 
 const link = "font-medium text-foreground underline underline-offset-2";
+const MODEL_LIST = "https://github.com/jonpol01/d1a/blob/main/docs/MODELS.md";
 const C = { state: "#0284c7", q: "#7c3aed", opt: "#d97706", decide: "#e11d48", lora: "#059669", head: "#c026d3" };
 
 /* ------------------------------------------------------------------ diagrams (inline SVG, both themes) */
@@ -58,11 +59,11 @@ function ModelDiagram({ t }: { t: Text }) {
     <div className="overflow-x-auto">
       <svg viewBox="0 0 720 230" className="h-auto w-full min-w-[600px]" role="img" aria-label={t.modelAria}>
         <rect x={8} y={20} width={300} height={190} rx={16} className="fill-card stroke-border" />
-        <text x={24} y={46} className="font-heading fill-foreground text-[15px] font-semibold">Gemma 4 E2B</text>
+        <text x={24} y={46} className="font-heading fill-foreground text-[15px] font-semibold">Gemma 4 E4B-it</text>
         <text x={24} y={64} className="fill-muted-foreground text-[11px]">{t.backboneSub}</text>
-        {Array.from({ length: 35 }, (_, i) => {
-          const global = i % 5 === 4;
-          return <rect key={i} x={24 + i * 7.6} y={80} width={5.6} height={global ? 58 : 40} y2={0} rx={1.5} fill={global ? C.q : "var(--muted-foreground)"} opacity={global ? 0.9 : 0.35} />;
+        {Array.from({ length: 42 }, (_, i) => {
+          const global = i % 6 === 5;
+          return <rect key={i} x={24 + i * 6.4} y={80} width={4.6} height={global ? 58 : 40} y2={0} rx={1.5} fill={global ? C.q : "var(--muted-foreground)"} opacity={global ? 0.9 : 0.35} />;
         })}
         <text x={24} y={156} className="fill-muted-foreground text-[11px]">{t.layers}</text>
         <rect x={24} y={168} width={268} height={30} rx={8} fill={`color-mix(in oklch, ${C.lora} 14%, var(--card))`} stroke={C.lora} />
@@ -159,11 +160,11 @@ function ServingDiagram({ t }: { t: Text }) {
       <svg viewBox="0 0 860 190" className="h-auto w-full min-w-[680px]" role="img" aria-label={t.servingAria}>
         <defs><marker id="arr2" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L8 4 L0 8 z" fill="var(--muted-foreground)" /></marker></defs>
         {box(8, 20, 130, t.browser, t.browserSub, "#64748b")}
-        {arrow(138, 180, 51, "/d1a")}
+        {arrow(138, 180, 51, "HTTP")}
         {box(182, 20, 150, t.proxy, t.proxySub, "#0284c7")}
-        {arrow(332, 374, 51, ":3031")}
+        {arrow(332, 374, 51, "")}
         {box(376, 20, 200, t.next, t.nextSub, "#7c3aed")}
-        {arrow(576, 618, 51, ":8009")}
+        {arrow(576, 618, 51, "/v1")}
         {box(620, 20, 232, t.server, t.serverSub, "#059669")}
         <path d="M 476 82 L 476 118" stroke="var(--muted-foreground)" strokeDasharray="3 3" markerEnd="url(#arr2)" />
         {box(376, 120, 200, t.hw, t.hwSub, "#f59e0b")}
@@ -178,78 +179,70 @@ function ServingDiagram({ t }: { t: Text }) {
 
 const EN = {
   back: "Playground", title: "How D1A works", kicker: "Architecture",
-  intro: "D1A is a family of small decision models. A model reads one document (the state) and answers a set of typed questions about it, each with named options, and returns a calibrated probability for every option in one forward pass. There is no generated text: the answer is read straight off the network. The playground serves D1A-E2B v0.1 (1 epoch), built on Gemma 4 E2B.",
-  credit: <>It speaks the same System One API as Jev, so the TypeSafe SDK works against it unchanged. D1A-E2B v0.1 is on the Hugging Face Hub as <a className={link} href="https://huggingface.co/JohnP1/d1a-e2b">JohnP1/d1a-e2b</a>.</>,
+  intro: "D1A is a family of small decision models. A model reads one document (the state) and answers a set of typed questions about it, each with named options, and returns a calibrated probability for every option in one forward pass. There is no generated text: the answer is read straight off the network. The numbers on this page are D1A-E4B-it QAT's, built on Gemma 4 E4B-it; the bar at the top of the playground shows which model answers.",
+  credit: <>Apps ask it over a small HTTP API (System One). Every D1A model, its versions and its scores are in D1A’s <a className={link} href={MODEL_LIST}>model list</a>.</>,
   s1: "1. The input layout",
   s1body: <>The state comes first, once; then each question as its own branch: <code>&lt;q&gt;</code> instructions, one <code>&lt;opt&gt; … &lt;/opt&gt;</code> span per option, and <code>&lt;decide&gt;</code>. On Gemma 4 the five delimiters are the reserved tokens <code>&lt;unused0&gt;</code>–<code>&lt;unused4&gt;</code> (state, q, opt, /opt, decide): distinct embeddings that user text cannot produce, so nothing needs adding to the vocabulary. Position ids restart after the state for every question, so each question sees exactly what it would see alone.</>,
   stateTokens: "state tokens…", instr: "instructions", stateOnce: "state (read once)", question1: "question 1", question2: "question 2",
   positions: "position ids", restart: "positions restart per question", layoutAria: "Token layout of a request",
   s2: "2. The model",
-  s2body: "A Gemma 4 E2B backbone with a LoRA adapter, and a small pointer head. The head projects the hidden state at <decide> into a query and the hidden state at each </opt> into a key; the scaled dot products are the option logits. Dividing by a temperature fitted on held-out data makes the softmax probabilities calibrated; the argmax does not change.",
-  backboneSub: "35 layers · hidden 1,536 · per-layer embeddings", layers: "4 of every 5 layers: sliding window 512 · 1 of 5: global",
-  lora: "LoRA r=16 on q k v o · gate up down  ·  24.9M trainable", head: "Pointer head", dp: "q, k: 1,536 → 256", temp: "T = 1.48 (fitted, v0.1)",
+  s2body: "A Gemma 4 E4B-it backbone (Google's QAT int4 weights) with a LoRA adapter, and a small pointer head. The head projects the hidden state at <decide> into a query and the hidden state at each </opt> into a key; the scaled dot products are the option logits. Dividing by a temperature fitted on held-out data makes the softmax probabilities calibrated; the argmax does not change.",
+  backboneSub: "42 layers · hidden 2,560 · per-layer embeddings", layers: "5 of every 6 layers: sliding window 512 · 1 of 6: global",
+  lora: "LoRA r=16 on q k v o · gate up down", head: "Pointer head", dp: "q, k: 2,560 → 256", temp: "T = 1.66 (fitted)",
   modelAria: "Backbone, pointer head and calibrated softmax",
   s3: "3. Two equivalent execution forms",
   s3body: "The same answers can be computed two ways; the two agree to fp32 noise (a test checks it).",
   maskTitle: "attention mask (state | Q1 | Q2)", packedName: "Packed: one pass",
   packedLines: ["the whole request is one sequence", "block-causal mask: a question sees", "the state and itself, not the others", "sliding layers: a second mask whose", "distance counts position ids"],
   packedAria: "Packed form with a block-causal mask", rowsName: "Rows: state once, then rows", rowsLine: "each question is its own causal row", prefixCache: "prefix cache", rowLabel: (i: number) => `Q${i}: <q> … <decide>`, rowsAria: "Rows form over a cached state",
-  s3when: "Where each is used: short requests on an attention-only backbone such as Gemma 4 run packed. Requests longer than 16,384 tokens, states of 384 tokens or more (served from the prefix cache), and hybrid backbones (Qwen3.5's recurrent layers cannot honour the mask) run as rows. The MLX / mobile path will use rows.",
-  s4: "4. Serving path on this deployment",
-  s4body: "The browser only ever talks to the playground. A port-80 reverse proxy forwards /d1a to the Next.js app, which serves the page, forwards model API calls to the model server and reads the hardware stats. The model server speaks the System One API and runs on the Apple GPU (MPS) in bf16, with PyTorch's share of unified memory capped by the MPS watermark ratios.",
-  browser: "Browser", browserSub: "JA / EN UI", proxy: "Reverse proxy", proxySub: "port 80 · /d1a", next: "Next.js playground", nextSub: "basePath /d1a · API proxy",
-  server: "Model server", serverSub: "System One API · MPS · bf16 · capped", hw: "/api/hw", hwSub: "ioreg · footprint · memory_pressure",
+  s3when: "Where each is used: short requests on an attention-only backbone such as Gemma 4 run packed. Requests longer than 16,384 tokens, states of 384 tokens or more (served from the prefix cache), and hybrid backbones (Qwen3.5's recurrent layers cannot honour the mask) run as rows. The MLX builds always run as rows.",
+  s4: "4. Serving path",
+  s4body: "The browser only ever talks to the playground. The Next.js app serves the page, forwards model API calls to the model server and reads the hardware stats. A reverse proxy in front of it is optional, for serving it under a path such as /d1a. The model server speaks the System One API and runs D1A on PyTorch (CUDA, or MPS on a Mac) or on MLX on Apple Silicon.",
+  browser: "Browser", browserSub: "JA / EN UI", proxy: "Reverse proxy", proxySub: "optional · e.g. /d1a", next: "Next.js playground", nextSub: "page · API proxy",
+  server: "Model server", serverSub: "System One API · PyTorch or MLX", hw: "/api/hw", hwSub: "macOS: ioreg · Linux: nvidia-smi",
   lm: "LM Studio mode (fallback)", lmSub: "prompted chat model, uncalibrated", servingAria: "Serving path from the browser to the model server",
   s5: "5. Training and data",
-  s5body: "Trained on the frozen decision-v7 suite: about 12.5k training records (12,506 after the context rule under Gemma's tokenizer), public classification datasets plus generated policy and rule data.",
-  recipe: [["recipe", "lr 1e-4 · batch 4 × accum 2 · bf16"], ["hardware", "one NVIDIA L4 on HF Jobs"], ["v0.1", "1 epoch · 1,564 steps · 81 min · 14.6 GB peak"], ["next", "2-epoch run in progress"]],
-  results: "Results so far (accuracy on the same frozen development sets)", colModel: "model", colDev: "trained sources", colNew: "new sources",
-  rows: [["D1A-E2B v0.1 (1 epoch)", "0.794", "0.569"], ["Jev (TypeSafe, hosted)", "0.845", "0.857"]],
-  resultsNote: "Jev is more accurate today; the two-epoch D1A model now training is the next step.",
-  s6: "6. Roadmap",
+  s5body: <>D1A models are trained on D1A’s frozen decision suites: general and hard decisions, developer tools, long documents, pull-request labels, routing and Japanese. D1A-E4B-it QAT is D1A-E4B-it v0.6 retrained on Google’s QAT int4 trunk; its temperature is fitted on held-out data. Each model’s card lists what it was trained on, and D1A’s <a className={link} href={MODEL_LIST}>model list</a> has every suite’s score.</>,
+  s6: "6. Where D1A runs",
   road: [
-    ["Portable foundation", "a written SPEC.md, the merged backbone plus head.safetensors and d1a_config.json, and golden test vectors every port must reproduce"],
-    ["MLX / iOS", "the rows form on Apple's MLX, for on-device use"],
-    ["Android", "the same spec and test vectors on Android"],
+    ["PyTorch", "the adapter on Gemma 4, on CUDA or on a Mac's GPU (MPS)"],
+    ["Apple Silicon", "MLX builds for Macs, and Core ML builds"],
+    ["Android", "an ONNX Runtime build of D1A-E2B-it QAT: decisions and chat, text only"],
   ],
 };
 type Text = typeof EN;
 
 const JA: Text = {
   back: "プレイグラウンド", title: "D1A の仕組み", kicker: "アーキテクチャ",
-  intro: "D1A は小さな判断モデルのファミリーです。モデルは1つの文書（state）を読み、それについての型付きの質問（それぞれに名前付きの選択肢がある）に答え、1回の順伝播ですべての選択肢に較正済みの確率を返します。テキストは生成しません。答えはネットワークから直接読み取ります。プレイグラウンドでは、Gemma 4 E2B をベースにした D1A-E2B v0.1（1 エポック）が動いています。",
-  credit: <>Jev と同じ System One API を話すので、TypeSafe SDK をそのまま使えます。D1A-E2B v0.1 は Hugging Face Hub の <a className={link} href="https://huggingface.co/JohnP1/d1a-e2b">JohnP1/d1a-e2b</a> にあります。</>,
+  intro: "D1A は小さな判断モデルのファミリーです。モデルは1つの文書（state）を読み、それについての型付きの質問（それぞれに名前付きの選択肢がある）に答え、1回の順伝播ですべての選択肢に較正済みの確率を返します。テキストは生成しません。答えはネットワークから直接読み取ります。このページの数値は、Gemma 4 E4B-it をベースにした D1A-E4B-it QAT のものです。プレイグラウンドで答えているモデルは上部のバーに表示されます。",
+  credit: <>アプリからは小さな HTTP API（System One）で問い合わせます。D1A のすべてのモデル、そのバージョンとスコアは D1A の<a className={link} href={MODEL_LIST}>モデル一覧</a>にあります。</>,
   s1: "1. 入力の並べ方",
   s1body: <>最初に state を1回だけ置き、続けて質問ごとに1つの枝を置きます。<code>&lt;q&gt;</code> と指示文、選択肢ごとに <code>&lt;opt&gt; … &lt;/opt&gt;</code>、最後に <code>&lt;decide&gt;</code> です。Gemma 4 では、5つの区切りに予約トークン <code>&lt;unused0&gt;</code>〜<code>&lt;unused4&gt;</code>（state、q、opt、/opt、decide）を使います。ユーザーのテキストからは生成されない独立した埋め込みなので、語彙を追加する必要はありません。位置 ID は state の後で質問ごとにリセットされるため、各質問は単独で読んだときとまったく同じものを見ます。</>,
   stateTokens: "state のトークン…", instr: "指示文", stateOnce: "state（1回だけ読む）", question1: "質問 1", question2: "質問 2",
   positions: "位置 ID", restart: "位置は質問ごとにリセット", layoutAria: "リクエストのトークン配置",
   s2: "2. モデル",
-  s2body: "Gemma 4 E2B のバックボーンに LoRA アダプターを載せ、小さなポインターヘッドを付けたものです。ヘッドは <decide> の隠れ状態をクエリに、各 </opt> の隠れ状態をキーに射影し、スケール付きの内積を選択肢のロジットにします。検証用データで求めた温度で割ることで softmax の確率が較正されます。最上位の選択肢は変わりません。",
-  backboneSub: "35 層 · 隠れ次元 1,536 · 層ごとの埋め込み", layers: "5層のうち4層: スライディングウィンドウ 512 · 1層: グローバル",
-  lora: "LoRA r=16（q k v o gate up down）· 学習 24.9M", head: "ポインターヘッド", dp: "q, k: 1,536 → 256", temp: "T = 1.48（v0.1 で推定）",
+  s2body: "Gemma 4 E4B-it のバックボーン（Google の QAT int4 の重み）に LoRA アダプターを載せ、小さなポインターヘッドを付けたものです。ヘッドは <decide> の隠れ状態をクエリに、各 </opt> の隠れ状態をキーに射影し、スケール付きの内積を選択肢のロジットにします。検証用データで求めた温度で割ることで softmax の確率が較正されます。最上位の選択肢は変わりません。",
+  backboneSub: "42 層 · 隠れ次元 2,560 · 層ごとの埋め込み", layers: "6層のうち5層: スライディングウィンドウ 512 · 1層: グローバル",
+  lora: "LoRA r=16（q k v o gate up down）", head: "ポインターヘッド", dp: "q, k: 2,560 → 256", temp: "T = 1.66（推定値）",
   modelAria: "バックボーン、ポインターヘッド、較正済み softmax",
   s3: "3. 同じ答えを出す2つの実行形式",
   s3body: "同じ答えを2通りの方法で計算できます。両者の差は fp32 の誤差程度です（テストで確認しています）。",
   maskTitle: "アテンションマスク（state | Q1 | Q2）", packedName: "Packed: 1回の順伝播",
   packedLines: ["リクエスト全体を1本の系列にする", "ブロック因果マスク: 各質問は", "state と自分だけを見て、他は見ない", "スライディング層: 位置 ID で", "距離を数える2つ目のマスク"],
   packedAria: "ブロック因果マスクによる packed 形式", rowsName: "Rows: state は1回、質問は行ごと", rowsLine: "各質問を独立した因果的な行で計算", prefixCache: "プレフィックスキャッシュ", rowLabel: (i: number) => `Q${i}: <q> … <decide>`, rowsAria: "キャッシュした state の上で rows 形式",
-  s3when: "使い分け: Gemma 4 のようなアテンションのみのバックボーンで短いリクエストは packed で実行します。16,384 トークンを超えるリクエスト、384 トークン以上の state（プレフィックスキャッシュから再利用）、ハイブリッドのバックボーン（Qwen3.5 の再帰層はマスクに従えない）は rows で実行します。MLX / モバイル版は rows を使う予定です。",
-  s4: "4. このデプロイでの配信経路",
-  s4body: "ブラウザが直接話す相手はプレイグラウンドだけです。ポート 80 のリバースプロキシが /d1a を Next.js アプリに転送し、アプリはページを返すとともにモデル API の呼び出しをモデルサーバーに転送し、ハードウェアの状態を読み取ります。モデルサーバーは System One API を話し、Apple GPU（MPS）上で bf16 で動き、ユニファイドメモリのうち PyTorch が使える量を MPS のウォーターマーク比率で制限しています。",
-  browser: "ブラウザ", browserSub: "JA / EN の UI", proxy: "リバースプロキシ", proxySub: "ポート 80 · /d1a", next: "Next.js プレイグラウンド", nextSub: "basePath /d1a · API を転送",
-  server: "モデルサーバー", serverSub: "System One API · MPS · bf16 · メモリ上限", hw: "/api/hw", hwSub: "ioreg · footprint · memory_pressure",
+  s3when: "使い分け: Gemma 4 のようなアテンションのみのバックボーンで短いリクエストは packed で実行します。16,384 トークンを超えるリクエスト、384 トークン以上の state（プレフィックスキャッシュから再利用）、ハイブリッドのバックボーン（Qwen3.5 の再帰層はマスクに従えない）は rows で実行します。MLX 版は常に rows で実行します。",
+  s4: "4. 配信経路",
+  s4body: "ブラウザが直接話す相手はプレイグラウンドだけです。Next.js アプリはページを返し、モデル API の呼び出しをモデルサーバーに転送し、ハードウェアの状態も読み取ります。前段のリバースプロキシは任意で、/d1a のようなパスで配信するときに使います。モデルサーバーは System One API を話し、D1A を PyTorch（CUDA、または Mac の MPS）か、Apple Silicon の MLX で動かします。",
+  browser: "ブラウザ", browserSub: "JA / EN の UI", proxy: "リバースプロキシ", proxySub: "任意 · 例: /d1a", next: "Next.js プレイグラウンド", nextSub: "ページ · API を転送",
+  server: "モデルサーバー", serverSub: "System One API · PyTorch または MLX", hw: "/api/hw", hwSub: "macOS: ioreg · Linux: nvidia-smi",
   lm: "LM Studio モード（代替）", lmSub: "プロンプトで指示するチャットモデル、未較正", servingAria: "ブラウザからモデルサーバーまでの配信経路",
   s5: "5. 学習とデータ",
-  s5body: "固定スイート decision-v7 を使って学習しました。学習レコードは約 1.25 万件（Gemma のトークナイザーでコンテキスト規則を適用した後で 12,506 件）で、公開の分類データセットと、生成したポリシー・ルールのデータからなります。",
-  recipe: [["レシピ", "lr 1e-4 · バッチ 4 × 勾配累積 2 · bf16"], ["ハードウェア", "HF Jobs の NVIDIA L4 1基"], ["v0.1", "1 エポック · 1,564 ステップ · 81 分 · ピーク 14.6 GB"], ["次", "2 エポックの学習を実行中"]],
-  results: "これまでの結果（同じ固定の開発用セットでの精度）", colModel: "モデル", colDev: "学習済みのソース", colNew: "新しいソース",
-  rows: [["D1A-E2B v0.1（1 エポック）", "0.794", "0.569"], ["Jev（TypeSafe、ホスト型）", "0.845", "0.857"]],
-  resultsNote: "現時点では Jev のほうが正確です。次の段階は、学習中の 2 エポックの D1A モデルです。",
-  s6: "6. ロードマップ",
+  s5body: <>D1A のモデルは、D1A の固定の判断スイート（一般的な判断と難しい判断、開発ツール、長い文書、プルリクエストのラベル、ルーティング、日本語）で学習します。D1A-E4B-it QAT は、D1A-E4B-it v0.6 を Google の QAT int4 のトランクで学習し直したもので、温度は検証用データで推定しています。各モデルの学習内容はそのモデルカードに、すべてのスイートのスコアは D1A の<a className={link} href={MODEL_LIST}>モデル一覧</a>にあります。</>,
+  s6: "6. D1A が動く環境",
   road: [
-    ["移植のための土台", "仕様書 SPEC.md、マージ済みバックボーンと head.safetensors・d1a_config.json、すべての移植版が再現すべきゴールデンテストベクトル"],
-    ["MLX / iOS", "Apple の MLX 上で rows 形式を動かし、端末上で使えるようにする"],
-    ["Android", "同じ仕様とテストベクトルで Android に移植する"],
+    ["PyTorch", "Gemma 4 にアダプターを載せて、CUDA または Mac の GPU（MPS）で動かす"],
+    ["Apple Silicon", "Mac 向けの MLX 版と、Core ML 版"],
+    ["Android", "D1A-E2B-it QAT の ONNX Runtime 版。判断とチャット、テキストのみ"],
   ],
 };
 
@@ -297,21 +290,6 @@ export function Architecture() {
         <Section title={t.s4}><p>{t.s4body}</p><ServingDiagram t={t} /></Section>
         <Section title={t.s5}>
           <p>{t.s5body}</p>
-          <dl className="grid gap-x-4 gap-y-1.5 text-[13px] sm:grid-cols-[8rem_minmax(0,1fr)]">
-            {t.recipe.map(([k, v]) => <div key={k} className="contents"><dt className="font-medium text-foreground">{k}</dt><dd>{v}</dd></div>)}
-          </dl>
-          <div className="overflow-x-auto rounded-xl border border-border">
-            <table className="w-full text-[13px]">
-              <caption className="px-3 pt-2 text-left text-[12px]">{t.results}</caption>
-              <thead><tr className="border-b border-border text-left text-[12px]"><th className="px-3 py-2 font-normal">{t.colModel}</th><th className="px-3 py-2 text-right font-normal">{t.colDev}</th><th className="px-3 py-2 text-right font-normal">{t.colNew}</th></tr></thead>
-              <tbody>
-                {t.rows.map(([m, a, b], i) => (
-                  <tr key={m} className={`border-b border-border last:border-0 ${i === 0 ? "text-foreground" : ""}`}><td className="px-3 py-1.5">{m}</td><td className="px-3 py-1.5 text-right tabular-nums">{a}</td><td className="px-3 py-1.5 text-right tabular-nums">{b}</td></tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <p className="text-[12px]">{t.resultsNote}</p>
         </Section>
         <Section title={t.s6}>
           <ol className="grid gap-3 md:grid-cols-3">

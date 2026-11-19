@@ -4,7 +4,7 @@ import { useEffect, useState, useSyncExternalStore, type ComponentType, type CSS
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, Bot, Camera, Clapperboard, Gamepad2, GitPullRequest, Mic, Gauge, Inbox, ListOrdered, Route, ShieldCheck, Star, Tags, Wrench, type LucideIcon } from "lucide-react";
 import { api, BASE_PATH, START_HINT } from "@/lib/d1a";
-import { countWord, visibleDemos } from "@/lib/demos";
+import { countWord, MEDIA_DEMO_IDS, visibleDemos } from "@/lib/demos";
 import { LANGS, setLang, useHtmlLang, useLang, useText, type Lang } from "@/lib/i18n";
 import { HwMonitor, type ModelMeta } from "@/components/hw-monitor";
 import { AgentDemo } from "@/components/uses/agent";
@@ -35,6 +35,7 @@ const ALL_DEMOS: Demo[] = [
 ];
 // MEDIA_DEMOS=0 builds (a model server without media) leave photo, voice and video out (src/lib/demos.ts)
 const DEMOS = visibleDemos(ALL_DEMOS);
+const HAS_MEDIA = DEMOS.some((d) => MEDIA_DEMO_IDS.includes(d.id));
 
 const DEMO_TEXT: Record<Lang, Record<string, DemoText>> = {
   en: {
@@ -101,7 +102,7 @@ const DEMO_TEXT: Record<Lang, Record<string, DemoText>> = {
 
 const UI_EN = {
   heroA: `${countWord(DEMOS.length)} jobs for a `, heroB: "small decision model", heroC: ".",
-  heroSub: "One document and a few typed questions in, a calibrated probability for every option out, in well under a second. Pick a use case: every example is live and editable, three of them read a photo, a voice note or a video, and one labels pull requests.",
+  heroSub: `One document and a few typed questions in, a calibrated probability for every option out, in well under a second. Pick a use case: every example is live and editable${HAS_MEDIA ? ", three of them read a photo, a voice note or a video," : ","} and one labels pull requests.`,
   down: "The model server is not answering on port 8009, so the demos cannot run.",
   lmstudio: "LM Studio mode: answers come from a prompted chat model, not the trained checkpoint. Probabilities are the chat model's letter probabilities, uncalibrated.",
   all: "All", useCases: "Use cases", architecture: "Architecture", shogi: "Shogi", language: "Language",
@@ -112,12 +113,12 @@ const UI: Record<Lang, typeof UI_EN> = {
   en: UI_EN,
   ja: {
     heroA: "", heroB: "小さな判断モデル", heroC: `に任せる${DEMOS.length}の仕事`,
-    heroSub: "1つの文書といくつかの型付きの質問を入れると、すべての選択肢に較正済みの確率が返ってきます。1秒もかかりません。ユースケースを選んでください。どの例もライブで動き、自由に編集できます。うち3つは写真・音声メモ・動画を読み取り、1つはプルリクエストにラベルを付けます。",
+    heroSub: `1つの文書といくつかの型付きの質問を入れると、すべての選択肢に較正済みの確率が返ってきます。1秒もかかりません。ユースケースを選んでください。どの例もライブで動き、自由に編集できます。${HAS_MEDIA ? "うち3つは写真・音声メモ・動画を読み取り、1つは" : "うち1つは"}プルリクエストにラベルを付けます。`,
     down: "モデルサーバー（ポート 8009）が応答しないため、デモを実行できません。",
     lmstudio: "LM Studio モード: 答えは学習済みのチェックポイントではなく、プロンプトで指示したチャットモデルから返っています。確率はチャットモデルの選択肢記号の確率で、較正されていません。",
     all: "一覧", useCases: "ユースケース", architecture: "アーキテクチャ", shogi: "将棋", language: "言語",
     pill: { connecting: "モデルサーバーに接続中…", down: "モデルサーバーに接続できません", lm: "LM Studio モード", up: "サーバー接続済み" },
-    englishNote: "※ プロトタイプのモデルは英語のデータで学習しています。日本語の例文でも動きますが、答えを安定させるため、質問文と選択肢の説明を英語のまま送っているデモがあります。",
+    englishNote: "※ 一部のデモは、答えを安定させるため、質問文と選択肢の説明を英語のまま送っています。",
   },
 };
 
@@ -204,40 +205,36 @@ function DemoCard({ d, n, text }: { d: Demo; n: number; text: DemoText }) {
 
 const link = "font-medium text-foreground underline underline-offset-2";
 const NOTICE_URL = "https://github.com/jonpol01/d1a-playground/blob/main/NOTICE";
-const HUB = "https://huggingface.co/JohnP1/d1a-e2b";
+const MODEL_LIST = "https://github.com/jonpol01/d1a/blob/main/docs/MODELS.md";
 
 type AboutText = {
-  title: string; what: string; honest: string; caption: string; cols: [string, string, string];
-  rows: [string, string, string][]; where: ReactNode; licenses: string;
+  title: string; what: string; honest: string; caption: string; rows: [string, string][]; where: ReactNode; licenses: string;
 };
-// Accuracy on the same frozen development sets for both models.
 const ABOUT: Record<Lang, AboutText> = {
   en: {
     title: "About D1A",
-    what: "D1A is a small, open decision model in the Jev style: typed questions in, a calibrated probability for every option out, in one forward pass and with no text generation. It runs on your own machine and speaks the same System One API as Jev, so the TypeSafe SDK works against it unchanged.",
-    honest: "Jev is more accurate today. D1A-E2B v0.1 is a one-epoch prototype, and a two-epoch model is training now. What D1A offers is different: it runs locally, keeps your data private, costs nothing per request, has open weights, and uses the same API.",
-    caption: "Measured on the same frozen evaluation sets",
-    cols: ["", "D1A-E2B v0.1 (1 epoch)", "Jev (TypeSafe, hosted)"],
+    what: "D1A is a small, open decision model: typed questions in, a calibrated probability for every option out, in one forward pass and with no text generation. Apps ask it over a small HTTP API (System One).",
+    honest: "It runs on your own hardware, keeps your data private, costs nothing per request and has open weights. The bar at the top of this page shows which D1A model answers here and how fast.",
+    caption: "D1A in brief",
     rows: [
-      ["Accuracy, trained sources (dev)", "0.794", "0.845"],
-      ["Accuracy, new sources (dev)", "0.569", "0.857"],
-      ["Where it runs", "your machine (Mac / GPU): free, private, open weights", "TypeSafe's cloud API"],
+      ["In", "one document and typed questions, each with named options"],
+      ["Out", "a calibrated probability for every option, in one forward pass"],
+      ["Runs on", "your own machine (Mac or GPU): free, private, open weights"],
     ],
-    where: <>D1A-E2B v0.1 is on the Hugging Face Hub as <a className={link} href={HUB}>JohnP1/d1a-e2b</a> (a LoRA adapter and a pointer head on Gemma 4 E2B).</>,
+    where: <>Every D1A model, its versions and its scores are in D1A’s <a className={link} href={MODEL_LIST}>model list</a>.</>,
     licenses: "Licenses",
   },
   ja: {
     title: "D1A について",
-    what: "D1A は、Jev と同じ考え方の小さなオープンな判断モデルです。型付きの質問を入れると、1回の順伝播ですべての選択肢に較正済みの確率を返し、テキストは生成しません。あなたのマシンで動き、Jev と同じ System One API を話すので、TypeSafe SDK をそのまま使えます。",
-    honest: "現時点では Jev のほうが正確です。D1A-E2B v0.1 は1エポックのプロトタイプで、2エポックのモデルを学習中です。D1A の強みは別のところにあります。ローカルで動き、データが外に出ず、リクエストごとの費用がかからず、重みが公開されていて、API も同じです。",
-    caption: "同じ固定の評価セットで測定",
-    cols: ["", "D1A-E2B v0.1（1 エポック）", "Jev（TypeSafe、ホスト型）"],
+    what: "D1A は小さなオープンな判断モデルです。型付きの質問を入れると、1回の順伝播ですべての選択肢に較正済みの確率を返し、テキストは生成しません。アプリからは小さな HTTP API（System One）で問い合わせます。",
+    honest: "自分のハードウェアで動き、データが外に出ず、リクエストごとの費用がかからず、重みが公開されています。このページの上部のバーに、ここで答えている D1A のモデルと速さが表示されます。",
+    caption: "D1A の概要",
     rows: [
-      ["精度: 学習済みのソース（dev）", "0.794", "0.845"],
-      ["精度: 新しいソース（dev）", "0.569", "0.857"],
-      ["動く場所", "あなたのマシン（Mac / GPU）。無料、プライベート、オープンウェイト", "TypeSafe のクラウド API"],
+      ["入力", "1つの文書と、名前付きの選択肢を持つ型付きの質問"],
+      ["出力", "1回の順伝播で、すべての選択肢に較正済みの確率"],
+      ["動く場所", "自分のマシン（Mac または GPU）。無料、プライベート、オープンウェイト"],
     ],
-    where: <>D1A-E2B v0.1 は Hugging Face Hub の <a className={link} href={HUB}>JohnP1/d1a-e2b</a> にあります（Gemma 4 E2B に LoRA アダプターとポインターヘッドを載せたモデル）。</>,
+    where: <>D1A のすべてのモデル、そのバージョンとスコアは D1A の<a className={link} href={MODEL_LIST}>モデル一覧</a>にあります。</>,
     licenses: "ライセンス",
   },
 };
@@ -261,15 +258,11 @@ function About() {
           <div className="overflow-x-auto rounded-xl border border-border">
             <table className="w-full text-[13px] leading-5">
               <caption className="px-3 pt-2 text-left text-[12px]">{t.caption}</caption>
-              <thead>
-                <tr className="border-b border-border text-left text-[12px]">{t.cols.map((c, i) => <th key={i} scope="col" className="px-3 py-2 font-normal">{c}</th>)}</tr>
-              </thead>
               <tbody>
-                {t.rows.map(([k, d1a, jev]) => (
+                {t.rows.map(([k, v]) => (
                   <tr key={k} className="border-b border-border align-top last:border-0">
                     <th scope="row" className="px-3 py-1.5 text-left font-normal">{k}</th>
-                    <td className="px-3 py-1.5 tabular-nums text-foreground">{d1a}</td>
-                    <td className="px-3 py-1.5 tabular-nums">{jev}</td>
+                    <td className="px-3 py-1.5 text-foreground">{v}</td>
                   </tr>
                 ))}
               </tbody>
