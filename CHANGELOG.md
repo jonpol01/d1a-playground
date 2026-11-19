@@ -29,6 +29,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   temperature, a serving path that fits PyTorch and MLX servers, and where D1A runs (PyTorch, Apple Silicon, Android).
 - **A `MEDIA_DEMOS=0` build no longer promises photo, voice and video.** The headline's "three of them read a photo, a
   voice note or a video" shows only when those demos do, and the page description names no count.
+- **No text describes the old prototype's behaviour as the model's.** The Japanese note on English questions and the
+  control demo's note no longer speak of the prototype checkpoint.
 
 ### Fixed
 
