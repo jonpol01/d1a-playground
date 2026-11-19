@@ -282,9 +282,9 @@ try {
 
   Say ''
   Say 'D1A playground is running:'
-  if ($Media) { Say "  $url                all thirteen demos" }
+  if ($Media) { Say "  $url                all fourteen demos" }
   else { Say "  $url                the demos (Photo check, Voice triage and Video check need --media)" }
-  Say "  $url/#inbox         jump to one (#routing #guardrails #tools #inbox #rerank #evals #labeling #control #gate #photo #voice #prlabel #video)"
+  Say "  $url/#inbox         jump to one (#routing #guardrails #tools #inbox #rerank #evals #labeling #control #gate #photo #voice #prlabel #video #agent)"
   Say "  http://127.0.0.1:$ModelPort/v1/models   the server's model card"
   if ($LMStudio) { Say '  (LM Studio mode: a prompted chat model answers, NOT the trained D1A checkpoint)' }
   Say 'Press Ctrl+C to stop (or run .\demo.ps1 stop from another window).'
