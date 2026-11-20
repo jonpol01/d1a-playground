@@ -4,6 +4,7 @@ import { useEffect, useState, useSyncExternalStore, type ComponentType, type CSS
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, Bot, Camera, Clapperboard, Gamepad2, GitPullRequest, Mic, Gauge, Inbox, ListOrdered, Route, ShieldCheck, Star, Tags, Warehouse, Wrench, type LucideIcon } from "lucide-react";
 import { api, BASE_PATH, START_HINT } from "@/lib/d1a";
+import { serverHint } from "@/lib/server-hint";
 import { countWord, MEDIA_DEMO_IDS, visibleDemos, withAgentLab } from "@/lib/demos";
 import { LANGS, setLang, useHtmlLang, useLang, useText, type Lang } from "@/lib/i18n";
 import { HwMonitor, type ModelMeta } from "@/components/hw-monitor";
@@ -110,7 +111,7 @@ const DEMO_TEXT: Record<Lang, Record<string, DemoText>> = {
 const UI_EN = {
   heroA: `${countWord(DEMOS.length)} jobs for a `, heroB: "small decision model", heroC: ".",
   heroSub: `One document and a few typed questions in, a calibrated probability for every option out, in well under a second. Pick a use case: every example is live and editable${HAS_MEDIA ? ", three of them read a photo, a voice note or a video," : ","} and one labels pull requests.`,
-  down: "The model server is not answering on port 8009, so the demos cannot run.",
+  down: "The model server is not answering, so the demos cannot run.",
   lmstudio: "LM Studio mode: answers come from a prompted chat model, not the trained checkpoint. Probabilities are the chat model's letter probabilities, uncalibrated.",
   all: "All", useCases: "Use cases", architecture: "Architecture", shogi: "Shogi", agentLab: "Agent lab", language: "Language",
   pill: { connecting: "connecting to the model server…", down: "model server not reachable", lm: "LM Studio mode", up: "server connected" },
@@ -121,7 +122,7 @@ const UI: Record<Lang, typeof UI_EN> = {
   ja: {
     heroA: "", heroB: "小さな判断モデル", heroC: `に任せる${DEMOS.length}の仕事`,
     heroSub: `1つの文書といくつかの型付きの質問を入れると、すべての選択肢に較正済みの確率が返ってきます。1秒もかかりません。ユースケースを選んでください。どの例もライブで動き、自由に編集できます。${HAS_MEDIA ? "うち3つは写真・音声メモ・動画を読み取り、1つは" : "うち1つは"}プルリクエストにラベルを付けます。`,
-    down: "モデルサーバー（ポート 8009）が応答しないため、デモを実行できません。",
+    down: "モデルサーバーが応答しないため、デモを実行できません。",
     lmstudio: "LM Studio モード: 答えは学習済みのチェックポイントではなく、プロンプトで指示したチャットモデルから返っています。確率はチャットモデルの選択肢記号の確率で、較正されていません。",
     all: "一覧", useCases: "ユースケース", architecture: "アーキテクチャ", shogi: "将棋", agentLab: "エージェント・ラボ", language: "言語",
     pill: { connecting: "モデルサーバーに接続中…", down: "モデルサーバーに接続できません", lm: "LM Studio モード", up: "サーバー接続済み" },
@@ -335,7 +336,7 @@ export function UseCases() {
       <main className="mx-auto w-full max-w-6xl px-4 pb-16 sm:px-6 md:px-10">
         {down && (
           <p role="alert" className="mb-6 rounded-xl border border-destructive/40 bg-destructive/5 px-4 py-3 text-[13px] leading-5 text-destructive">
-            {t.down} {START_HINT[lang]}
+            {t.down} {serverHint(START_HINT, lang)}
           </p>
         )}
         {lmstudio && (

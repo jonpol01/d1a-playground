@@ -29,6 +29,8 @@ jobs:
       # the /model (and its old name /kev) and /media proxies forward the pages' model routes only (never POST /v1/feedback), and the write APIs refuse cross-site requests and, with WRITE_TOKEN set, a request without it
       - run: node --test scripts/test_guard.mjs
       - run: node --test scripts/test_demos.mjs
+      # a visitor away from the machine that runs the playground is told to try again later, not to run ./demo.sh
+      - run: node --test scripts/test_server_hint.mjs
       # the Architecture page's model diagram draws the layer count and sliding/global schedule its captions name
       - run: node --test scripts/test_architecture.mjs
       # the hardware monitor's fallbacks: an unnamed ARM CPU, a model server out of sight
