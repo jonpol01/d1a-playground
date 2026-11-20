@@ -21,7 +21,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `SHOGI_URL` (mini.sh setting): a shogi page served by its own static server, shown under `/shogi` with a header link and
   asking D1A through this app's `/model` proxy. Unset, there is no route and no link.
 - `AGENT_LAB_URL` (mini.sh setting): an agent lab served by its own server, shown under `/agent-lab` with a header link to
-  its warehouse page. Unset, there is no route and no link.
+  its warehouse page, and as demo 14 (Agent lab: a 3PL shift) in place of An agent's day. Unset, there is no route and
+  no link, and demo 14 stays An agent's day.
 
 ### Changed
 

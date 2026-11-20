@@ -2,14 +2,15 @@
 
 import { useEffect, useState, useSyncExternalStore, type ComponentType, type CSSProperties, type ReactNode } from "react";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, Bot, Camera, Clapperboard, Gamepad2, GitPullRequest, Mic, Gauge, Inbox, ListOrdered, Route, ShieldCheck, Star, Tags, Wrench, type LucideIcon } from "lucide-react";
+import { ArrowLeft, ArrowRight, Bot, Camera, Clapperboard, Gamepad2, GitPullRequest, Mic, Gauge, Inbox, ListOrdered, Route, ShieldCheck, Star, Tags, Warehouse, Wrench, type LucideIcon } from "lucide-react";
 import { api, BASE_PATH, START_HINT } from "@/lib/d1a";
-import { countWord, MEDIA_DEMO_IDS, visibleDemos } from "@/lib/demos";
+import { countWord, MEDIA_DEMO_IDS, visibleDemos, withAgentLab } from "@/lib/demos";
 import { LANGS, setLang, useHtmlLang, useLang, useText, type Lang } from "@/lib/i18n";
 import { HwMonitor, type ModelMeta } from "@/components/hw-monitor";
 import { AgentDemo } from "@/components/uses/agent";
 import { BulkDemo, InboxDemo, RerankDemo } from "@/components/uses/batch";
 import { ControlDemo } from "@/components/uses/control";
+import { AgentLabDemo } from "@/components/uses/lab";
 import { PhotoDemo, VideoDemo, VoiceDemo } from "@/components/uses/media";
 import { PRLabelDemo } from "@/components/uses/prlabel";
 import { EvalsDemo, GateDemo, GuardrailsDemo, RoutingDemo, ToolGateDemo } from "@/components/uses/single";
@@ -33,8 +34,10 @@ const ALL_DEMOS: Demo[] = [
   { id: "video", accent: "#9333ea", Icon: Clapperboard, outcomes: ["damaged?", "where?"], Component: VideoDemo },
   { id: "agent", accent: "#2563eb", Icon: Bot, outcomes: ["intake", "gate", "judge", "route"], Component: AgentDemo },
 ];
-// MEDIA_DEMOS=0 builds (a model server without media) leave photo, voice and video out (src/lib/demos.ts)
-const DEMOS = visibleDemos(ALL_DEMOS);
+const AGENT_LAB: Demo = { id: "lab", accent: "#2563eb", Icon: Warehouse, outcomes: ["allow", "ask", "deny"], Component: AgentLabDemo };
+// MEDIA_DEMOS=0 builds (a model server without media) leave photo, voice and video out; a build with an agent lab
+// (AGENT_LAB_URL) shows the lab as demo 14 in place of the agent's day (src/lib/demos.ts)
+const DEMOS = visibleDemos(withAgentLab(ALL_DEMOS, AGENT_LAB));
 const HAS_MEDIA = DEMOS.some((d) => MEDIA_DEMO_IDS.includes(d.id));
 
 const DEMO_TEXT: Record<Lang, Record<string, DemoText>> = {
@@ -67,6 +70,8 @@ const DEMO_TEXT: Record<Lang, Record<string, DemoText>> = {
       line: "The model watches a short clip, 16 frames each with its timestamp, and answers the same typed questions as for a photo. Gemma 4's own vision encoder reads the frames; there is no captioning step, and the sound is not used." },
     agent: { title: "An agent's day", input: "task + tool calls", caption: "Run one task through an agent factory, every step decided by D1A.",
       line: "Intake picks the worker and model size and whether to ask first, every tool call is gated allow, ask or deny, a judge reads the worker's report, and a router sizes the next prompt; each step is one D1A call, and an unsure answer always takes the safer action." },
+    lab: { title: "Agent lab: a 3PL shift", input: "warehouse tickets", caption: "Watch an agent work a warehouse shift in real sandboxes, every command checked by D1A.",
+      line: "A scripted agent works a 3PL warehouse's tickets with real commands, twice: unchecked, and with each command first decided by D1A's Claude Code hook, the code Claude Code runs. Routine actions the client's runbook allows go ahead, risky ones wait for you as the supervisor, and harmful ones are stopped." },
   },
   ja: {
     routing: { title: "モデルの振り分け", input: "プロンプト", caption: "各プロンプトを、処理できる一番安いモデルに送ります。",
@@ -97,6 +102,8 @@ const DEMO_TEXT: Record<Lang, Record<string, DemoText>> = {
       line: "モデルが短い動画をタイムスタンプ付きの 16 フレームとして見て、写真と同じ型付きの質問に答えます。フレームは Gemma 4 自身の画像エンコーダーが読み、キャプション生成の段階はありません。音声は使いません。" },
     agent: { title: "エージェントの 1 日", input: "タスク + ツール呼び出し", caption: "1 つのタスクをエージェントの流れに通し、各段階を D1A が判断します。",
       line: "受付が作業者とモデルの大きさ、先に確認するかを決め、ツール呼び出しを 1 つずつ実行・確認・拒否に分け、判定役が作業者の報告を読み、振り分けが次のプロンプトの段階を決めます。各段階は D1A への 1 回の問い合わせで、自信のない答えは必ず安全な方の動作になります。" },
+    lab: { title: "エージェント・ラボ：3PL のシフト", input: "倉庫のチケット", caption: "倉庫のシフトをこなすエージェントを本物のサンドボックスで動かし、各コマンドを D1A が確認します。",
+      line: "台本どおりに動くエージェントが、3PL 倉庫のチケットを本物のコマンドで 2 回処理します。確認なしと、各コマンドを先に D1A の Claude Code フック（Claude Code が実行するのと同じコード）が判断する場合です。荷主の手順書が認める定型作業はそのまま進み、危ない操作はスーパーバイザーのあなたの判断を待ち、有害な操作は止まります。" },
   },
 };
 
