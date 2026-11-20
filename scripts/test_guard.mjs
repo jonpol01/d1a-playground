@@ -127,9 +127,12 @@ test("the shogi page is forwarded only when SHOGI_URL is set, and only under /sh
   assert.ok(r.every((x) => x.destination.startsWith("http://127.0.0.1:8036/")));
 });
 
-test("the agent lab is forwarded only when AGENT_LAB_URL is set, and only under /agent-lab", () => {
+test("the agent lab is forwarded only when AGENT_LAB_URL is set, and only its pages and their API routes", () => {
   assert.deepEqual(agentLabRewrites(""), []);
   const r = agentLabRewrites("http://127.0.0.1:8037/");
-  assert.deepEqual(r.map((x) => x.source), ["/agent-lab", "/agent-lab/:path*"]);
-  assert.deepEqual(r.map((x) => x.destination), ["http://127.0.0.1:8037/", "http://127.0.0.1:8037/:path*"]);
+  assert.ok(r.every((x) => x.source === "/agent-lab" || x.source.startsWith("/agent-lab/")));
+  assert.ok(r.every((x) => !x.source.includes(":path*")), "no catch-all: the lab server's other routes stay unreachable");
+  assert.deepEqual(r.find((x) => x.source === "/agent-lab").destination, "http://127.0.0.1:8037/");
+  assert.deepEqual(r.find((x) => x.source === "/agent-lab/api/gate").destination, "http://127.0.0.1:8037/api/gate");
+  for (const off of ["/agent-lab/docs", "/agent-lab/openapi.json", "/agent-lab/api/anything"]) assert.ok(!r.some((x) => x.source === off), off);
 });

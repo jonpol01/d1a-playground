@@ -110,8 +110,9 @@ For example: script injection through a demo's input or a loaded pull request, a
       anyone who can use the demos can add decisions to the log. An outcome can still come only through these two routes
       or the outcome poster, since the web app does not forward `/v1/feedback`, and neither does the OpenAI port.
   - **Without a token:** keep the app on `127.0.0.1`, or let only people you trust reach it.
-- **`AGENT_LAB_URL` forwards everything under `/agent-lab`** to that server, unchecked by this app: whoever can open the
-  playground can use the lab. Its server starts containers, so run it bound to `127.0.0.1`, let it answer only the host
+- **`AGENT_LAB_URL` forwards the agent lab's pages and their API routes** (`AGENT_LAB_ROUTES` in `src/lib/guard.ts`, under
+  `/agent-lab`) to that server, with no account or token, as the demos need none: whoever can open the playground can use
+  the lab. Its server starts containers, so run it bound to `127.0.0.1`, let it answer only the host
   names the playground is opened under, and on a shared host let it run only its own scripted steps, not commands a
   visitor types.
 - **`/api/hw` runs fixed system commands** (`lsof`, `ioreg`, `memory_pressure`, `sysctl`, `footprint`, `nvidia-smi`) with fixed arguments. No request input reaches them.

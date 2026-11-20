@@ -25,11 +25,15 @@ export function shogiRewrites(shogiUrl: string) {
   return [{ source: "/shogi", destination: `${base}/` }, { source: "/shogi/:path*", destination: `${base}/:path*` }];
 }
 
-/** The optional agent lab (AGENT_LAB_URL, its own server): only /agent-lab and below are forwarded, nothing else. Unset: none. */
+// The optional agent lab (AGENT_LAB_URL, its own server) starts sandbox containers: only its pages and the API routes they
+// call are forwarded, under /agent-lab, never anything else that server answers. Unset: none.
+export const AGENT_LAB_ROUTES = ["", "wms", "api/config", "api/scenarios", "api/lanes", "api/lanes/:id", "api/gate", "api/exec",
+  "api/state/:id", "api/drop/:id"] as const;
+
 export function agentLabRewrites(labUrl: string) {
   if (!labUrl) return [];
   const base = labUrl.replace(/\/+$/, "");
-  return [{ source: "/agent-lab", destination: `${base}/` }, { source: "/agent-lab/:path*", destination: `${base}/:path*` }];
+  return AGENT_LAB_ROUTES.map((p) => ({ source: p ? `/agent-lab/${p}` : "/agent-lab", destination: `${base}/${p}` }));
 }
 
 export function proxyRewrites(modelApi: string, mediaApi: string) {
