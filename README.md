@@ -185,7 +185,7 @@ This runs [server/lmstudio_systemone.py](server/lmstudio_systemone.py), which as
 
 ## Troubleshooting
 
-- **"The model server is not answering"**: the server is not running or is still downloading. Check `.demo/model-server.log`, or run `./demo.sh` again.
+- **"The model server is not answering"**: the server is not running or is still downloading. Check `.demo/model-server.log`, or run `./demo.sh` again. Opened from another machine, the notice says to try again later instead: the machine serving the page may have stopped its model while it runs other work.
 - **Port busy**: port 8009 must be free or already running a D1A server; the web app picks the first free port of 3001, 3011, 3021–3030. Set `MODEL_PORT` or `PORT` to use others.
 - **Out of memory, or the machine swaps hard**: close other apps, or use `--lmstudio`. On Apple Silicon the scripts already cap PyTorch's memory; a lower `PYTORCH_MPS_HIGH_WATERMARK_RATIO` makes it fail earlier instead of swapping.
 - **The page loads but buttons do nothing**: open `http://localhost:<port>`, not `127.0.0.1` or a LAN address. The Next.js dev server only hydrates the pages for hostnames it trusts (`allowedDevOrigins` in `next.config.ts`).

@@ -2,6 +2,7 @@
 // Changes for the D1A playground by John Soliva, 2026.
 // Types mirror the TypeSafe /v1/systemone contract that d1a.serving.serve implements.
 import { recordRequest } from "@/lib/metrics";
+import { serverHint } from "@/lib/server-hint";
 
 export type JSONContent = string | number | boolean | null | JSONContent[] | { [k: string]: JSONContent };
 
@@ -93,8 +94,8 @@ export function describeError(e: unknown, lang: "en" | "ja" = "en"): string {
   if (e instanceof TypeError || (status >= 500 && !body.trimStart().startsWith("{")) || status === 404) {
     const what = m ? `HTTP ${status}` : msg;
     return lang === "ja"
-      ? `モデルサーバーが応答していません（${what}）。${START_HINT.ja}`
-      : `The model server is not answering (${what}). ${START_HINT.en}`;
+      ? `モデルサーバーが応答していません（${what}）。${serverHint(START_HINT, lang)}`
+      : `The model server is not answering (${what}). ${serverHint(START_HINT, lang)}`;
   }
   return msg;
 }
