@@ -2,7 +2,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { readdirSync, readFileSync } from "node:fs";
-import { crossSiteRefusal, modelApiUrl, proxyRewrites, shogiRewrites, tokenRefusal, writeRefusal } from "../src/lib/guard.ts";
+import { agentLabRewrites, crossSiteRefusal, modelApiUrl, proxyRewrites, shogiRewrites, tokenRefusal, writeRefusal } from "../src/lib/guard.ts";
 
 const MODEL_ROUTES = ["v1/models", "v1/systemone", "v1/systemone/permute", "v1/systemone/separate"];
 const rules = () => proxyRewrites("http://127.0.0.1:8009", "http://127.0.0.1:8010");
@@ -125,4 +125,11 @@ test("the shogi page is forwarded only when SHOGI_URL is set, and only under /sh
   const r = shogiRewrites("http://127.0.0.1:8036/");
   assert.deepEqual(r.map((x) => x.source), ["/shogi", "/shogi/:path*"]);
   assert.ok(r.every((x) => x.destination.startsWith("http://127.0.0.1:8036/")));
+});
+
+test("the agent lab is forwarded only when AGENT_LAB_URL is set, and only under /agent-lab", () => {
+  assert.deepEqual(agentLabRewrites(""), []);
+  const r = agentLabRewrites("http://127.0.0.1:8037/");
+  assert.deepEqual(r.map((x) => x.source), ["/agent-lab", "/agent-lab/:path*"]);
+  assert.deepEqual(r.map((x) => x.destination), ["http://127.0.0.1:8037/", "http://127.0.0.1:8037/:path*"]);
 });

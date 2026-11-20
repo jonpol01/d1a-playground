@@ -37,6 +37,8 @@
 #   .demo/mini.env, then update: a value given to update alone lasts one run)
 #   SHOGI_URL= (e.g. http://127.0.0.1:8036: a shogi page served by its own static server, shown under /shogi with a header
 #   link; the build bakes it in, like D1A_BASE_PATH. Unset: no /shogi route and no link)
+#   AGENT_LAB_URL= (e.g. http://127.0.0.1:8037: an agent lab served by its own server, shown under /agent-lab with a header
+#   link to its warehouse page; baked into the build like SHOGI_URL. Unset: no /agent-lab route and no link)
 #   EMBED_REF= (reference vectors, {"texts": [...], "vectors": [...]}, e.g. LM Studio's for the same GGUF: the smoke test's
 #   OpenAI check then requires the served embeddings to match them, cosine >= 0.999)
 # The old names of three settings, KEV_PORT, KEV_PREFIX_CACHE and KEV_PREFIX_MAX_TOKENS, still work: install, reinstall and
@@ -71,7 +73,7 @@ die() { printf '\033[31m[mini] error:\033[0m %s\n' "$*" >&2; exit 1; }
 # the settings .demo/mini.env holds, in the order save_env writes them
 ENV_KEYS="MODEL_RUN MODEL_PORT PORT HOST D1A_BASE_PATH PYTORCH_MPS_HIGH_WATERMARK_RATIO PYTORCH_MPS_LOW_WATERMARK_RATIO MODEL_PREFIX_CACHE
 MODEL_PREFIX_MAX_TOKENS MEDIA IDLE_UNLOAD FEEDBACK_LOG OUTCOME_CALIBRATOR LABEL_OUTCOMES OPENAI_PORT OPENAI_HOST EMBED_GGUF EMBED_REF CHAT_CONTEXT
-LOG_REWRITE WRITE_TOKEN SHOGI_URL"
+LOG_REWRITE WRITE_TOKEN SHOGI_URL AGENT_LAB_URL"
 
 # the settings' old names, from when the model server was Kev's: still read, and mini.env's lines are renamed (migrate_env)
 OLD_NAMES="KEV_PORT:MODEL_PORT KEV_PREFIX_CACHE:MODEL_PREFIX_CACHE KEV_PREFIX_MAX_TOKENS:MODEL_PREFIX_MAX_TOKENS"
@@ -139,7 +141,7 @@ load_env() {
   OPENAI_PORT="${OPENAI_PORT:-}"; OPENAI_HOST="${OPENAI_HOST:-::}"; EMBED_GGUF="${EMBED_GGUF:-}"; EMBED_REF="${EMBED_REF:-}"
   CHAT_CONTEXT="${CHAT_CONTEXT:-}"
   FEEDBACK_LOG="${FEEDBACK_LOG:-}"; OUTCOME_CALIBRATOR="${OUTCOME_CALIBRATOR:-}"; LABEL_OUTCOMES="${LABEL_OUTCOMES:-0}"
-  LOG_REWRITE="${LOG_REWRITE:-}"; WRITE_TOKEN="${WRITE_TOKEN:-}"; SHOGI_URL="${SHOGI_URL:-}"
+  LOG_REWRITE="${LOG_REWRITE:-}"; WRITE_TOKEN="${WRITE_TOKEN:-}"; SHOGI_URL="${SHOGI_URL:-}"; AGENT_LAB_URL="${AGENT_LAB_URL:-}"
   LEARNING="$STATE/learning.json"; TRAINED_DIR="$STATE/trained"   # the self-learning settings and the trained manifests (d1a#233)
 }
 
@@ -224,7 +226,7 @@ prune_venvs() {   # after a reinstall that passed: keep current and previous; uv
 build_web() {   # after stop: npm ci and next build replace the files the running web app serves from
   say "web app: npm ci and a production build${D1A_BASE_PATH:+ under $D1A_BASE_PATH}"
   # next build bakes the /model and /media proxy targets into the build; next start does not read them again
-  (cd "$ROOT" && npm ci --no-audit --no-fund --loglevel=error && D1A_BASE_PATH="$D1A_BASE_PATH" SHOGI_URL="$SHOGI_URL" MODEL_API="http://127.0.0.1:$MODEL_PORT" \
+  (cd "$ROOT" && npm ci --no-audit --no-fund --loglevel=error && D1A_BASE_PATH="$D1A_BASE_PATH" SHOGI_URL="$SHOGI_URL" AGENT_LAB_URL="$AGENT_LAB_URL" MODEL_API="http://127.0.0.1:$MODEL_PORT" \
     MEDIA_API="http://127.0.0.1:$MODEL_PORT" npm run build >/dev/null)
 }
 
@@ -287,6 +289,7 @@ write_agents() {
     <key>MEDIA_API</key><string>http://127.0.0.1:$MODEL_PORT</string>
     <key>D1A_BASE_PATH</key><string>$D1A_BASE_PATH</string>
     <key>SHOGI_URL</key><string>$SHOGI_URL</string>
+    <key>AGENT_LAB_URL</key><string>$AGENT_LAB_URL</string>
 "   # next start reads next.config.ts again, so the base path must match the build's
   # the PR label check (/review, d1a-playground#29) reads the decision log; off unless the labeler's outcomes are on
   [ "$LABEL_OUTCOMES" = 1 ] && [ -n "$FEEDBACK_LOG" ] && ENV_XML+="    <key>REVIEW_FEEDBACK_LOG</key><string>$FEEDBACK_LOG</string>

@@ -105,7 +105,7 @@ const UI_EN = {
   heroSub: `One document and a few typed questions in, a calibrated probability for every option out, in well under a second. Pick a use case: every example is live and editable${HAS_MEDIA ? ", three of them read a photo, a voice note or a video," : ","} and one labels pull requests.`,
   down: "The model server is not answering on port 8009, so the demos cannot run.",
   lmstudio: "LM Studio mode: answers come from a prompted chat model, not the trained checkpoint. Probabilities are the chat model's letter probabilities, uncalibrated.",
-  all: "All", useCases: "Use cases", architecture: "Architecture", shogi: "Shogi", language: "Language",
+  all: "All", useCases: "Use cases", architecture: "Architecture", shogi: "Shogi", agentLab: "Agent lab", language: "Language",
   pill: { connecting: "connecting to the model server…", down: "model server not reachable", lm: "LM Studio mode", up: "server connected" },
   englishNote: "",
 };
@@ -116,7 +116,7 @@ const UI: Record<Lang, typeof UI_EN> = {
     heroSub: `1つの文書といくつかの型付きの質問を入れると、すべての選択肢に較正済みの確率が返ってきます。1秒もかかりません。ユースケースを選んでください。どの例もライブで動き、自由に編集できます。${HAS_MEDIA ? "うち3つは写真・音声メモ・動画を読み取り、1つは" : "うち1つは"}プルリクエストにラベルを付けます。`,
     down: "モデルサーバー（ポート 8009）が応答しないため、デモを実行できません。",
     lmstudio: "LM Studio モード: 答えは学習済みのチェックポイントではなく、プロンプトで指示したチャットモデルから返っています。確率はチャットモデルの選択肢記号の確率で、較正されていません。",
-    all: "一覧", useCases: "ユースケース", architecture: "アーキテクチャ", shogi: "将棋", language: "言語",
+    all: "一覧", useCases: "ユースケース", architecture: "アーキテクチャ", shogi: "将棋", agentLab: "エージェント・ラボ", language: "言語",
     pill: { connecting: "モデルサーバーに接続中…", down: "モデルサーバーに接続できません", lm: "LM Studio モード", up: "サーバー接続済み" },
     englishNote: "※ 一部のデモは、答えを安定させるため、質問文と選択肢の説明を英語のまま送っています。",
   },
@@ -303,6 +303,7 @@ export function UseCases() {
               <span className="font-heading text-[15px] font-medium tracking-tight">playground</span>
             </a>
             <div className="flex min-w-0 flex-wrap items-center gap-2">
+              {process.env.NEXT_PUBLIC_AGENT_LAB && <a href={`${BASE_PATH}/agent-lab/wms`} className="rounded-full border border-border bg-background/70 px-3 py-1 text-[12px] text-muted-foreground shadow-xs backdrop-blur hover:text-foreground">{t.agentLab} →</a>}
               {process.env.NEXT_PUBLIC_SHOGI && <a href={`${BASE_PATH}/shogi/`} className="rounded-full border border-border bg-background/70 px-3 py-1 text-[12px] text-muted-foreground shadow-xs backdrop-blur hover:text-foreground">{t.shogi} →</a>}
               <Link href="/architecture" className="rounded-full border border-border bg-background/70 px-3 py-1 text-[12px] text-muted-foreground shadow-xs backdrop-blur hover:text-foreground">{t.architecture} →</Link>
               <LangSwitch />

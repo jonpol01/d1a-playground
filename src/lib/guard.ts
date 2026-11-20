@@ -25,6 +25,13 @@ export function shogiRewrites(shogiUrl: string) {
   return [{ source: "/shogi", destination: `${base}/` }, { source: "/shogi/:path*", destination: `${base}/:path*` }];
 }
 
+/** The optional agent lab (AGENT_LAB_URL, its own server): only /agent-lab and below are forwarded, nothing else. Unset: none. */
+export function agentLabRewrites(labUrl: string) {
+  if (!labUrl) return [];
+  const base = labUrl.replace(/\/+$/, "");
+  return [{ source: "/agent-lab", destination: `${base}/` }, { source: "/agent-lab/:path*", destination: `${base}/:path*` }];
+}
+
 export function proxyRewrites(modelApi: string, mediaApi: string) {
   return [
     ...MODEL_PROXY_PATHS.flatMap((proxy) => MODEL_ROUTES.map((p) => ({ source: `/${proxy}/${p}`, destination: `${modelApi}/${p}` }))),
