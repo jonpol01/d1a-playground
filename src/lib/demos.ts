@@ -7,6 +7,13 @@ export function visibleDemos<T extends { id: string }>(demos: T[], mediaDemos: s
   return mediaDemos === "0" ? demos.filter((d) => !MEDIA_DEMO_IDS.includes(d.id)) : demos;
 }
 
+/** A build with an agent lab (AGENT_LAB_URL, NEXT_PUBLIC_AGENT_LAB at build time) shows the lab in the agent's day's place:
+ * the lab runs the commands an agent proposes, in sandboxes, where the agent's day only shows D1A's decisions. Elsewhere
+ * the agent's day stays, since the lab is a separate server. */
+export function withAgentLab<T extends { id: string }>(demos: T[], lab: T, agentLab: string | undefined = process.env.NEXT_PUBLIC_AGENT_LAB): T[] {
+  return agentLab ? demos.map((d) => (d.id === "agent" ? lab : d)) : demos;
+}
+
 /** The hero's count, in words up to sixteen, as a number beyond. */
 export function countWord(n: number): string {
   return ["Zero", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen"][n] ?? String(n);
