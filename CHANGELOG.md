@@ -20,6 +20,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   each step one D1A call with D1A's own agent presets and their fail-safe advice; with its smoke requests.
 - `SHOGI_URL` (mini.sh setting): a shogi page served by its own static server, shown under `/shogi` with a header link and
   asking D1A through this app's `/model` proxy. Unset, there is no route and no link.
+- `AGENT_LAB_URL` (mini.sh setting): an agent lab served by its own server, shown under `/agent-lab` with a header link to
+  its warehouse page. Unset, there is no route and no link.
 
 ### Changed
 
