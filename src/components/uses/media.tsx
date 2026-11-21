@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Mic, Square, Upload } from "lucide-react";
 import { api, BASE_PATH, MEDIA_START_HINT, type Question, type SystemOneResponse } from "@/lib/d1a";
-import { serverHint } from "@/lib/server-hint";
+import { isMediaPaused, MEDIA_PAUSED, serverHint } from "@/lib/server-hint";
 import { useLang, useText } from "@/lib/i18n";
 import { AnswerBars, DemoGrid, Empty, Field, Latency, Presets, ResultCard, RunBar, Verdict, inputCls } from "@/components/uses/shared";
 import { Shimmer } from "@/components/uses/visuals";
@@ -86,6 +86,7 @@ function MediaError({ error }: { error: unknown }) {
   const lang = useLang();
   if (!error) return null;
   const msg = error instanceof Error ? error.message : String(error);
+  if (isMediaPaused(msg)) return <p role="status" className="rounded-md border border-border bg-muted/40 px-3 py-2 text-[13px] leading-5 text-muted-foreground">{MEDIA_PAUSED[lang]}</p>;
   const down = error instanceof TypeError || /^(5\d\d|404): (?!\{)/.test(msg);
   return <p role="alert" className="whitespace-pre-wrap rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-[13px] leading-5 text-destructive">
     {down ? `${lang === "ja" ? "メディア用のモデルサーバーが応答していません。" : "The media model server is not answering."} ${serverHint(MEDIA_START_HINT, lang)}` : msg}
