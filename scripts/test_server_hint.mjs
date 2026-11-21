@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { AWAY_HINT, serverHint } from "../src/lib/server-hint.ts";
+import { AWAY_HINT, isMediaPaused, MEDIA_PAUSED, serverHint } from "../src/lib/server-hint.ts";
 
 const LOCAL = { en: "Start it with ./demo.sh.", ja: "./demo.sh で起動してください。" };
 
@@ -17,4 +17,12 @@ test("anywhere else, the hint says to try again later and never points at ./demo
     assert.equal(serverHint(LOCAL, "ja", host), AWAY_HINT.ja);
   }
   assert.ok(!AWAY_HINT.en.includes("demo.sh") && !AWAY_HINT.ja.includes("demo.sh"));
+});
+
+test("a media pause is a 503 whose JSON body says paused; nothing else is", () => {
+  assert.ok(isMediaPaused('503: {"paused": true, "detail": "a training run holds the memory"}'));
+  for (const msg of ['503: {"paused": false}', '503: {"detail": "loading"}', "503: paused", '502: {"paused": true}',
+    "502: D1A server: connect ECONNREFUSED 127.0.0.1:8010", "Failed to fetch", '503: {"paused": "yes"}'])
+    assert.ok(!isMediaPaused(msg), msg);
+  assert.ok(!MEDIA_PAUSED.en.includes("demo.sh") && !MEDIA_PAUSED.ja.includes("demo.sh"));
 });

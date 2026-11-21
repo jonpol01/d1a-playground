@@ -13,3 +13,17 @@ export const AWAY_HINT: Hint = {
 export function serverHint(local: Hint, lang: "en" | "ja", host: string = typeof window === "undefined" ? "localhost" : window.location.hostname): string {
   return (LOCAL_HOSTS.has(host) ? local : AWAY_HINT)[lang];
 }
+
+// A hosting machine can pause its photo, voice and video server while a large job needs that memory; the text model stays
+// on. Its media route then answers 503 with a JSON body holding "paused": true, which the page shows as a pause, not a fault.
+export const MEDIA_PAUSED: Hint = {
+  en: "Photo, voice and video are paused while the machine that serves this page runs a large job, such as a training run. The text demos still work. Try again later.",
+  ja: "このページを公開しているマシンが学習などの大きな処理をしている間、写真・音声・動画のデモは一時停止しています。テキストのデモはそのまま使えます。しばらくしてからもう一度お試しください。",
+};
+
+/** True for a request error ("<status>: <body>") that is a hosting machine's media pause. */
+export function isMediaPaused(message: string): boolean {
+  const m = /^503: (\{[\s\S]*\})$/.exec(message.trim());
+  if (!m) return false;
+  try { return JSON.parse(m[1])?.paused === true; } catch { return false; }
+}

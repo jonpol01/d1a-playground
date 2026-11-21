@@ -29,6 +29,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **A model server that does not answer, seen from another machine:** the notice says the machine serving the page can
   pause the model while it runs other work and to try again later, instead of telling the visitor to run `./demo.sh` on
   port 8009. On localhost it still says how to start the server.
+- **A paused media server reads as a pause, not a fault.** When the machine serving the page pauses its photo, voice and
+  video server for a large job (its media route answers 503 with `"paused": true`), those demos say they are paused and
+  that the text demos still work, instead of "the media model server is not answering".
 - **The agent demo says what it does and what a real agent does.** It shows D1A's decisions and runs none of the
   commands; a note says how D1A's Claude Code hook and MCP tools put the same checkpoints in front of a real agent's tool
   calls, with a link to D1A's docs.
