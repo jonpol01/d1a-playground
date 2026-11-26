@@ -29,6 +29,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **Known misses are marked in the demos.** The playground's own text examples were scored on the served build against
+  a blind expert label. 213 of 236 answers match (90.3%), and 9 of 11 demos are at 80% or above; the PR labeler (7/12)
+  and the refund gate (2/4) are below.
+  - The 13 answers D1A gets wrong show a small "D1A got this wrong" note on their result: routing (English
+    "Summary"), the refund gate's "Ambiguous case", inbox emails 7 and 8, the agent judge on two scenarios, and the
+    PR labeler's three. The note appears only when the example runs unchanged.
+  - The examples are kept as they are, not swapped. The refund gate's note says its lane still sends the case to a
+    person.
+  - The PR labeler is described as a first-pass labeler a person reviews.
+  - README and README.ja give the rate.
+
 - **Wording matches what the demos do:**
   - The model-routing demo says it shows the model D1A picks ("Pick", "← D1A's pick") and that it sends the prompt
     nowhere. Before, it read "← routed here".
