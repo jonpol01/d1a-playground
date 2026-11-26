@@ -2,7 +2,7 @@
 
 [日本語](README.ja.md)
 
-A small decision model reads one document, answers a few typed questions about it, and returns a probability for every option. This playground runs fourteen real jobs on that idea, live, on your own machine: routing prompts to a model tier, blocking prompt injections, gating an agent's tool calls, triaging an inbox, reranking search results, grading LLM answers, labelling a table, steering a robot in real time, deciding when to act and when to ask a human, and, from a photo, a voice note or a short video, checking a delivery for damage and triaging a driver's message, labeling pull requests, and running one task through an agent factory. Every example is editable, and every answer shows the full probability distribution behind it.
+A small decision model reads one document, answers a few typed questions about it, and returns a probability for every option. This playground runs fourteen real jobs on that idea, live, on your own machine: picking the model tier a prompt needs, flagging prompt injections, gating an agent's tool calls, triaging an inbox, reranking search results, grading LLM answers, labelling a table, steering a robot in real time, deciding when to act and when to ask a human, and, from a photo, a voice note or a short video, checking a delivery for damage and triaging a driver's message, labeling pull requests, and running one task through an agent factory. Every example is editable, and every answer shows the full probability distribution behind it.
 
 D1A is built on [Kev](https://github.com/jaredpalmer/kev) by Jared Palmer (Apache-2.0). D1A is not affiliated with or endorsed by Jared Palmer or the Kev project. The playground serves D1A-E2B on Gemma 4 E2B ([JohnP1/d1a-e2b](https://huggingface.co/JohnP1/d1a-e2b); its 8-bit MLX build on Apple Silicon), the newest release unless `MODEL_RUN` picks another model or tag. D1A's [model list](https://github.com/jonpol01/d1a/blob/main/docs/MODELS.md) has every model, its versions and its scores.
 
@@ -13,7 +13,7 @@ D1A is built on [Kev](https://github.com/jaredpalmer/kev) by Jared Palmer (Apach
 | # | Demo | What the model decides | Example answer from the live prototype |
 |---|---|---|---|
 | 1 | Model routing | How hard a prompt is: `small`, `medium` or `large` model, with an illustrative cost per 1,000 requests | "What's the capital of Australia?" → small (0.73); a replication-lag debugging question → large (0.70) |
-| 2 | Guardrails | The message category (`safe`, `prompt_injection`, `abuse`, `off_policy`) and whether it should reach the LLM → ALLOW or BLOCK | "Ignore previous instructions…" → prompt_injection (0.59), BLOCK; a homework request → off_policy (0.98), BLOCK |
+| 2 | Guardrails | The message category (`safe`, `prompt_injection`, `abuse`, `off_policy`) and whether it should reach the LLM → ALLOW or BLOCK; the page acts on the answer, and D1A catches about 60% of public prompt injections, so it is a second opinion, not a security boundary | "Ignore previous instructions…" → prompt_injection (0.59), BLOCK; a homework request → off_policy (0.98), BLOCK |
 | 3 | Tool-call gating | `allow`, `ask` or `deny` for an agent's proposed tool call | `read_file` → allow (0.65); `rm -rf ~/` → deny (0.81); `send_email` to all staff → ask (0.49) |
 | 4 | Inbox triage | `reply_now`, `later` or `archive` for each of eight emails, sorted | the production outage and the manager's deadline on top; the receipt and the flight sale archived |
 | 5 | Reranking | p(this passage answers the query) for six passages, re-sorted | the "recover with phone" passage moves from #3 to #1 (0.77) |
@@ -35,7 +35,7 @@ Short recordings of the live prototype in dark mode, with the page in English: e
 
 **1. Model routing**
 
-![Model routing demo: a hard Postgres debugging prompt is routed to the large model, with the probability of small, medium and large and the cost per 1,000 requests](docs/gifs/en/routing.gif)
+![Model routing demo: D1A picks the large model for a hard Postgres debugging prompt, with the probability of small, medium and large and the cost per 1,000 requests](docs/gifs/en/routing.gif)
 
 **2. Guardrails**
 

@@ -43,9 +43,9 @@ const HAS_MEDIA = DEMOS.some((d) => MEDIA_DEMO_IDS.includes(d.id));
 
 const DEMO_TEXT: Record<Lang, Record<string, DemoText>> = {
   en: {
-    routing: { title: "Model routing", input: "prompt", caption: "Send each prompt to the cheapest model that can handle it.",
+    routing: { title: "Model routing", input: "prompt", caption: "Which model should answer each prompt? D1A picks the cheapest one that can handle it; this demo shows the pick and sends the prompt nowhere.",
       line: "The model reads the user's prompt and rates how hard it is, which picks the model tier; the probabilities show when a call is close enough to send up a tier." },
-    guardrails: { title: "Guardrails", input: "message", caption: "Stop prompt injection and abuse before they reach the LLM.",
+    guardrails: { title: "Guardrails", input: "message", caption: "Flag prompt injection and abuse before they reach the LLM: a second opinion (about 60% of public injections caught), not a security boundary.",
       line: "The model labels an incoming message and says whether it should reach the LLM at all; a probability lets you block only when the model is sure and log the rest." },
     tools: { title: "Tool-call gating", input: "tool call", caption: "Decide which agent actions run, need a human, or never happen.",
       line: "The model reads an agent's proposed tool call and decides allow, ask or deny against a written policy; p(deny) is the number to alert on." },
@@ -75,9 +75,9 @@ const DEMO_TEXT: Record<Lang, Record<string, DemoText>> = {
       line: "A scripted agent works a 3PL warehouse's tickets with real commands, twice: unchecked, and with each command first decided by D1A's Claude Code hook, the code Claude Code runs. Routine actions the client's runbook allows go ahead, risky ones wait for you as the supervisor, and harmful ones are stopped." },
   },
   ja: {
-    routing: { title: "モデルの振り分け", input: "プロンプト", caption: "各プロンプトを、処理できる一番安いモデルに送ります。",
+    routing: { title: "モデルの振り分け", input: "プロンプト", caption: "各プロンプトにどのモデルが答えるべきか。D1A は処理できる一番安いモデルを選びます。このデモは選択を示すだけで、プロンプトをどこにも送りません。",
       line: "モデルがユーザーのプロンプトを読んで難しさを判定し、送り先のモデルの段階を決めます。確率を見れば、1段上に送るべききわどい判定かどうかが分かります。" },
-    guardrails: { title: "ガードレール", input: "メッセージ", caption: "プロンプトインジェクションや暴言を、LLM に届く前に止めます。",
+    guardrails: { title: "ガードレール", input: "メッセージ", caption: "プロンプトインジェクションや暴言を、LLM に届く前に見分けます。公開されているインジェクションの約 60% を検出するセカンドオピニオンで、セキュリティ境界ではありません。",
       line: "モデルが受信メッセージを分類し、そもそも LLM に渡すべきかを答えます。確率があるので、確信が高いときだけブロックし、それ以外は記録に回せます。" },
     tools: { title: "ツール呼び出しの制御", input: "ツール呼び出し", caption: "エージェントの操作を、実行する・人に確認する・実行しない、に分けます。",
       line: "モデルがエージェントの提案したツール呼び出しを読み、書かれたポリシーに照らして allow / ask / deny を決めます。アラートの基準にするのは p(deny) です。" },
