@@ -449,6 +449,9 @@ smoke() {   # every demo's examples through the web app, checked against the bas
   WRITE_TOKEN="$WRITE_TOKEN" node "$ROOT/scripts/demo_smoke.mjs" "$url" $media $baseline $cal || rc=$?   # by env: not in ps
   [ "$rc" != 3 ] || { SMOKE_MOVED=1; die "demo smoke test: every demo answers, but some answers differ from the baseline; if the change is expected, record it: node scripts/demo_smoke.mjs $url $media --baseline=$STATE/demo-baseline.json${cal:+ $cal} --record"; }
   [ "$rc" = 0 ] || die "demo smoke test FAILED: a demo no longer answers (scripts/demo_smoke.mjs)"
+  # the committed baseline is meant to be this served build's answers (#142): say when they have drifted apart
+  [ ! -f "$STATE/demo-baseline.json" ] || cmp -s "$STATE/demo-baseline.json" "$ROOT/scripts/demo-baseline.json" \
+    || say "note: this host's recorded answers differ from scripts/demo-baseline.json; to make the committed file the served build's, copy .demo/demo-baseline.json there and update scripts/demo-baseline.source.json in a PR"
   [ -n "$OPENAI_PORT" ] || return 0
   # the OpenAI port as apps see it (chat, streaming, tools, JSON, embeddings, the closed System One routes), and decisions
   # unchanged after the chats (scripts/openai_smoke.mjs)

@@ -127,3 +127,13 @@ test("with WRITE_TOKEN, the review route must refuse a request without it and se
   assert.equal(plain.code, 0, plain.out);
   assert.doesNotMatch(plain.out, /token checked/);
 });
+
+test("--list names where the committed baseline was recorded, at the pinned d1a (#142)", async () => {
+  const out = await new Promise((ok) => execFile(process.execPath, [SMOKE, "--list"], (err, stdout, stderr) => ok({ code: err ? err.code : 0, out: stdout + stderr })));
+  assert.equal(out.code, 0, out.out);
+  const src = JSON.parse(readFileSync(join(dirname(SMOKE), "demo-baseline.source.json"), "utf8"));
+  const pin = /^D1A_SHA="([0-9a-f]{40})"/m.exec(readFileSync(join(dirname(SMOKE), "..", "mini.sh"), "utf8"))[1];
+  assert.match(out.out, new RegExp(`baseline: recorded on ${src.recorded_on} at d1a ${src.d1a.slice(0, 8)}`));
+  // a pin move lands before the deploy that can record the new answers, so a moved pin warns rather than fails
+  assert.equal(/WARNING: mini\.sh pins d1a/.test(out.out), src.d1a !== pin, out.out);
+});

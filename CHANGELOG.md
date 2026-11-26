@@ -29,6 +29,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **`scripts/demo-baseline.json` holds the served build's answers** (#142). It now holds the answers recorded on the
+  serving host at the pinned D1A, which the deploy's smoke test reproduced exactly. Before, they came from another
+  machine and build: 28 of 179 differed, and one audit scored them by mistake.
+  - `scripts/demo-baseline.source.json` says where and when they were recorded.
+  - `node scripts/demo_smoke.mjs --list` prints that source, and warns when mini.sh's pin has moved past it.
+  - mini.sh's smoke test notes when the host's recorded answers differ from the committed file.
 - **Known misses are marked in the demos.** The playground's own text examples were scored on the served build against
   a blind expert label. 213 of 236 answers match (90.3%), and 9 of 11 demos are at 80% or above; the PR labeler (7/12)
   and the refund gate (2/4) are below.

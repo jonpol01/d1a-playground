@@ -1,0 +1,9 @@
+{
+ "about": "Where scripts/demo-baseline.json came from. `node scripts/demo_smoke.mjs --list` prints it and warns when the pin in mini.sh has moved past it.",
+ "d1a": "c1d58fcad87b5d5eda8588966e1d18ab668eb1d7",
+ "model": "D1A-E4B-it QAT, MLX 4-bit",
+ "recorded_on": "the serving host",
+ "check": "the host's own .demo/demo-baseline.json, written 2026-11-19; the deploy of this d1a (2026-11-26) reproduced every answer exactly (max probability change 0)",
+ "outcome_calibrator": "the serving host's, as served (it moves PR-labeler type and blast probabilities)",
+ "date": "2026-11-26"
+}
