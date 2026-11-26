@@ -29,6 +29,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **D1A pinned to `c1d58fca`** (d1a#420, d1a#419): the model server can route chats (`D1A_ROUTES`, the new `ROUTES`
+  setting here): reviews to a review service, chats that need a larger model to one, the rest to D1A. Off unless
+  `ROUTES` is set. With it off, no answer moves. The quality gate on the D1A-E4B-it QAT build answered bit for bit the
+  same on every demo (photos, voice and video included) and on the labeler replay: 0 flips, max |dp| 0, 271 requests.
+  All-text latency was 0.998 against a base/base floor of 1.002. `httpx` joins D1A's `serve` extra; it was installed
+  already, so `scripts/d1a-constraints.txt` stays as recorded.
+
 - **A model server that does not answer, seen from another machine:** the notice says the machine serving the page can
   pause the model while it runs other work and to try again later, instead of telling the visitor to run `./demo.sh` on
   port 8009. On localhost it still says how to start the server.
