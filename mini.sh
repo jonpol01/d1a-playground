@@ -32,6 +32,9 @@
 #   prompt holds the model ~9 minutes and every other chat waits; d1a#318)
 #   ROUTES= (D1A_ROUTES, d1a#419: a JSON file of chat routes, d1a docs/USAGE.md "Route chats to other models". Chats that
 #   ask for a review, or need a larger model, go to the targets it names; the rest stay with D1A. Unset: off)
+#   DATE_FACTS=0 (1: D1A_DATE_FACTS, d1a docs/CONFIGURATION.md: the model server adds the day count between the dates a
+#   request's text writes before D1A reads it; answers change only where a text holds two or more dates)
+#   JA_DATES=0 (1: D1A_JA_DATES: the model server rewrites Japanese dates as "Month D, YYYY" first, so date facts read them)
 #   LOG_REWRITE= (D1A_LOG_REWRITE, d1a#377: a private JSON list of {"pattern", "replace"} rules. With FEEDBACK_LOG, the model
 #   server logs each decision's text in general wording, and the outcome poster rewords issue titles the same way to match)
 #   WRITE_TOKEN= (at least 16 of A-Z a-z 0-9 . _ ~ -, e.g. openssl rand -hex 24: the Learning page's changes and the PR label
@@ -75,7 +78,7 @@ die() { printf '\033[31m[mini] error:\033[0m %s\n' "$*" >&2; exit 1; }
 # the settings .demo/mini.env holds, in the order save_env writes them
 ENV_KEYS="MODEL_RUN MODEL_PORT PORT HOST D1A_BASE_PATH PYTORCH_MPS_HIGH_WATERMARK_RATIO PYTORCH_MPS_LOW_WATERMARK_RATIO MODEL_PREFIX_CACHE
 MODEL_PREFIX_MAX_TOKENS MEDIA IDLE_UNLOAD FEEDBACK_LOG OUTCOME_CALIBRATOR LABEL_OUTCOMES OPENAI_PORT OPENAI_HOST EMBED_GGUF EMBED_REF CHAT_CONTEXT
-ROUTES LOG_REWRITE WRITE_TOKEN SHOGI_URL AGENT_LAB_URL"
+ROUTES DATE_FACTS JA_DATES LOG_REWRITE WRITE_TOKEN SHOGI_URL AGENT_LAB_URL"
 
 # the settings' old names, from when the model server was Kev's: still read, and mini.env's lines are renamed (migrate_env)
 OLD_NAMES="KEV_PORT:MODEL_PORT KEV_PREFIX_CACHE:MODEL_PREFIX_CACHE KEV_PREFIX_MAX_TOKENS:MODEL_PREFIX_MAX_TOKENS"
@@ -141,7 +144,7 @@ load_env() {
   MODEL_PREFIX_CACHE="${MODEL_PREFIX_CACHE:-4}"; MODEL_PREFIX_MAX_TOKENS="${MODEL_PREFIX_MAX_TOKENS:-65536}"
   MEDIA="${MEDIA:-0}"; IDLE_UNLOAD="${IDLE_UNLOAD:-600}"
   OPENAI_PORT="${OPENAI_PORT:-}"; OPENAI_HOST="${OPENAI_HOST:-::}"; EMBED_GGUF="${EMBED_GGUF:-}"; EMBED_REF="${EMBED_REF:-}"
-  CHAT_CONTEXT="${CHAT_CONTEXT:-}"; ROUTES="${ROUTES:-}"
+  CHAT_CONTEXT="${CHAT_CONTEXT:-}"; ROUTES="${ROUTES:-}"; DATE_FACTS="${DATE_FACTS:-0}"; JA_DATES="${JA_DATES:-0}"
   FEEDBACK_LOG="${FEEDBACK_LOG:-}"; OUTCOME_CALIBRATOR="${OUTCOME_CALIBRATOR:-}"; LABEL_OUTCOMES="${LABEL_OUTCOMES:-0}"
   LOG_REWRITE="${LOG_REWRITE:-}"; WRITE_TOKEN="${WRITE_TOKEN:-}"; SHOGI_URL="${SHOGI_URL:-}"; AGENT_LAB_URL="${AGENT_LAB_URL:-}"
   LEARNING="$STATE/learning.json"; TRAINED_DIR="$STATE/trained"   # the self-learning settings and the trained manifests (d1a#233)
@@ -286,6 +289,12 @@ write_agents() {
   # chat routes (d1a#419): the model server checks the file at startup and refuses one that does not check out
   [ -z "$ROUTES" ] || [ -f "$ROUTES" ] || die "ROUTES=$ROUTES: no such file"
   [ -n "$ROUTES" ] && ENV_XML+="    <key>D1A_ROUTES</key><string>$ROUTES</string>
+"
+  # date preprocessing (d1a#410, #412): off unless set to 1; the model server shows what it rewrites in GET /v1/models
+  case "$DATE_FACTS$JA_DATES" in 00|01|10|11) ;; *) die "DATE_FACTS and JA_DATES are 0 or 1 (DATE_FACTS=$DATE_FACTS JA_DATES=$JA_DATES)" ;; esac
+  [ "$DATE_FACTS" = 1 ] && ENV_XML+="    <key>D1A_DATE_FACTS</key><string>1</string>
+"
+  [ "$JA_DATES" = 1 ] && ENV_XML+="    <key>D1A_JA_DATES</key><string>1</string>
 "
   plist "$MODEL_LABEL" "$PY" -m d1a.serving.serve --run "$MODEL_RUN" --port "$MODEL_PORT" --host 127.0.0.1 --idle-unload "$IDLE_UNLOAD" >"$AGENTS/$MODEL_LABEL.plist"
   launchctl bootout "$(domain)/$MEDIA_LABEL" 2>/dev/null || true; rm -f "$AGENTS/$MEDIA_LABEL.plist"   # photos and voice now go to the model server
