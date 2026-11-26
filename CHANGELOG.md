@@ -12,6 +12,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- The routing demo's caption and README section say what Send it does where the model server routes chats; the old
+  caption said the demo sends the prompt nowhere.
+
 ### Added
 
 - `ROUTE_DEMO=1` (mini.sh setting, off by default): the routing demo's "Send it" sends the prompt through the model server's
