@@ -167,6 +167,8 @@ git clone https://github.com/jonpol01/d1a-playground.git ~/d1a-playground && cd 
 
 **チャットのプロンプトの上限。** `.demo/mini.env` に `CHAT_CONTEXT=32768` を設定して `./mini.sh update` を実行すると、チャットのプロンプトと `max_tokens` の合計に上限を設けます（d1a の `D1A_CHAT_CONTEXT`）。それより長いリクエストにはすぐに 400 を返します。Hermes はこれを受けて履歴を圧縮するので、1つのモデルが何分もふさがって他のチャットが待たされることはありません（2026-10-21 には 237k トークンのプロンプトがモデルを 16 分ふさぎました）。設定しなければ、モデル自身のコンテキスト（D1A-E4B-it では 131,072）が上限です。
 
+**チャットのルート。** `.demo/mini.env` に `ROUTES=<ファイル>` を設定して `./mini.sh update` を実行すると、d1a の `D1A_ROUTES` をモデルサーバーに渡します。レビューを頼むチャットや大きなモデルが要るチャットはファイルにある送り先へ送り、それ以外は D1A が答えます（d1a の docs/USAGE.md「Route chats to other models」）。ファイルには送り先の URL と鍵ファイルのパスを書き、リポジトリには入れません。設定しなければ、すべてのチャットに D1A が答えます。
+
 **リバースプロキシの下、サブパスで公開する場合。** `D1A_BASE_PATH=/d1a` でビルドすると（初回のインストールでは `D1A_BASE_PATH=/d1a ./mini.sh install`。`.demo/mini.env` ができた後はそのファイルが記録なので、そこに設定してください。食い違うコマンドラインの値は、警告を出して無視されます）、ページ、アセット、モデル API のプロキシ（`/d1a/model/...`）、`/d1a/api/hw` のすべてが `/d1a` の下で提供されます。プロキシでは `/d1a` で始まるパスを、パスを変えずに `http://127.0.0.1:3031` に転送してください（例: `http://<your-mac-ip>/d1a`）。`next build` と `next start` の両方に同じ `D1A_BASE_PATH` が必要です（mini.sh は両方に設定します）。`.demo/mini.env` を書き換えたら `./mini.sh update` で反映します。
 
 **写真・音声・動画に答えないモデルサーバーの場合。** PyTorch の D1A サーバーは、デモ 10・11・13 に2つ目のプロセス（`d1a.serving.media`）がないと答えられません。それがないサーバーの隣では `MEDIA_DEMOS=0` でビルドしてください（`MEDIA_DEMOS=0 npm run build`）。ページはこの3つのデモを外し、失敗するだけのデモを見せません。見出しの数も表示するデモの数になります。

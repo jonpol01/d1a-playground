@@ -23,8 +23,18 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `AGENT_LAB_URL` (mini.sh setting): an agent lab served by its own server, shown under `/agent-lab` with a header link to
   its warehouse page, and as demo 14 (Agent lab: a 3PL shift) in place of An agent's day. Unset, there is no route and
   no link, and demo 14 stays An agent's day.
+- `ROUTES` (mini.sh setting): a d1a chat-routes file passed to the model server as `D1A_ROUTES` (d1a#419). Chats that
+  ask for a review or need a larger model go to the targets it names; the rest stay with D1A. A file that is not there
+  stops `./mini.sh update`. Unset, D1A answers every chat.
 
 ### Changed
+
+- **D1A pinned to `c1d58fca`** (d1a#420, d1a#419): the model server can route chats (`D1A_ROUTES`, the new `ROUTES`
+  setting here): reviews to a review service, chats that need a larger model to one, the rest to D1A. Off unless
+  `ROUTES` is set. With it off, no answer moves. The quality gate on the D1A-E4B-it QAT build answered bit for bit the
+  same on every demo (photos, voice and video included) and on the labeler replay: 0 flips, max |dp| 0, 271 requests.
+  All-text latency was 0.998 against a base/base floor of 1.002. `httpx` joins D1A's `serve` extra; it was installed
+  already, so `scripts/d1a-constraints.txt` stays as recorded.
 
 - **A model server that does not answer, seen from another machine:** the notice says the machine serving the page can
   pause the model while it runs other work and to try again later, instead of telling the visitor to run `./demo.sh` on
