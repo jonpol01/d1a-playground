@@ -31,7 +31,8 @@ import { createJiti } from "jiti";
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const args = process.argv.slice(2), flags = args.filter((a) => a.startsWith("--")), base = args.find((a) => !a.startsWith("--"));
 const record = flags.includes("--record"), list = flags.includes("--list"), noMedia = flags.includes("--no-media");
-const BASELINE = resolve(flags.find((f) => f.startsWith("--baseline="))?.slice(11) || join(ROOT, "scripts/demo-baseline.json"));
+const COMMITTED = join(ROOT, "scripts/demo-baseline.json"), SOURCE = join(ROOT, "scripts/demo-baseline.source.json");
+const BASELINE = resolve(flags.find((f) => f.startsWith("--baseline="))?.slice(11) || COMMITTED);
 const NAME = relative(process.cwd(), BASELINE) || BASELINE;
 const CAL = flags.find((f) => f.startsWith("--calibrator="))?.slice(13);
 const TOKEN = process.env.WRITE_TOKEN ?? "";
@@ -88,6 +89,13 @@ if (list) {   // the examples the UI ships against the baseline's: a removed or 
   if (gone.length || added.length) {
     console.log(`FAIL: the examples differ from ${NAME} (record it on purpose)\n  removed: ${gone.join("; ") || "none"}\n  added: ${added.join("; ") || "none"}`);
     process.exit(1);
+  }
+  if (BASELINE === COMMITTED) {   // the committed file says where its answers came from, so nobody scores another build's (#142)
+    if (!existsSync(SOURCE)) { console.log(`FAIL: ${relative(process.cwd(), SOURCE)} is missing: say where ${NAME} was recorded`); process.exit(1); }
+    const src = JSON.parse(readFileSync(SOURCE, "utf8"));
+    const pin = /^D1A_SHA="([0-9a-f]{40})"/m.exec(readFileSync(join(ROOT, "mini.sh"), "utf8"))?.[1];
+    console.log(`baseline: recorded on ${src.recorded_on} at d1a ${String(src.d1a).slice(0, 8)} (${src.model}, ${src.date})`);
+    if (pin && src.d1a !== pin) console.log(`WARNING: mini.sh pins d1a ${pin.slice(0, 8)}, the baseline was recorded at ${String(src.d1a).slice(0, 8)}: after the deploy, record it from the served build (README, "Smoke test")`);
   }
   console.log("PASS: every example is in the baseline, and every baseline entry is still sent"); process.exit(0);
 }

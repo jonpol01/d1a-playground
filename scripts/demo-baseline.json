@@ -3,8 +3,8 @@
   "route": {
    "side": "small",
    "probs": {
-    "small": 0.9999,
-    "medium": 0.0001,
+    "small": 1,
+    "medium": 0,
     "large": 0
    }
   }
@@ -13,9 +13,9 @@
   "route": {
    "side": "small",
    "probs": {
-    "small": 0.7338,
-    "medium": 0.2655,
-    "large": 0.0008
+    "small": 0.5895,
+    "medium": 0.4104,
+    "large": 0.0001
    }
   }
  },
@@ -23,9 +23,9 @@
   "route": {
    "side": "large",
    "probs": {
-    "small": 0.0003,
-    "medium": 0.0197,
-    "large": 0.98
+    "small": 0.0005,
+    "medium": 0.0028,
+    "large": 0.9967
    }
   }
  },
@@ -33,17 +33,17 @@
   "category": {
    "side": "safe",
    "probs": {
-    "safe": 0.9987,
+    "safe": 0.9991,
     "prompt_injection": 0.0003,
-    "abuse": 0.0001,
-    "off_policy": 0.0009
+    "abuse": 0.0004,
+    "off_policy": 0.0002
    }
   },
   "reach_llm": {
    "side": "true",
    "probs": {
-    "true": 0.9995,
-    "false": 0.0004999999999999449
+    "true": 0.9984,
+    "false": 0.0016000000000000458
    }
   }
  },
@@ -51,17 +51,17 @@
   "category": {
    "side": "prompt_injection",
    "probs": {
-    "safe": 0.0004,
-    "prompt_injection": 0.9867,
-    "abuse": 0.0005,
-    "off_policy": 0.0124
+    "safe": 0.0014,
+    "prompt_injection": 0.9932,
+    "abuse": 0.003,
+    "off_policy": 0.0024
    }
   },
   "reach_llm": {
    "side": "false",
    "probs": {
-    "true": 0.0004,
-    "false": 0.9996
+    "true": 0.0029,
+    "false": 0.9971
    }
   }
  },
@@ -69,17 +69,17 @@
   "category": {
    "side": "abuse",
    "probs": {
-    "safe": 0.0042,
-    "prompt_injection": 0.0021,
-    "abuse": 0.9935,
+    "safe": 0.0008,
+    "prompt_injection": 0.0004,
+    "abuse": 0.9986,
     "off_policy": 0.0002
    }
   },
   "reach_llm": {
    "side": "false",
    "probs": {
-    "true": 0.0074,
-    "false": 0.9926
+    "true": 0.0032,
+    "false": 0.9968
    }
   }
  },
@@ -87,17 +87,17 @@
   "category": {
    "side": "off_policy",
    "probs": {
-    "safe": 0.0009,
-    "prompt_injection": 0.0082,
-    "abuse": 0.0009,
-    "off_policy": 0.9901
+    "safe": 0.0012,
+    "prompt_injection": 0.0007,
+    "abuse": 0.0006,
+    "off_policy": 0.9974
    }
   },
   "reach_llm": {
    "side": "false",
    "probs": {
-    "true": 0.3106,
-    "false": 0.6894
+    "true": 0.1668,
+    "false": 0.8331999999999999
    }
   }
  },
@@ -105,9 +105,9 @@
   "decision": {
    "side": "allow",
    "probs": {
-    "allow": 0.9972,
-    "ask": 0.0002,
-    "deny": 0.0025
+    "allow": 0.9912,
+    "ask": 0.0037,
+    "deny": 0.0051
    }
   }
  },
@@ -115,9 +115,9 @@
   "decision": {
    "side": "deny",
    "probs": {
-    "allow": 0.0003,
-    "ask": 0.0023,
-    "deny": 0.9974
+    "allow": 0.005,
+    "ask": 0.0098,
+    "deny": 0.9852
    }
   }
  },
@@ -125,9 +125,9 @@
   "decision": {
    "side": "ask",
    "probs": {
-    "allow": 0.0007,
-    "ask": 0.9904,
-    "deny": 0.0089
+    "allow": 0.0014,
+    "ask": 0.9954,
+    "deny": 0.0031
    }
   }
  },
@@ -135,85 +135,85 @@
   "decision": {
    "side": "ask",
    "probs": {
-    "allow": 0.0005,
-    "ask": 0.7761,
-    "deny": 0.2234
+    "allow": 0.0032,
+    "ask": 0.9408,
+    "deny": 0.056
    }
   }
  },
  "evals | en: Good answer": {
   "quality": {
-   "side": "3.8407",
+   "side": "3.8635",
    "probs": {
-    "0": 0.0032,
-    "1": 0.0069,
-    "2": 0.0179,
-    "3": 0.09,
-    "4": 0.882
+    "0": 0.0036,
+    "1": 0.0046,
+    "2": 0.0097,
+    "3": 0.0892,
+    "4": 0.893
    }
   },
   "error": {
    "side": "false",
    "probs": {
-    "true": 0.1216,
-    "false": 0.8784
+    "true": 0.1116,
+    "false": 0.8884
    }
   }
  },
  "evals | en: Wrong answer": {
   "quality": {
-   "side": "1.1555",
+   "side": "0.476",
    "probs": {
-    "0": 0.4793,
-    "1": 0.15,
-    "2": 0.2044,
-    "3": 0.0686,
-    "4": 0.0977
+    "0": 0.6235,
+    "1": 0.2941,
+    "2": 0.0706,
+    "3": 0.0063,
+    "4": 0.0054
    }
   },
   "error": {
    "side": "true",
    "probs": {
-    "true": 0.9284,
-    "false": 0.0716
+    "true": 0.9794,
+    "false": 0.02059999999999995
    }
   }
  },
  "evals | en: Partially correct": {
   "quality": {
-   "side": "2.9082",
+   "side": "2.8297",
    "probs": {
-    "0": 0.0121,
-    "1": 0.0573,
-    "2": 0.187,
-    "3": 0.4976,
-    "4": 0.246
+    "0": 0.0057,
+    "1": 0.0207,
+    "2": 0.1885,
+    "3": 0.7084,
+    "4": 0.0767
    }
   },
   "error": {
    "side": "false",
    "probs": {
-    "true": 0.1801,
-    "false": 0.8199
+    "true": 0.1257,
+    "false": 0.8743
    }
   }
  },
  "evals | en: no reference": {
   "quality": {
-   "side": "3.914",
+   "side": "3.8756",
    "probs": {
-    "0": 0.0018,
-    "1": 0.0046,
-    "2": 0.0078,
-    "3": 0.0495,
-    "4": 0.9363
+    "0": 0.0028,
+    "1": 0.004,
+    "2": 0.0082,
+    "3": 0.085,
+    "4": 0.9
    }
   },
   "error": {
    "side": "false",
    "probs": {
-    "true": 0.0302,
-    "false": 0.9698
+    "true": 0.0381,
+    "false": 0.9619
    }
   }
  },
@@ -221,21 +221,21 @@
   "action": {
    "side": "refund",
    "probs": {
-    "refund": 0.9785,
-    "replace": 0.0035,
-    "deny": 0.0117,
-    "exchange": 0.0064
+    "refund": 0.9013,
+    "replace": 0.0014,
+    "deny": 0.0016,
+    "exchange": 0.0957
    }
   }
  },
  "gate | en: Ambiguous case": {
   "action": {
-   "side": "replace",
+   "side": "deny",
    "probs": {
-    "refund": 0.07,
-    "replace": 0.6231,
-    "deny": 0.2959,
-    "exchange": 0.011
+    "refund": 0.2397,
+    "replace": 0.3518,
+    "deny": 0.3919,
+    "exchange": 0.0165
    }
   }
  },
@@ -243,16 +243,16 @@
   "triage": {
    "side": "reply_now",
    "probs": {
-    "archive": 0.0052,
-    "later": 0.0464,
-    "reply_now": 0.9484
+    "archive": 0.0005,
+    "later": 0.001,
+    "reply_now": 0.9985
    }
   },
   "urgent": {
    "side": "true",
    "probs": {
-    "true": 0.9517,
-    "false": 0.04830000000000001
+    "true": 0.9893,
+    "false": 0.010700000000000043
    }
   }
  },
@@ -260,16 +260,16 @@
   "triage": {
    "side": "later",
    "probs": {
-    "archive": 0.2116,
-    "later": 0.7723,
-    "reply_now": 0.0161
+    "archive": 0.3157,
+    "later": 0.6719,
+    "reply_now": 0.0124
    }
   },
   "urgent": {
    "side": "false",
    "probs": {
-    "true": 0.0087,
-    "false": 0.9913
+    "true": 0.0204,
+    "false": 0.9796
    }
   }
  },
@@ -277,133 +277,12 @@
   "triage": {
    "side": "archive",
    "probs": {
-    "archive": 0.529,
-    "later": 0.4699,
-    "reply_now": 0.0011
-   }
-  },
-  "urgent": {
-   "side": "false",
-   "probs": {
-    "true": 0.0074,
-    "false": 0.9926
-   }
-  }
- },
- "inbox | en: email 4": {
-  "triage": {
-   "side": "reply_now",
-   "probs": {
-    "archive": 0.0003,
-    "later": 0.0028,
-    "reply_now": 0.9969
-   }
-  },
-  "urgent": {
-   "side": "true",
-   "probs": {
-    "true": 0.9613,
-    "false": 0.03869999999999996
-   }
-  }
- },
- "inbox | en: email 5": {
-  "triage": {
-   "side": "later",
-   "probs": {
-    "archive": 0.0355,
-    "later": 0.9583,
-    "reply_now": 0.0062
-   }
-  },
-  "urgent": {
-   "side": "false",
-   "probs": {
-    "true": 0.0123,
-    "false": 0.9877
-   }
-  }
- },
- "inbox | en: email 6": {
-  "triage": {
-   "side": "archive",
-   "probs": {
-    "archive": 0.9502,
-    "later": 0.0494,
+    "archive": 0.5864,
+    "later": 0.4132,
     "reply_now": 0.0004
    }
   },
   "urgent": {
-   "side": "false",
-   "probs": {
-    "true": 0.0084,
-    "false": 0.9916
-   }
-  }
- },
- "inbox | en: email 7": {
-  "triage": {
-   "side": "later",
-   "probs": {
-    "archive": 0.1358,
-    "later": 0.7046,
-    "reply_now": 0.1597
-   }
-  },
-  "urgent": {
-   "side": "false",
-   "probs": {
-    "true": 0.3874,
-    "false": 0.6126
-   }
-  }
- },
- "inbox | en: email 8": {
-  "triage": {
-   "side": "archive",
-   "probs": {
-    "archive": 0.9026,
-    "later": 0.0941,
-    "reply_now": 0.0033
-   }
-  },
-  "urgent": {
-   "side": "true",
-   "probs": {
-    "true": 0.7522,
-    "false": 0.24780000000000002
-   }
-  }
- },
- "rerank | en: passage 1": {
-  "answers": {
-   "side": "false",
-   "probs": {
-    "true": 0.0043,
-    "false": 0.9957
-   }
-  }
- },
- "rerank | en: passage 2": {
-  "answers": {
-   "side": "false",
-   "probs": {
-    "true": 0.0092,
-    "false": 0.9908
-   }
-  }
- },
- "rerank | en: passage 3": {
-  "answers": {
-   "side": "true",
-   "probs": {
-    "true": 0.9855,
-    "false": 0.014499999999999957
-   }
-  }
- },
- "rerank | en: passage 4": {
-  "answers": {
    "side": "false",
    "probs": {
     "true": 0.0045,
@@ -411,12 +290,133 @@
    }
   }
  },
+ "inbox | en: email 4": {
+  "triage": {
+   "side": "reply_now",
+   "probs": {
+    "archive": 0.0015,
+    "later": 0.0037,
+    "reply_now": 0.9948
+   }
+  },
+  "urgent": {
+   "side": "true",
+   "probs": {
+    "true": 0.9787,
+    "false": 0.021299999999999986
+   }
+  }
+ },
+ "inbox | en: email 5": {
+  "triage": {
+   "side": "later",
+   "probs": {
+    "archive": 0.0555,
+    "later": 0.9294,
+    "reply_now": 0.0151
+   }
+  },
+  "urgent": {
+   "side": "false",
+   "probs": {
+    "true": 0.005,
+    "false": 0.995
+   }
+  }
+ },
+ "inbox | en: email 6": {
+  "triage": {
+   "side": "archive",
+   "probs": {
+    "archive": 0.9122,
+    "later": 0.0864,
+    "reply_now": 0.0013
+   }
+  },
+  "urgent": {
+   "side": "false",
+   "probs": {
+    "true": 0.0207,
+    "false": 0.9793
+   }
+  }
+ },
+ "inbox | en: email 7": {
+  "triage": {
+   "side": "later",
+   "probs": {
+    "archive": 0.4651,
+    "later": 0.5129,
+    "reply_now": 0.022
+   }
+  },
+  "urgent": {
+   "side": "false",
+   "probs": {
+    "true": 0.1445,
+    "false": 0.8555
+   }
+  }
+ },
+ "inbox | en: email 8": {
+  "triage": {
+   "side": "archive",
+   "probs": {
+    "archive": 0.9321,
+    "later": 0.0669,
+    "reply_now": 0.001
+   }
+  },
+  "urgent": {
+   "side": "true",
+   "probs": {
+    "true": 0.8947,
+    "false": 0.10529999999999995
+   }
+  }
+ },
+ "rerank | en: passage 1": {
+  "answers": {
+   "side": "false",
+   "probs": {
+    "true": 0.0042,
+    "false": 0.9958
+   }
+  }
+ },
+ "rerank | en: passage 2": {
+  "answers": {
+   "side": "false",
+   "probs": {
+    "true": 0.0077,
+    "false": 0.9923
+   }
+  }
+ },
+ "rerank | en: passage 3": {
+  "answers": {
+   "side": "true",
+   "probs": {
+    "true": 0.9861,
+    "false": 0.013900000000000023
+   }
+  }
+ },
+ "rerank | en: passage 4": {
+  "answers": {
+   "side": "false",
+   "probs": {
+    "true": 0.008,
+    "false": 0.992
+   }
+  }
+ },
  "rerank | en: passage 5": {
   "answers": {
    "side": "false",
    "probs": {
-    "true": 0.1587,
-    "false": 0.8412999999999999
+    "true": 0.009,
+    "false": 0.991
    }
   }
  },
@@ -424,8 +424,8 @@
   "answers": {
    "side": "true",
    "probs": {
-    "true": 0.9915,
-    "false": 0.008499999999999952
+    "true": 0.9935,
+    "false": 0.00649999999999995
    }
   }
  },
@@ -433,9 +433,9 @@
   "sentiment": {
    "side": "positive",
    "probs": {
-    "positive": 0.9753,
-    "neutral": 0.0212,
-    "negative": 0.0035
+    "positive": 0.9903,
+    "neutral": 0.009,
+    "negative": 0.0008
    }
   }
  },
@@ -443,9 +443,9 @@
   "sentiment": {
    "side": "negative",
    "probs": {
-    "positive": 0.0007,
-    "neutral": 0.0282,
-    "negative": 0.971
+    "positive": 0.0017,
+    "neutral": 0.0186,
+    "negative": 0.9796
    }
   }
  },
@@ -453,9 +453,9 @@
   "sentiment": {
    "side": "neutral",
    "probs": {
-    "positive": 0.0224,
-    "neutral": 0.8332,
-    "negative": 0.1444
+    "positive": 0.0132,
+    "neutral": 0.8379,
+    "negative": 0.1489
    }
   }
  },
@@ -463,9 +463,9 @@
   "sentiment": {
    "side": "positive",
    "probs": {
-    "positive": 0.99,
-    "neutral": 0.0083,
-    "negative": 0.0017
+    "positive": 0.9912,
+    "neutral": 0.0077,
+    "negative": 0.001
    }
   }
  },
@@ -473,9 +473,9 @@
   "sentiment": {
    "side": "positive",
    "probs": {
-    "positive": 0.7643,
-    "neutral": 0.2261,
-    "negative": 0.0096
+    "positive": 0.9074,
+    "neutral": 0.0891,
+    "negative": 0.0036
    }
   }
  },
@@ -483,19 +483,19 @@
   "sentiment": {
    "side": "negative",
    "probs": {
-    "positive": 0.0005,
-    "neutral": 0.0168,
-    "negative": 0.9827
+    "positive": 0.0018,
+    "neutral": 0.0158,
+    "negative": 0.9824
    }
   }
  },
  "bulk | en: row 7": {
   "sentiment": {
-   "side": "positive",
+   "side": "neutral",
    "probs": {
-    "positive": 0.7463,
-    "neutral": 0.2437,
-    "negative": 0.01
+    "positive": 0.3863,
+    "neutral": 0.6052,
+    "negative": 0.0085
    }
   }
  },
@@ -503,9 +503,9 @@
   "sentiment": {
    "side": "negative",
    "probs": {
-    "positive": 0.0019,
-    "neutral": 0.1011,
-    "negative": 0.8969
+    "positive": 0.0022,
+    "neutral": 0.0508,
+    "negative": 0.947
    }
   }
  },
@@ -513,9 +513,9 @@
   "sentiment": {
    "side": "positive",
    "probs": {
-    "positive": 0.9817,
-    "neutral": 0.0155,
-    "negative": 0.0028
+    "positive": 0.9915,
+    "neutral": 0.0073,
+    "negative": 0.0011
    }
   }
  },
@@ -523,9 +523,9 @@
   "sentiment": {
    "side": "neutral",
    "probs": {
-    "positive": 0.0529,
-    "neutral": 0.8164,
-    "negative": 0.1308
+    "positive": 0.3875,
+    "neutral": 0.5729,
+    "negative": 0.0396
    }
   }
  },
@@ -533,9 +533,9 @@
   "sentiment": {
    "side": "negative",
    "probs": {
-    "positive": 0.0035,
-    "neutral": 0.1272,
-    "negative": 0.8693
+    "positive": 0.0092,
+    "neutral": 0.3304,
+    "negative": 0.6604
    }
   }
  },
@@ -543,9 +543,9 @@
   "sentiment": {
    "side": "positive",
    "probs": {
-    "positive": 0.9658,
-    "neutral": 0.028,
-    "negative": 0.0062
+    "positive": 0.9897,
+    "neutral": 0.0091,
+    "negative": 0.0013
    }
   }
  },
@@ -553,9 +553,9 @@
   "sentiment": {
    "side": "negative",
    "probs": {
-    "positive": 0.0008,
-    "neutral": 0.0296,
-    "negative": 0.9696
+    "positive": 0.0031,
+    "neutral": 0.0465,
+    "negative": 0.9504
    }
   }
  },
@@ -563,9 +563,9 @@
   "sentiment": {
    "side": "neutral",
    "probs": {
-    "positive": 0.0136,
-    "neutral": 0.967,
-    "negative": 0.0193
+    "positive": 0.0037,
+    "neutral": 0.982,
+    "negative": 0.0143
    }
   }
  },
@@ -573,9 +573,9 @@
   "sentiment": {
    "side": "positive",
    "probs": {
-    "positive": 0.9735,
-    "neutral": 0.0234,
-    "negative": 0.0032
+    "positive": 0.9919,
+    "neutral": 0.007,
+    "negative": 0.0012
    }
   }
  },
@@ -583,9 +583,9 @@
   "sentiment": {
    "side": "negative",
    "probs": {
-    "positive": 0.0007,
-    "neutral": 0.0159,
-    "negative": 0.9834
+    "positive": 0.0013,
+    "neutral": 0.0102,
+    "negative": 0.9886
    }
   }
  },
@@ -593,9 +593,9 @@
   "sentiment": {
    "side": "neutral",
    "probs": {
-    "positive": 0.0263,
-    "neutral": 0.6714,
-    "negative": 0.3023
+    "positive": 0.2097,
+    "neutral": 0.7356,
+    "negative": 0.0547
    }
   }
  },
@@ -603,9 +603,9 @@
   "sentiment": {
    "side": "positive",
    "probs": {
-    "positive": 0.9712,
-    "neutral": 0.025,
-    "negative": 0.0038
+    "positive": 0.9881,
+    "neutral": 0.0109,
+    "negative": 0.0009
    }
   }
  },
@@ -613,9 +613,9 @@
   "sentiment": {
    "side": "negative",
    "probs": {
-    "positive": 0.0011,
-    "neutral": 0.0251,
-    "negative": 0.9738
+    "positive": 0.0012,
+    "neutral": 0.0203,
+    "negative": 0.9785
    }
   }
  },
@@ -623,9 +623,9 @@
   "sentiment": {
    "side": "neutral",
    "probs": {
-    "positive": 0.0047,
-    "neutral": 0.9638,
-    "negative": 0.0316
+    "positive": 0.0025,
+    "neutral": 0.9804,
+    "negative": 0.0171
    }
   }
  },
@@ -633,9 +633,9 @@
   "sentiment": {
    "side": "positive",
    "probs": {
-    "positive": 0.9815,
-    "neutral": 0.0143,
-    "negative": 0.0042
+    "positive": 0.9872,
+    "neutral": 0.0109,
+    "negative": 0.0019
    }
   }
  },
@@ -643,9 +643,9 @@
   "sentiment": {
    "side": "negative",
    "probs": {
-    "positive": 0.0036,
-    "neutral": 0.064,
-    "negative": 0.9324
+    "positive": 0.0018,
+    "neutral": 0.0202,
+    "negative": 0.9779
    }
   }
  },
@@ -653,9 +653,9 @@
   "sentiment": {
    "side": "neutral",
    "probs": {
-    "positive": 0.1824,
-    "neutral": 0.8042,
-    "negative": 0.0134
+    "positive": 0.1939,
+    "neutral": 0.7993,
+    "negative": 0.0069
    }
   }
  },
@@ -663,9 +663,9 @@
   "sentiment": {
    "side": "positive",
    "probs": {
-    "positive": 0.9689,
-    "neutral": 0.0246,
-    "negative": 0.0064
+    "positive": 0.9738,
+    "neutral": 0.0226,
+    "negative": 0.0036
    }
   }
  },
@@ -673,9 +673,9 @@
   "sentiment": {
    "side": "negative",
    "probs": {
-    "positive": 0.0008,
-    "neutral": 0.03,
-    "negative": 0.9693
+    "positive": 0.0021,
+    "neutral": 0.0232,
+    "negative": 0.9747
    }
   }
  },
@@ -683,9 +683,9 @@
   "sentiment": {
    "side": "neutral",
    "probs": {
-    "positive": 0.0292,
-    "neutral": 0.9195,
-    "negative": 0.0513
+    "positive": 0.0997,
+    "neutral": 0.7907,
+    "negative": 0.1096
    }
   }
  },
@@ -693,9 +693,9 @@
   "sentiment": {
    "side": "positive",
    "probs": {
-    "positive": 0.8116,
-    "neutral": 0.1759,
-    "negative": 0.0126
+    "positive": 0.9865,
+    "neutral": 0.0106,
+    "negative": 0.0029
    }
   }
  },
@@ -703,9 +703,9 @@
   "sentiment": {
    "side": "negative",
    "probs": {
-    "positive": 0.0013,
-    "neutral": 0.0409,
-    "negative": 0.9578
+    "positive": 0.001,
+    "neutral": 0.0121,
+    "negative": 0.9869
    }
   }
  },
@@ -713,9 +713,9 @@
   "sentiment": {
    "side": "positive",
    "probs": {
-    "positive": 0.6528,
-    "neutral": 0.3298,
-    "negative": 0.0175
+    "positive": 0.5653,
+    "neutral": 0.4251,
+    "negative": 0.0096
    }
   }
  },
@@ -723,9 +723,9 @@
   "sentiment": {
    "side": "negative",
    "probs": {
-    "positive": 0.0012,
-    "neutral": 0.0239,
-    "negative": 0.9749
+    "positive": 0.0041,
+    "neutral": 0.021,
+    "negative": 0.9748
    }
   }
  },
@@ -733,19 +733,19 @@
   "route": {
    "side": "small",
    "probs": {
-    "small": 0.9999,
-    "medium": 0.0001,
+    "small": 1,
+    "medium": 0,
     "large": 0
    }
   }
  },
  "routing | ja: 要約": {
   "route": {
-   "side": "small",
+   "side": "medium",
    "probs": {
-    "small": 0.8034,
-    "medium": 0.1961,
-    "large": 0.0004
+    "small": 0.3577,
+    "medium": 0.6422,
+    "large": 0.0001
    }
   }
  },
@@ -753,9 +753,9 @@
   "route": {
    "side": "large",
    "probs": {
-    "small": 0.0002,
-    "medium": 0.0092,
-    "large": 0.9905
+    "small": 0.0003,
+    "medium": 0.001,
+    "large": 0.9987
    }
   }
  },
@@ -763,17 +763,17 @@
   "category": {
    "side": "safe",
    "probs": {
-    "safe": 0.9987,
-    "prompt_injection": 0.0002,
-    "abuse": 0.0001,
-    "off_policy": 0.001
+    "safe": 0.9991,
+    "prompt_injection": 0.0003,
+    "abuse": 0.0003,
+    "off_policy": 0.0002
    }
   },
   "reach_llm": {
    "side": "true",
    "probs": {
-    "true": 0.9995,
-    "false": 0.0004999999999999449
+    "true": 0.9971,
+    "false": 0.0029000000000000137
    }
   }
  },
@@ -781,17 +781,17 @@
   "category": {
    "side": "prompt_injection",
    "probs": {
-    "safe": 0.0003,
-    "prompt_injection": 0.9889,
-    "abuse": 0.0009,
-    "off_policy": 0.0099
+    "safe": 0.0023,
+    "prompt_injection": 0.9876,
+    "abuse": 0.0053,
+    "off_policy": 0.0048
    }
   },
   "reach_llm": {
    "side": "false",
    "probs": {
-    "true": 0.0006,
-    "false": 0.9994
+    "true": 0.0022,
+    "false": 0.9978
    }
   }
  },
@@ -799,17 +799,17 @@
   "category": {
    "side": "abuse",
    "probs": {
-    "safe": 0.0111,
-    "prompt_injection": 0.0173,
-    "abuse": 0.9707,
-    "off_policy": 0.0009
+    "safe": 0.0013,
+    "prompt_injection": 0.0005,
+    "abuse": 0.9979,
+    "off_policy": 0.0002
    }
   },
   "reach_llm": {
    "side": "false",
    "probs": {
-    "true": 0.0023,
-    "false": 0.9977
+    "true": 0.0057,
+    "false": 0.9943
    }
   }
  },
@@ -817,17 +817,17 @@
   "category": {
    "side": "off_policy",
    "probs": {
-    "safe": 0.0004,
-    "prompt_injection": 0.002,
-    "abuse": 0.0005,
-    "off_policy": 0.9971
+    "safe": 0.0008,
+    "prompt_injection": 0.0005,
+    "abuse": 0.0006,
+    "off_policy": 0.9981
    }
   },
   "reach_llm": {
    "side": "false",
    "probs": {
-    "true": 0.3889,
-    "false": 0.6111
+    "true": 0.2383,
+    "false": 0.7617
    }
   }
  },
@@ -835,9 +835,9 @@
   "decision": {
    "side": "allow",
    "probs": {
-    "allow": 0.9971,
-    "ask": 0.0003,
-    "deny": 0.0027
+    "allow": 0.9863,
+    "ask": 0.0062,
+    "deny": 0.0075
    }
   }
  },
@@ -845,9 +845,9 @@
   "decision": {
    "side": "deny",
    "probs": {
-    "allow": 0.0003,
-    "ask": 0.0038,
-    "deny": 0.9959
+    "allow": 0.0063,
+    "ask": 0.0105,
+    "deny": 0.9832
    }
   }
  },
@@ -855,9 +855,9 @@
   "decision": {
    "side": "ask",
    "probs": {
-    "allow": 0.0011,
-    "ask": 0.9842,
-    "deny": 0.0146
+    "allow": 0.0041,
+    "ask": 0.984,
+    "deny": 0.0119
    }
   }
  },
@@ -865,85 +865,85 @@
   "decision": {
    "side": "ask",
    "probs": {
-    "allow": 0.0008,
-    "ask": 0.8652,
-    "deny": 0.1341
+    "allow": 0.0076,
+    "ask": 0.9529,
+    "deny": 0.0394
    }
   }
  },
  "evals | ja: 良い回答": {
   "quality": {
-   "side": "3.2388",
+   "side": "3.6912",
    "probs": {
-    "0": 0.0101,
-    "1": 0.0423,
-    "2": 0.1097,
-    "3": 0.3744,
-    "4": 0.4635
+    "0": 0.0095,
+    "1": 0.0132,
+    "2": 0.0299,
+    "3": 0.1716,
+    "4": 0.7758
    }
   },
   "error": {
    "side": "false",
    "probs": {
-    "true": 0.1727,
-    "false": 0.8273
+    "true": 0.1926,
+    "false": 0.8074
    }
   }
  },
  "evals | ja: 誤った回答": {
   "quality": {
-   "side": "1.2438",
+   "side": "0.6674",
    "probs": {
-    "0": 0.3528,
-    "1": 0.1921,
-    "2": 0.3574,
-    "3": 0.0538,
-    "4": 0.0438
+    "0": 0.5316,
+    "1": 0.3178,
+    "2": 0.118,
+    "3": 0.0169,
+    "4": 0.0157
    }
   },
   "error": {
    "side": "true",
    "probs": {
-    "true": 0.9104,
-    "false": 0.08960000000000001
+    "true": 0.9013,
+    "false": 0.09870000000000001
    }
   }
  },
  "evals | ja: 部分的に正しい": {
   "quality": {
-   "side": "2.7227",
+   "side": "2.8668",
    "probs": {
-    "0": 0.0109,
-    "1": 0.0647,
-    "2": 0.2069,
-    "3": 0.6256,
-    "4": 0.0919
+    "0": 0.0099,
+    "1": 0.0234,
+    "2": 0.1422,
+    "3": 0.739,
+    "4": 0.0855
    }
   },
   "error": {
    "side": "false",
    "probs": {
-    "true": 0.1839,
-    "false": 0.8161
+    "true": 0.1476,
+    "false": 0.8524
    }
   }
  },
  "evals | ja: no reference": {
   "quality": {
-   "side": "3.38",
+   "side": "3.6072",
    "probs": {
-    "0": 0.0083,
-    "1": 0.0507,
-    "2": 0.0844,
-    "3": 0.2661,
-    "4": 0.5905
+    "0": 0.0109,
+    "1": 0.015,
+    "2": 0.0332,
+    "3": 0.2378,
+    "4": 0.7031
    }
   },
   "error": {
    "side": "false",
    "probs": {
-    "true": 0.2436,
-    "false": 0.7564
+    "true": 0.1255,
+    "false": 0.8745
    }
   }
  },
@@ -951,21 +951,21 @@
   "action": {
    "side": "refund",
    "probs": {
-    "refund": 0.9041,
-    "replace": 0.0162,
-    "deny": 0.0637,
-    "exchange": 0.016
+    "refund": 0.909,
+    "replace": 0.0039,
+    "deny": 0.0092,
+    "exchange": 0.078
    }
   }
  },
  "gate | ja: あいまいなケース": {
   "action": {
-   "side": "replace",
+   "side": "refund",
    "probs": {
-    "refund": 0.2753,
-    "replace": 0.407,
-    "deny": 0.2758,
-    "exchange": 0.042
+    "refund": 0.4818,
+    "replace": 0.3706,
+    "deny": 0.1403,
+    "exchange": 0.0073
    }
   }
  },
@@ -973,16 +973,16 @@
   "triage": {
    "side": "reply_now",
    "probs": {
-    "archive": 0.0035,
-    "later": 0.0292,
-    "reply_now": 0.9674
+    "archive": 0.0011,
+    "later": 0.002,
+    "reply_now": 0.9969
    }
   },
   "urgent": {
    "side": "true",
    "probs": {
-    "true": 0.9729,
-    "false": 0.027100000000000013
+    "true": 0.9853,
+    "false": 0.014700000000000046
    }
   }
  },
@@ -990,16 +990,16 @@
   "triage": {
    "side": "later",
    "probs": {
-    "archive": 0.3006,
-    "later": 0.6867,
-    "reply_now": 0.0127
+    "archive": 0.3859,
+    "later": 0.5995,
+    "reply_now": 0.0146
    }
   },
   "urgent": {
    "side": "false",
    "probs": {
-    "true": 0.0116,
-    "false": 0.9884
+    "true": 0.0147,
+    "false": 0.9853
    }
   }
  },
@@ -1007,16 +1007,16 @@
   "triage": {
    "side": "archive",
    "probs": {
-    "archive": 0.562,
-    "later": 0.4373,
-    "reply_now": 0.0008
+    "archive": 0.6675,
+    "later": 0.331,
+    "reply_now": 0.0014
    }
   },
   "urgent": {
    "side": "false",
    "probs": {
-    "true": 0.0073,
-    "false": 0.9927
+    "true": 0.0131,
+    "false": 0.9869
    }
   }
  },
@@ -1024,16 +1024,16 @@
   "triage": {
    "side": "reply_now",
    "probs": {
-    "archive": 0.0007,
-    "later": 0.0056,
-    "reply_now": 0.9937
+    "archive": 0.0022,
+    "later": 0.0057,
+    "reply_now": 0.9922
    }
   },
   "urgent": {
    "side": "true",
    "probs": {
-    "true": 0.957,
-    "false": 0.04300000000000004
+    "true": 0.9705,
+    "false": 0.02949999999999997
    }
   }
  },
@@ -1041,16 +1041,16 @@
   "triage": {
    "side": "later",
    "probs": {
-    "archive": 0.025,
-    "later": 0.9702,
-    "reply_now": 0.0048
+    "archive": 0.046,
+    "later": 0.9391,
+    "reply_now": 0.0149
    }
   },
   "urgent": {
    "side": "false",
    "probs": {
-    "true": 0.0127,
-    "false": 0.9873
+    "true": 0.0071,
+    "false": 0.9929
    }
   }
  },
@@ -1058,33 +1058,33 @@
   "triage": {
    "side": "archive",
    "probs": {
-    "archive": 0.9395,
-    "later": 0.0598,
-    "reply_now": 0.0007
+    "archive": 0.984,
+    "later": 0.0158,
+    "reply_now": 0.0002
    }
   },
   "urgent": {
    "side": "false",
    "probs": {
-    "true": 0.0169,
-    "false": 0.9831
+    "true": 0.0191,
+    "false": 0.9809
    }
   }
  },
  "inbox | ja: email 7": {
   "triage": {
-   "side": "later",
+   "side": "archive",
    "probs": {
-    "archive": 0.1229,
-    "later": 0.6802,
-    "reply_now": 0.197
+    "archive": 0.4983,
+    "later": 0.4831,
+    "reply_now": 0.0185
    }
   },
   "urgent": {
-   "side": "true",
+   "side": "false",
    "probs": {
-    "true": 0.5321,
-    "false": 0.4679
+    "true": 0.3511,
+    "false": 0.6489
    }
   }
  },
@@ -1092,16 +1092,16 @@
   "triage": {
    "side": "archive",
    "probs": {
-    "archive": 0.7854,
-    "later": 0.1997,
-    "reply_now": 0.015
+    "archive": 0.9303,
+    "later": 0.0675,
+    "reply_now": 0.0021
    }
   },
   "urgent": {
    "side": "true",
    "probs": {
-    "true": 0.6889,
-    "false": 0.31110000000000004
+    "true": 0.919,
+    "false": 0.08099999999999996
    }
   }
  },
@@ -1109,8 +1109,8 @@
   "answers": {
    "side": "false",
    "probs": {
-    "true": 0.0175,
-    "false": 0.9825
+    "true": 0.0563,
+    "false": 0.9437
    }
   }
  },
@@ -1118,8 +1118,8 @@
   "answers": {
    "side": "false",
    "probs": {
-    "true": 0.0127,
-    "false": 0.9873
+    "true": 0.0134,
+    "false": 0.9866
    }
   }
  },
@@ -1127,8 +1127,8 @@
   "answers": {
    "side": "true",
    "probs": {
-    "true": 0.9444,
-    "false": 0.05559999999999998
+    "true": 0.8459,
+    "false": 0.15410000000000001
    }
   }
  },
@@ -1136,8 +1136,8 @@
   "answers": {
    "side": "false",
    "probs": {
-    "true": 0.0149,
-    "false": 0.9851
+    "true": 0.0411,
+    "false": 0.9589
    }
   }
  },
@@ -1145,8 +1145,8 @@
   "answers": {
    "side": "false",
    "probs": {
-    "true": 0.2749,
-    "false": 0.7251000000000001
+    "true": 0.0437,
+    "false": 0.9563
    }
   }
  },
@@ -1154,8 +1154,8 @@
   "answers": {
    "side": "true",
    "probs": {
-    "true": 0.9097,
-    "false": 0.09030000000000005
+    "true": 0.8804,
+    "false": 0.11960000000000004
    }
   }
  },
@@ -1163,9 +1163,9 @@
   "sentiment": {
    "side": "positive",
    "probs": {
-    "positive": 0.981,
-    "neutral": 0.0156,
-    "negative": 0.0034
+    "positive": 0.993,
+    "neutral": 0.0062,
+    "negative": 0.0008
    }
   }
  },
@@ -1173,9 +1173,9 @@
   "sentiment": {
    "side": "negative",
    "probs": {
-    "positive": 0.0024,
-    "neutral": 0.0799,
-    "negative": 0.9177
+    "positive": 0.0018,
+    "neutral": 0.0262,
+    "negative": 0.9721
    }
   }
  },
@@ -1183,9 +1183,9 @@
   "sentiment": {
    "side": "neutral",
    "probs": {
-    "positive": 0.0179,
-    "neutral": 0.9401,
-    "negative": 0.042
+    "positive": 0.0065,
+    "neutral": 0.9861,
+    "negative": 0.0074
    }
   }
  },
@@ -1193,9 +1193,9 @@
   "sentiment": {
    "side": "positive",
    "probs": {
-    "positive": 0.8425,
-    "neutral": 0.1481,
-    "negative": 0.0094
+    "positive": 0.9497,
+    "neutral": 0.0316,
+    "negative": 0.0187
    }
   }
  },
@@ -1203,9 +1203,9 @@
   "sentiment": {
    "side": "positive",
    "probs": {
-    "positive": 0.9352,
-    "neutral": 0.0608,
-    "negative": 0.004
+    "positive": 0.9826,
+    "neutral": 0.0155,
+    "negative": 0.0019
    }
   }
  },
@@ -1213,9 +1213,9 @@
   "sentiment": {
    "side": "negative",
    "probs": {
-    "positive": 0.0006,
-    "neutral": 0.021,
-    "negative": 0.9784
+    "positive": 0.0019,
+    "neutral": 0.0159,
+    "negative": 0.9823
    }
   }
  },
@@ -1223,9 +1223,9 @@
   "sentiment": {
    "side": "neutral",
    "probs": {
-    "positive": 0.4696,
-    "neutral": 0.4967,
-    "negative": 0.0336
+    "positive": 0.0578,
+    "neutral": 0.9161,
+    "negative": 0.0261
    }
   }
  },
@@ -1233,9 +1233,9 @@
   "sentiment": {
    "side": "negative",
    "probs": {
-    "positive": 0.0008,
-    "neutral": 0.032,
-    "negative": 0.9671
+    "positive": 0.0012,
+    "neutral": 0.0166,
+    "negative": 0.9822
    }
   }
  },
@@ -1243,19 +1243,19 @@
   "sentiment": {
    "side": "positive",
    "probs": {
-    "positive": 0.973,
-    "neutral": 0.023,
-    "negative": 0.0039
+    "positive": 0.9866,
+    "neutral": 0.012,
+    "negative": 0.0014
    }
   }
  },
  "bulk | ja: row 10": {
   "sentiment": {
-   "side": "neutral",
+   "side": "positive",
    "probs": {
-    "positive": 0.1297,
-    "neutral": 0.8203,
-    "negative": 0.05
+    "positive": 0.7222,
+    "neutral": 0.2527,
+    "negative": 0.025
    }
   }
  },
@@ -1263,9 +1263,9 @@
   "sentiment": {
    "side": "negative",
    "probs": {
-    "positive": 0.0027,
-    "neutral": 0.1172,
-    "negative": 0.8801
+    "positive": 0.0024,
+    "neutral": 0.0355,
+    "negative": 0.9621
    }
   }
  },
@@ -1273,9 +1273,9 @@
   "sentiment": {
    "side": "positive",
    "probs": {
-    "positive": 0.9782,
-    "neutral": 0.019,
-    "negative": 0.0028
+    "positive": 0.993,
+    "neutral": 0.0063,
+    "negative": 0.0007
    }
   }
  },
@@ -1283,9 +1283,9 @@
   "sentiment": {
    "side": "negative",
    "probs": {
-    "positive": 0.0014,
-    "neutral": 0.0321,
-    "negative": 0.9665
+    "positive": 0.0034,
+    "neutral": 0.0401,
+    "negative": 0.9565
    }
   }
  },
@@ -1293,9 +1293,9 @@
   "sentiment": {
    "side": "neutral",
    "probs": {
-    "positive": 0.0163,
-    "neutral": 0.9466,
-    "negative": 0.0371
+    "positive": 0.0091,
+    "neutral": 0.9316,
+    "negative": 0.0594
    }
   }
  },
@@ -1303,9 +1303,9 @@
   "sentiment": {
    "side": "positive",
    "probs": {
-    "positive": 0.9159,
-    "neutral": 0.0774,
-    "negative": 0.0067
+    "positive": 0.9891,
+    "neutral": 0.0098,
+    "negative": 0.0012
    }
   }
  },
@@ -1313,9 +1313,9 @@
   "sentiment": {
    "side": "negative",
    "probs": {
-    "positive": 0.0009,
-    "neutral": 0.0329,
-    "negative": 0.9662
+    "positive": 0.0005,
+    "neutral": 0.0052,
+    "negative": 0.9943
    }
   }
  },
@@ -1323,9 +1323,9 @@
   "sentiment": {
    "side": "neutral",
    "probs": {
-    "positive": 0.0303,
-    "neutral": 0.6974,
-    "negative": 0.2723
+    "positive": 0.0602,
+    "neutral": 0.8764,
+    "negative": 0.0634
    }
   }
  },
@@ -1333,9 +1333,9 @@
   "sentiment": {
    "side": "positive",
    "probs": {
-    "positive": 0.9213,
-    "neutral": 0.0715,
-    "negative": 0.0072
+    "positive": 0.9875,
+    "neutral": 0.0115,
+    "negative": 0.001
    }
   }
  },
@@ -1343,9 +1343,9 @@
   "sentiment": {
    "side": "negative",
    "probs": {
-    "positive": 0.0009,
-    "neutral": 0.024,
-    "negative": 0.9752
+    "positive": 0.0047,
+    "neutral": 0.1095,
+    "negative": 0.8859
    }
   }
  },
@@ -1353,9 +1353,9 @@
   "sentiment": {
    "side": "neutral",
    "probs": {
-    "positive": 0.0113,
-    "neutral": 0.9631,
-    "negative": 0.0256
+    "positive": 0.0071,
+    "neutral": 0.9593,
+    "negative": 0.0336
    }
   }
  },
@@ -1363,9 +1363,9 @@
   "sentiment": {
    "side": "positive",
    "probs": {
-    "positive": 0.9773,
-    "neutral": 0.0181,
-    "negative": 0.0046
+    "positive": 0.9934,
+    "neutral": 0.0058,
+    "negative": 0.0008
    }
   }
  },
@@ -1373,9 +1373,9 @@
   "sentiment": {
    "side": "negative",
    "probs": {
-    "positive": 0.0041,
-    "neutral": 0.1066,
-    "negative": 0.8893
+    "positive": 0.0013,
+    "neutral": 0.0138,
+    "negative": 0.9849
    }
   }
  },
@@ -1383,9 +1383,9 @@
   "sentiment": {
    "side": "neutral",
    "probs": {
-    "positive": 0.044,
-    "neutral": 0.9321,
-    "negative": 0.024
+    "positive": 0.479,
+    "neutral": 0.5168,
+    "negative": 0.0042
    }
   }
  },
@@ -1393,9 +1393,9 @@
   "sentiment": {
    "side": "positive",
    "probs": {
-    "positive": 0.9547,
-    "neutral": 0.0395,
-    "negative": 0.0058
+    "positive": 0.9852,
+    "neutral": 0.0128,
+    "negative": 0.0019
    }
   }
  },
@@ -1403,9 +1403,9 @@
   "sentiment": {
    "side": "negative",
    "probs": {
-    "positive": 0.0006,
-    "neutral": 0.0178,
-    "negative": 0.9816
+    "positive": 0.0026,
+    "neutral": 0.0217,
+    "negative": 0.9757
    }
   }
  },
@@ -1413,9 +1413,9 @@
   "sentiment": {
    "side": "neutral",
    "probs": {
-    "positive": 0.0934,
-    "neutral": 0.8813,
-    "negative": 0.0252
+    "positive": 0.0518,
+    "neutral": 0.9178,
+    "negative": 0.0304
    }
   }
  },
@@ -1423,9 +1423,9 @@
   "sentiment": {
    "side": "positive",
    "probs": {
-    "positive": 0.9548,
-    "neutral": 0.0401,
-    "negative": 0.0051
+    "positive": 0.9914,
+    "neutral": 0.0071,
+    "negative": 0.0016
    }
   }
  },
@@ -1433,9 +1433,9 @@
   "sentiment": {
    "side": "negative",
    "probs": {
-    "positive": 0.0022,
-    "neutral": 0.0519,
-    "negative": 0.9458
+    "positive": 0.001,
+    "neutral": 0.0082,
+    "negative": 0.9909
    }
   }
  },
@@ -1443,9 +1443,9 @@
   "sentiment": {
    "side": "positive",
    "probs": {
-    "positive": 0.8234,
-    "neutral": 0.1675,
-    "negative": 0.0091
+    "positive": 0.8794,
+    "neutral": 0.1144,
+    "negative": 0.0062
    }
   }
  },
@@ -1453,9 +1453,9 @@
   "sentiment": {
    "side": "negative",
    "probs": {
-    "positive": 0.0009,
-    "neutral": 0.0165,
-    "negative": 0.9825
+    "positive": 0.0036,
+    "neutral": 0.0187,
+    "negative": 0.9777
    }
   }
  },
@@ -1463,32 +1463,32 @@
   "type": {
    "side": "type/security",
    "probs": {
-    "type/bug": 0.0026,
-    "type/docs": 0.0011,
-    "type/feature": 0.0095,
+    "type/bug": 0.0031,
+    "type/docs": 0.0008,
+    "type/feature": 0.0167,
     "type/perf": 0.0012,
-    "type/refactor": 0.0205,
-    "type/security": 0.9644,
-    "type/test": 0.0008
+    "type/refactor": 0.0043,
+    "type/security": 0.9722,
+    "type/test": 0.0017
    }
   },
   "blast": {
-   "side": "review:blast-contained",
+   "side": "review:blast-moderate",
    "probs": {
-    "review:blast-contained": 0.5744,
-    "review:blast-moderate": 0.2898,
-    "review:blast-broad": 0.1236,
-    "review:blast-massive": 0.0122
+    "review:blast-contained": 0.3833,
+    "review:blast-moderate": 0.5955,
+    "review:blast-broad": 0.0185,
+    "review:blast-massive": 0.0027
    }
   },
   "sev": {
    "side": "P3",
    "probs": {
-    "P0": 0.0091,
-    "P1": 0.0137,
-    "P2": 0.0903,
-    "P3": 0.6374,
-    "P4": 0.2496
+    "P0": 0.0494,
+    "P1": 0.0601,
+    "P2": 0.1402,
+    "P3": 0.4393,
+    "P4": 0.311
    }
   }
  },
@@ -1496,32 +1496,32 @@
   "type": {
    "side": "type/docs",
    "probs": {
-    "type/bug": 0.0002,
-    "type/docs": 0.9889,
-    "type/feature": 0.0059,
-    "type/perf": 0.0003,
-    "type/refactor": 0.0044,
-    "type/security": 0.0002,
+    "type/bug": 0.0001,
+    "type/docs": 0.9887,
+    "type/feature": 0.0101,
+    "type/perf": 0.0001,
+    "type/refactor": 0.0003,
+    "type/security": 0.0005,
     "type/test": 0.0001
    }
   },
   "blast": {
    "side": "review:blast-contained",
    "probs": {
-    "review:blast-contained": 0.7014,
-    "review:blast-moderate": 0.1965,
-    "review:blast-broad": 0.0975,
-    "review:blast-massive": 0.0046
+    "review:blast-contained": 0.8794,
+    "review:blast-moderate": 0.1188,
+    "review:blast-broad": 0.0014,
+    "review:blast-massive": 0.0004
    }
   },
   "sev": {
    "side": "P4",
    "probs": {
-    "P0": 0.0007,
-    "P1": 0.0009,
-    "P2": 0.0022,
-    "P3": 0.1018,
-    "P4": 0.8943
+    "P0": 0.0004,
+    "P1": 0.0007,
+    "P2": 0.0033,
+    "P3": 0.1573,
+    "P4": 0.8383
    }
   }
  },
@@ -1529,32 +1529,32 @@
   "type": {
    "side": "type/perf",
    "probs": {
-    "type/bug": 0.0072,
-    "type/docs": 0.0148,
-    "type/feature": 0.388,
-    "type/perf": 0.536,
-    "type/refactor": 0.0492,
-    "type/security": 0.0026,
-    "type/test": 0.0022
+    "type/bug": 0.0017,
+    "type/docs": 0.0012,
+    "type/feature": 0.2475,
+    "type/perf": 0.7465,
+    "type/refactor": 0.0011,
+    "type/security": 0.0017,
+    "type/test": 0.0004
    }
   },
   "blast": {
-   "side": "review:blast-moderate",
+   "side": "review:blast-contained",
    "probs": {
-    "review:blast-contained": 0.4075,
-    "review:blast-moderate": 0.4457,
-    "review:blast-broad": 0.1418,
-    "review:blast-massive": 0.0049
+    "review:blast-contained": 0.5078,
+    "review:blast-moderate": 0.4909,
+    "review:blast-broad": 0.0012,
+    "review:blast-massive": 0.0001
    }
   },
   "sev": {
    "side": "P3",
    "probs": {
-    "P0": 0.0373,
-    "P1": 0.1086,
-    "P2": 0.2019,
-    "P3": 0.6247,
-    "P4": 0.0275
+    "P0": 0.0035,
+    "P1": 0.0054,
+    "P2": 0.0821,
+    "P3": 0.9013,
+    "P4": 0.0077
    }
   }
  },
@@ -1562,32 +1562,32 @@
   "type": {
    "side": "type/test",
    "probs": {
-    "type/bug": 0.0046,
-    "type/docs": 0.0618,
-    "type/feature": 0.1403,
-    "type/perf": 0.0097,
-    "type/refactor": 0.0696,
-    "type/security": 0.0074,
-    "type/test": 0.7066
+    "type/bug": 0.0086,
+    "type/docs": 0.0825,
+    "type/feature": 0.1524,
+    "type/perf": 0.0048,
+    "type/refactor": 0.0152,
+    "type/security": 0.0283,
+    "type/test": 0.7083
    }
   },
   "blast": {
-   "side": "review:blast-contained",
+   "side": "review:blast-moderate",
    "probs": {
-    "review:blast-contained": 0.4722,
-    "review:blast-moderate": 0.2089,
-    "review:blast-broad": 0.3111,
-    "review:blast-massive": 0.0077
+    "review:blast-contained": 0.2202,
+    "review:blast-moderate": 0.4771,
+    "review:blast-broad": 0.2965,
+    "review:blast-massive": 0.0062
    }
   },
   "sev": {
    "side": "P3",
    "probs": {
-    "P0": 0.0049,
-    "P1": 0.0084,
-    "P2": 0.0671,
-    "P3": 0.8937,
-    "P4": 0.0258
+    "P0": 0.0054,
+    "P1": 0.0082,
+    "P2": 0.0595,
+    "P3": 0.8893,
+    "P4": 0.0377
    }
   }
  },
@@ -1595,32 +1595,32 @@
   "type": {
    "side": "type/test",
    "probs": {
-    "type/bug": 0.0001,
-    "type/docs": 0.0002,
-    "type/feature": 0.0016,
-    "type/perf": 0.0001,
-    "type/refactor": 0.0018,
-    "type/security": 0.0001,
-    "type/test": 0.9961
+    "type/bug": 0.0024,
+    "type/docs": 0.0061,
+    "type/feature": 0.0488,
+    "type/perf": 0.0027,
+    "type/refactor": 0.0024,
+    "type/security": 0.0094,
+    "type/test": 0.9282
    }
   },
   "blast": {
-   "side": "review:blast-contained",
+   "side": "review:blast-moderate",
    "probs": {
-    "review:blast-contained": 0.5564,
-    "review:blast-moderate": 0.2412,
-    "review:blast-broad": 0.1858,
-    "review:blast-massive": 0.0167
+    "review:blast-contained": 0.3713,
+    "review:blast-moderate": 0.4371,
+    "review:blast-broad": 0.1843,
+    "review:blast-massive": 0.0073
    }
   },
   "sev": {
    "side": "P3",
    "probs": {
-    "P0": 0.0027,
-    "P1": 0.0042,
-    "P2": 0.0375,
-    "P3": 0.9408,
-    "P4": 0.0148
+    "P0": 0.0032,
+    "P1": 0.0058,
+    "P2": 0.0343,
+    "P3": 0.9401,
+    "P4": 0.0166
    }
   }
  },
@@ -1628,9 +1628,9 @@
   "move": {
    "side": "right",
    "probs": {
-    "stay": 0.0023,
-    "right": 0.9915,
-    "left": 0.0062
+    "stay": 0.0004,
+    "right": 0.9984,
+    "left": 0.0012
    }
   }
  },
@@ -1638,9 +1638,9 @@
   "move": {
    "side": "left",
    "probs": {
-    "stay": 0.0018,
-    "right": 0.0067,
-    "left": 0.9915
+    "stay": 0.001,
+    "right": 0.0021,
+    "left": 0.9969
    }
   }
  },
@@ -1648,19 +1648,19 @@
   "move": {
    "side": "stay",
    "probs": {
-    "stay": 0.9971,
-    "right": 0.002,
-    "left": 0.0009
+    "stay": 0.9989,
+    "right": 0.0004,
+    "left": 0.0008
    }
   }
  },
  "control | robot 3, target 10, no hint": {
   "move": {
-   "side": "left",
+   "side": "right",
    "probs": {
-    "stay": 0.0124,
-    "right": 0.3996,
-    "left": 0.588
+    "stay": 0.0061,
+    "right": 0.8768,
+    "left": 0.1171
    }
   }
  },
@@ -1668,18 +1668,18 @@
   "damaged": {
    "side": "true",
    "probs": {
-    "true": 0.6162,
-    "false": 0.38380000000000003
+    "true": 0.8783,
+    "false": 0.12170000000000003
    }
   },
   "place": {
    "side": "on a sidewalk",
    "probs": {
-    "at a front door": 0.2982,
-    "in a mailbox": 0.0113,
-    "in a delivery locker": 0.0141,
-    "on a sidewalk": 0.6693,
-    "inside a delivery van": 0.0071
+    "at a front door": 0.1621,
+    "in a mailbox": 0.0007,
+    "in a delivery locker": 0.0008,
+    "on a sidewalk": 0.8363,
+    "inside a delivery van": 0.0002
    }
   }
  },
@@ -1687,18 +1687,18 @@
   "damaged": {
    "side": "false",
    "probs": {
-    "true": 0.1017,
-    "false": 0.8983
+    "true": 0.0976,
+    "false": 0.9024
    }
   },
   "place": {
-   "side": "at a front door",
+   "side": "on a sidewalk",
    "probs": {
-    "at a front door": 0.6551,
-    "in a mailbox": 0.0122,
-    "in a delivery locker": 0.0122,
-    "on a sidewalk": 0.3168,
-    "inside a delivery van": 0.0036
+    "at a front door": 0.1243,
+    "in a mailbox": 0.0003,
+    "in a delivery locker": 0.0003,
+    "on a sidewalk": 0.875,
+    "inside a delivery van": 0
    }
   }
  },
@@ -1706,18 +1706,18 @@
   "damaged": {
    "side": "false",
    "probs": {
-    "true": 0.1188,
-    "false": 0.8812
+    "true": 0.1099,
+    "false": 0.8901
    }
   },
   "place": {
    "side": "in a delivery locker",
    "probs": {
-    "at a front door": 0.0063,
-    "in a mailbox": 0.0085,
-    "in a delivery locker": 0.8964,
-    "on a sidewalk": 0.0769,
-    "inside a delivery van": 0.0118
+    "at a front door": 0.0008,
+    "in a mailbox": 0.0007,
+    "in a delivery locker": 0.9911,
+    "on a sidewalk": 0.0073,
+    "inside a delivery van": 0.0001
    }
   }
  },
@@ -1725,18 +1725,18 @@
   "damaged": {
    "side": "true",
    "probs": {
-    "true": 0.8988,
-    "false": 0.10119999999999996
+    "true": 0.8961,
+    "false": 0.10389999999999999
    }
   },
   "place": {
    "side": "on a sidewalk",
    "probs": {
-    "at a front door": 0.0058,
-    "in a mailbox": 0.0036,
-    "in a delivery locker": 0.0058,
-    "on a sidewalk": 0.9828,
-    "inside a delivery van": 0.0021
+    "at a front door": 0.0019,
+    "in a mailbox": 0.0003,
+    "in a delivery locker": 0.0001,
+    "on a sidewalk": 0.9978,
+    "inside a delivery van": 0
    }
   }
  },
@@ -1744,91 +1744,91 @@
   "damaged": {
    "side": "false",
    "probs": {
-    "true": 0.1273,
-    "false": 0.8727
+    "true": 0.131,
+    "false": 0.869
    }
   },
   "place": {
-   "side": "on a sidewalk",
+   "side": "in a mailbox",
    "probs": {
-    "at a front door": 0.1802,
-    "in a mailbox": 0.0561,
-    "in a delivery locker": 0.23,
-    "on a sidewalk": 0.4554,
-    "inside a delivery van": 0.0784
+    "at a front door": 0.0113,
+    "in a mailbox": 0.5288,
+    "in a delivery locker": 0.4506,
+    "on a sidewalk": 0.0092,
+    "inside a delivery van": 0.0001
    }
   }
  },
  "photo | damaged_crushed_truck": {
   "damaged": {
-   "side": "false",
+   "side": "true",
    "probs": {
-    "true": 0.4903,
-    "false": 0.5097
+    "true": 0.8985,
+    "false": 0.10150000000000003
    }
   },
   "place": {
    "side": "inside a delivery van",
    "probs": {
-    "at a front door": 0.045,
-    "in a mailbox": 0.0067,
-    "in a delivery locker": 0.0345,
-    "on a sidewalk": 0.0238,
-    "inside a delivery van": 0.89
+    "at a front door": 0.0024,
+    "in a mailbox": 0.0011,
+    "in a delivery locker": 0.0071,
+    "on a sidewalk": 0.0256,
+    "inside a delivery van": 0.9637
    }
   }
  },
  "voice | en_directions": {
   "urgent": {
-   "side": "true",
+   "side": "false",
    "probs": {
-    "true": 0.5504,
-    "false": 0.4496
+    "true": 0.1474,
+    "false": 0.8526
    }
   },
   "intent": {
    "side": "directions to the address",
    "probs": {
-    "directions to the address": 0.9985,
-    "report a damaged parcel": 0.0001,
-    "the customer is not home": 0.0009,
-    "a vehicle problem": 0.0004
+    "directions to the address": 0.9999,
+    "report a damaged parcel": 0,
+    "the customer is not home": 0,
+    "a vehicle problem": 0
    }
   }
  },
  "voice | en_damaged": {
   "urgent": {
-   "side": "false",
+   "side": "true",
    "probs": {
-    "true": 0.4883,
-    "false": 0.5117
+    "true": 0.5381,
+    "false": 0.4619
    }
   },
   "intent": {
    "side": "report a damaged parcel",
    "probs": {
-    "directions to the address": 0.0198,
-    "report a damaged parcel": 0.9515,
-    "the customer is not home": 0.0152,
-    "a vehicle problem": 0.0135
+    "directions to the address": 0.0044,
+    "report a damaged parcel": 0.9914,
+    "the customer is not home": 0.0032,
+    "a vehicle problem": 0.001
    }
   }
  },
  "voice | ja_nothome": {
   "urgent": {
-   "side": "true",
+   "side": "false",
    "probs": {
-    "true": 0.5057,
-    "false": 0.49429999999999996
+    "true": 0.3526,
+    "false": 0.6474
    }
   },
   "intent": {
-   "side": "report a damaged parcel",
+   "side": "the customer is not home",
    "probs": {
-    "directions to the address": 0.071,
-    "report a damaged parcel": 0.4658,
-    "the customer is not home": 0.4383,
-    "a vehicle problem": 0.0248
+    "directions to the address": 0.0202,
+    "report a damaged parcel": 0.0127,
+    "the customer is not home": 0.9655,
+    "a vehicle problem": 0.0016
    }
   }
  },
@@ -1836,17 +1836,17 @@
   "urgent": {
    "side": "true",
    "probs": {
-    "true": 0.7272,
-    "false": 0.27280000000000004
+    "true": 0.9694,
+    "false": 0.03059999999999996
    }
   },
   "intent": {
    "side": "a vehicle problem",
    "probs": {
-    "directions to the address": 0.0574,
-    "report a damaged parcel": 0.0009,
-    "the customer is not home": 0.0057,
-    "a vehicle problem": 0.936
+    "directions to the address": 0.0008,
+    "report a damaged parcel": 0.0001,
+    "the customer is not home": 0.0002,
+    "a vehicle problem": 0.999
    }
   }
  },
@@ -1854,18 +1854,18 @@
   "damaged": {
    "side": "true",
    "probs": {
-    "true": 0.5059,
-    "false": 0.4941
+    "true": 0.5483,
+    "false": 0.4517
    }
   },
   "place": {
    "side": "on a sidewalk",
    "probs": {
-    "at a front door": 0.0053,
-    "in a mailbox": 0.0014,
-    "in a delivery locker": 0.0052,
-    "on a sidewalk": 0.9859,
-    "inside a delivery van": 0.0022
+    "at a front door": 0.0013,
+    "in a mailbox": 0.0005,
+    "in a delivery locker": 0.0003,
+    "on a sidewalk": 0.9979,
+    "inside a delivery van": 0.0001
    }
   }
  },
@@ -1873,37 +1873,37 @@
   "damaged": {
    "side": "false",
    "probs": {
-    "true": 0.0859,
-    "false": 0.9141
+    "true": 0.1364,
+    "false": 0.8636
    }
   },
   "place": {
    "side": "in a delivery locker",
    "probs": {
-    "at a front door": 0.0049,
-    "in a mailbox": 0.0062,
-    "in a delivery locker": 0.9236,
-    "on a sidewalk": 0.0231,
-    "inside a delivery van": 0.0422
+    "at a front door": 0.0012,
+    "in a mailbox": 0.0011,
+    "in a delivery locker": 0.9892,
+    "on a sidewalk": 0.0085,
+    "inside a delivery van": 0
    }
   }
  },
  "video | damaged_crushed_truck": {
   "damaged": {
-   "side": "false",
+   "side": "true",
    "probs": {
-    "true": 0.26,
-    "false": 0.74
+    "true": 0.8807,
+    "false": 0.11929999999999996
    }
   },
   "place": {
    "side": "inside a delivery van",
    "probs": {
-    "at a front door": 0.0588,
-    "in a mailbox": 0.0105,
-    "in a delivery locker": 0.0507,
-    "on a sidewalk": 0.0233,
-    "inside a delivery van": 0.8567
+    "at a front door": 0.0005,
+    "in a mailbox": 0.0003,
+    "in a delivery locker": 0.0016,
+    "on a sidewalk": 0.0017,
+    "inside a delivery van": 0.9959
    }
   }
  },
@@ -1911,18 +1911,18 @@
   "damaged": {
    "side": "false",
    "probs": {
-    "true": 0.0479,
-    "false": 0.9521
+    "true": 0.084,
+    "false": 0.916
    }
   },
   "place": {
    "side": "at a front door",
    "probs": {
-    "at a front door": 0.9534,
-    "in a mailbox": 0.0021,
-    "in a delivery locker": 0.0036,
-    "on a sidewalk": 0.0397,
-    "inside a delivery van": 0.0013
+    "at a front door": 0.6101,
+    "in a mailbox": 0.0006,
+    "in a delivery locker": 0.0003,
+    "on a sidewalk": 0.389,
+    "inside a delivery van": 0
    }
   }
  },
