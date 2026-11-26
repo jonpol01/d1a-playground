@@ -14,6 +14,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- `DATE_FACTS` and `JA_DATES` (mini.sh settings, 0 or 1, off by default): pass d1a's `D1A_DATE_FACTS` and `D1A_JA_DATES` to
+  the model server, so date preprocessing survives `./mini.sh update` and `reinstall`, which rewrite the model server's
+  agent.
 - `MEDIA_DEMOS=0` (build time): leave out the photo, voice and video demos next to a model server that cannot answer
   them (a PyTorch server without `d1a.serving.media`); the headline counts the demos shown.
 - Demo 14, An agent's day: one task through an agent factory (intake, every tool call, a judge of the report, a router),
