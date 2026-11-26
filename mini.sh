@@ -30,6 +30,8 @@
 #   CHAT_CONTEXT= (D1A_CHAT_CONTEXT, e.g. 32768: the longest prompt + max_tokens one chat may ask for; a longer one gets a
 #   400 at once, which Hermes answers by compressing. Unset: the model's context, 131,072 for D1A-E4B-it, where one
 #   prompt holds the model ~9 minutes and every other chat waits; d1a#318)
+#   ROUTES= (D1A_ROUTES, d1a#419: a JSON file of chat routes, d1a docs/USAGE.md "Route chats to other models". Chats that
+#   ask for a review, or need a larger model, go to the targets it names; the rest stay with D1A. Unset: off)
 #   LOG_REWRITE= (D1A_LOG_REWRITE, d1a#377: a private JSON list of {"pattern", "replace"} rules. With FEEDBACK_LOG, the model
 #   server logs each decision's text in general wording, and the outcome poster rewords issue titles the same way to match)
 #   WRITE_TOKEN= (at least 16 of A-Z a-z 0-9 . _ ~ -, e.g. openssl rand -hex 24: the Learning page's changes and the PR label
@@ -73,7 +75,7 @@ die() { printf '\033[31m[mini] error:\033[0m %s\n' "$*" >&2; exit 1; }
 # the settings .demo/mini.env holds, in the order save_env writes them
 ENV_KEYS="MODEL_RUN MODEL_PORT PORT HOST D1A_BASE_PATH PYTORCH_MPS_HIGH_WATERMARK_RATIO PYTORCH_MPS_LOW_WATERMARK_RATIO MODEL_PREFIX_CACHE
 MODEL_PREFIX_MAX_TOKENS MEDIA IDLE_UNLOAD FEEDBACK_LOG OUTCOME_CALIBRATOR LABEL_OUTCOMES OPENAI_PORT OPENAI_HOST EMBED_GGUF EMBED_REF CHAT_CONTEXT
-LOG_REWRITE WRITE_TOKEN SHOGI_URL AGENT_LAB_URL"
+ROUTES LOG_REWRITE WRITE_TOKEN SHOGI_URL AGENT_LAB_URL"
 
 # the settings' old names, from when the model server was Kev's: still read, and mini.env's lines are renamed (migrate_env)
 OLD_NAMES="KEV_PORT:MODEL_PORT KEV_PREFIX_CACHE:MODEL_PREFIX_CACHE KEV_PREFIX_MAX_TOKENS:MODEL_PREFIX_MAX_TOKENS"
@@ -139,7 +141,7 @@ load_env() {
   MODEL_PREFIX_CACHE="${MODEL_PREFIX_CACHE:-4}"; MODEL_PREFIX_MAX_TOKENS="${MODEL_PREFIX_MAX_TOKENS:-65536}"
   MEDIA="${MEDIA:-0}"; IDLE_UNLOAD="${IDLE_UNLOAD:-600}"
   OPENAI_PORT="${OPENAI_PORT:-}"; OPENAI_HOST="${OPENAI_HOST:-::}"; EMBED_GGUF="${EMBED_GGUF:-}"; EMBED_REF="${EMBED_REF:-}"
-  CHAT_CONTEXT="${CHAT_CONTEXT:-}"
+  CHAT_CONTEXT="${CHAT_CONTEXT:-}"; ROUTES="${ROUTES:-}"
   FEEDBACK_LOG="${FEEDBACK_LOG:-}"; OUTCOME_CALIBRATOR="${OUTCOME_CALIBRATOR:-}"; LABEL_OUTCOMES="${LABEL_OUTCOMES:-0}"
   LOG_REWRITE="${LOG_REWRITE:-}"; WRITE_TOKEN="${WRITE_TOKEN:-}"; SHOGI_URL="${SHOGI_URL:-}"; AGENT_LAB_URL="${AGENT_LAB_URL:-}"
   LEARNING="$STATE/learning.json"; TRAINED_DIR="$STATE/trained"   # the self-learning settings and the trained manifests (d1a#233)
@@ -280,6 +282,10 @@ write_agents() {
   [ -n "$EMBED_GGUF" ] && ENV_XML+="    <key>D1A_EMBED_GGUF</key><string>$EMBED_GGUF</string>
 "
   [ -n "$CHAT_CONTEXT" ] && ENV_XML+="    <key>D1A_CHAT_CONTEXT</key><string>$CHAT_CONTEXT</string>
+"
+  # chat routes (d1a#419): the model server checks the file at startup and refuses one that does not check out
+  [ -z "$ROUTES" ] || [ -f "$ROUTES" ] || die "ROUTES=$ROUTES: no such file"
+  [ -n "$ROUTES" ] && ENV_XML+="    <key>D1A_ROUTES</key><string>$ROUTES</string>
 "
   plist "$MODEL_LABEL" "$PY" -m d1a.serving.serve --run "$MODEL_RUN" --port "$MODEL_PORT" --host 127.0.0.1 --idle-unload "$IDLE_UNLOAD" >"$AGENTS/$MODEL_LABEL.plist"
   launchctl bootout "$(domain)/$MEDIA_LABEL" 2>/dev/null || true; rm -f "$AGENTS/$MEDIA_LABEL.plist"   # photos and voice now go to the model server

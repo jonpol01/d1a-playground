@@ -23,6 +23,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `AGENT_LAB_URL` (mini.sh setting): an agent lab served by its own server, shown under `/agent-lab` with a header link to
   its warehouse page, and as demo 14 (Agent lab: a 3PL shift) in place of An agent's day. Unset, there is no route and
   no link, and demo 14 stays An agent's day.
+- `ROUTES` (mini.sh setting): a d1a chat-routes file passed to the model server as `D1A_ROUTES` (d1a#419). Chats that
+  ask for a review or need a larger model go to the targets it names; the rest stay with D1A. A file that is not there
+  stops `./mini.sh update`. Unset, D1A answers every chat.
 
 ### Changed
 
