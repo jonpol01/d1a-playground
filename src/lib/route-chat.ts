@@ -30,10 +30,11 @@ export function checkBody(posted: unknown): Checked {
   return { ok: true, prompt };
 }
 
-/** Who is asking: the last x-forwarded-for hop. A proxy in front (the serving host's port-80 proxy) appends the address it saw
- * after any the client wrote, so the last one is the real peer; with no proxy (next start on the LAN) the header is the
- * client's own and the per-client limit is advisory: the global caps hold whatever a client claims. */
-export function clientKey(req: Request): string {
+/** Who is asking. Only behind a proxy the app trusts (TRUST_FORWARDED_FOR=1: the app listens on 127.0.0.1 and a proxy in front
+ * appends the address it saw after any the client wrote) is that last x-forwarded-for hop the client; otherwise the header is
+ * the client's own word, so every caller shares one key and the per-client limit holds for everyone together. */
+export function clientKey(req: Request, trustForwarded = false): string {
+  if (!trustForwarded) return "everyone";
   const hops = (req.headers.get("x-forwarded-for") ?? "").split(",").map((h) => h.trim()).filter(Boolean);
   return hops.at(-1) ?? "unknown";
 }
@@ -132,7 +133,7 @@ export async function send(req: Request, deps: Deps): Promise<Response> {
   if (!checked.ok) return json({ error: checked.error }, checked.status);
   const large = largeRoute(await card(deps));
   if (!large) return json({ error: "the model server routes no chat to a large model" }, 503);
-  const slot = deps.limiter.take(clientKey(req));
+  const slot = deps.limiter.take(clientKey(req, deps.env.TRUST_FORWARDED_FOR === "1"));
   if (!slot.ok) return json({ error: slot.why, retryAfterS: slot.retryAfterS }, 429, { "retry-after": String(slot.retryAfterS) });
   const now = deps.now ?? Date.now, t = now();
   try {

@@ -26,11 +26,28 @@ test("nothing that could reach the review route is sent: a PR link, #number or f
   assert.equal(checkBody({ prompt: "Use C# for this" }).ok, true, "a # not followed by a digit is fine");
 });
 
-test("the client is the last x-forwarded-for hop: a proxy appends the real peer after what the client wrote", () => {
+test("behind a trusted proxy the client is the last x-forwarded-for hop; otherwise every caller is one client", () => {
   const req = (h) => new Request("http://x/api/route-chat", { method: "POST", headers: h });
-  assert.equal(clientKey(req({ "x-forwarded-for": "1.2.3.4, 10.0.0.9" })), "10.0.0.9");
-  assert.equal(clientKey(req({ "x-forwarded-for": "10.0.0.9" })), "10.0.0.9");
-  assert.equal(clientKey(req({})), "unknown");
+  assert.equal(clientKey(req({ "x-forwarded-for": "1.2.3.4, 10.0.0.9" }), true), "10.0.0.9");
+  assert.equal(clientKey(req({ "x-forwarded-for": "10.0.0.9" }), true), "10.0.0.9");
+  assert.equal(clientKey(req({}), true), "unknown");
+  assert.equal(clientKey(req({ "x-forwarded-for": "1.2.3.4" })), "everyone", "the header alone is the caller's own word");
+  assert.equal(clientKey(req({ "x-forwarded-for": "5.6.7.8" }), false), "everyone");
+});
+
+test("without a trusted proxy, rotating x-forwarded-for does not buy more sends", async () => {
+  const L = new Limiter(); const s = server();
+  const codes = [];
+  for (let i = 0; i < PER_CLIENT.n + 1; i++) codes.push((await send(post({ prompt: "hi" }, { "x-forwarded-for": `10.0.0.${i}` }), deps(s, undefined, L))).status);
+  assert.deepEqual(codes, [...Array(PER_CLIENT.n).fill(200), 429]);
+  const T = new Limiter(); const trusted = [];
+  for (let i = 0; i < PER_CLIENT.n + 1; i++) trusted.push((await send(post({ prompt: "hi" }, { "x-forwarded-for": `10.0.0.${i}` }), deps(s, { ROUTE_DEMO: "1", MODEL_API: "http://m", TRUST_FORWARDED_FOR: "1" }, T))).status);
+  assert.deepEqual(trusted, Array(PER_CLIENT.n + 1).fill(200), "behind a trusted proxy each address is its own client");
+});
+
+test("every way of naming a pull request or a code block the review route reads is refused", () => {
+  for (const p of ["https://github.com/o/r/pull/12/files", "github.com/O/R/pull/7#discussion_r1", "o/r#12", "Owner/Repo#7 please", "   ```diff\n+a\n   ```", "~~~\nx\n~~~", "review this:\n```\nx\n```"])
+    assert.equal(checkBody({ prompt: p }).status, 400, p);
 });
 
 test("limits: 5 per client per 10 minutes, 30 for everyone per hour, one at a time", () => {

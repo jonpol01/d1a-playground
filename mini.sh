@@ -312,6 +312,10 @@ write_agents() {
   case "$ROUTE_DEMO" in 0|1) ;; *) die "ROUTE_DEMO is 0 or 1 (ROUTE_DEMO=$ROUTE_DEMO)" ;; esac
   [ "$ROUTE_DEMO" = 1 ] && ENV_XML+="    <key>ROUTE_DEMO</key><string>1</string>
 "
+  # its per-client limit reads X-Forwarded-For only when the app listens on 127.0.0.1, so every caller comes through a proxy
+  # that appends the address it saw; with the app on the LAN the header is the caller's own word and all share one limit
+  [ "$ROUTE_DEMO" = 1 ] && [ "$HOST" = 127.0.0.1 ] && ENV_XML+="    <key>TRUST_FORWARDED_FOR</key><string>1</string>
+"
   # the PR label check (/review, d1a-playground#29) reads the decision log; off unless the labeler's outcomes are on
   [ "$LABEL_OUTCOMES" = 1 ] && [ -n "$FEEDBACK_LOG" ] && ENV_XML+="    <key>REVIEW_FEEDBACK_LOG</key><string>$FEEDBACK_LOG</string>
 "

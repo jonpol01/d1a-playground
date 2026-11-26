@@ -151,6 +151,7 @@ grep -A1 "<key>D1A_ROUTES</key>" "$T/home/Library/LaunchAgents/io.github.jonpol0
 for k in D1A_DATE_FACTS D1A_JA_DATES; do grep -A1 "<key>$k</key>" "$T/home/Library/LaunchAgents/io.github.jonpol01.d1a-model.plist" | grep -qF "<string>1</string>" || fail openai "the model server has no $k"; done
 grep -A1 "<key>ROUTE_DEMO</key>" "$T/home/Library/LaunchAgents/io.github.jonpol01.d1a-web.plist" | grep -qF "<string>1</string>" || fail openai "the web app has no ROUTE_DEMO"
 ! grep -q "ROUTE_DEMO" "$T/home/Library/LaunchAgents/io.github.jonpol01.d1a-model.plist" || fail openai "ROUTE_DEMO reached the model server"
+grep -A1 "<key>TRUST_FORWARDED_FOR</key>" "$T/home/Library/LaunchAgents/io.github.jonpol01.d1a-web.plist" | grep -qF "<string>1</string>" || fail openai "the web app on 127.0.0.1 does not read its proxy's X-Forwarded-For"
 printf 'PORT=3999\n' > "$T/app/.demo/mini.env"
 run openai_off FAIL_UV=   # without OPENAI_PORT the agent goes, and nothing listens on the LAN
 [ ! -f "$agent" ] && [ -n "$(last openai_off "bootout .*/io.github.jonpol01.d1a-openai$")" ] || fail openai_off "left the OpenAI port agent"
@@ -159,7 +160,11 @@ run openai_off FAIL_UV=   # without OPENAI_PORT the agent goes, and nothing list
 ! grep -q "D1A_LOG_REWRITE" "$T/home/Library/LaunchAgents/io.github.jonpol01.d1a-model.plist" || fail openai_off "rewords the log without LOG_REWRITE"
 ! grep -q "D1A_ROUTES" "$T/home/Library/LaunchAgents/io.github.jonpol01.d1a-model.plist" || fail openai_off "routes chats without ROUTES"
 ! grep -qE "D1A_DATE_FACTS|D1A_JA_DATES" "$T/home/Library/LaunchAgents/io.github.jonpol01.d1a-model.plist" || fail openai_off "rewrites dates without DATE_FACTS or JA_DATES"
-! grep -q "ROUTE_DEMO" "$T/home/Library/LaunchAgents/io.github.jonpol01.d1a-web.plist" || fail openai_off "offers the routing demo's Send it without ROUTE_DEMO"
+! grep -qE "ROUTE_DEMO|TRUST_FORWARDED_FOR" "$T/home/Library/LaunchAgents/io.github.jonpol01.d1a-web.plist" || fail openai_off "offers the routing demo's Send it without ROUTE_DEMO"
+printf 'PORT=3999\nHOST=0.0.0.0\nROUTE_DEMO=1\n' > "$T/app/.demo/mini.env"
+run demo_lan FAIL_UV=   # the app on the LAN: X-Forwarded-For is the caller's own word, so it is not trusted
+grep -q "<key>ROUTE_DEMO</key>" "$T/home/Library/LaunchAgents/io.github.jonpol01.d1a-web.plist" && ! grep -q "TRUST_FORWARDED_FOR" "$T/home/Library/LaunchAgents/io.github.jonpol01.d1a-web.plist" || fail demo_lan "trusts X-Forwarded-For with the app on the LAN"
+printf 'PORT=3999\n' > "$T/app/.demo/mini.env"
 printf 'PORT=3999\nDATE_FACTS=yes\n' > "$T/app/.demo/mini.env"
 run dates_bad FAIL_UV=   # a date setting that is not 0 or 1 stops the update
 [ "$(cat "$T/dates_bad.status")" != 0 ] && grep -q "are 0 or 1" "$T/dates_bad.out" || fail dates_bad "went on with DATE_FACTS=yes"
