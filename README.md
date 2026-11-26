@@ -37,6 +37,8 @@ Short recordings of the live prototype in dark mode, with the page in English: e
 
 ![Model routing demo: D1A picks the large model for a hard Postgres debugging prompt, with the probability of small, medium and large and the cost per 1,000 requests](docs/gifs/en/routing.gif)
 
+Where the playground's model server routes chats (d1a's `D1A_ROUTES`) and the app runs with `ROUTE_DEMO=1`, **Send it** sends the prompt through the router and shows the answer and who wrote it: D1A when it keeps the prompt, the large model when it forwards it. Accepted on 2026-11-27 on both hosts that serve the playground: small prompts stayed with D1A, medium and large ones were answered by the large model, every forward showed in its log, and the limits held (see "The routing demo's Send it" below). The recording above shows the pick only.
+
 **2. Guardrails**
 
 ![Guardrails demo: a prompt-injection message is labelled prompt_injection and blocked, with the probability of every category](docs/gifs/en/guardrails.gif)
