@@ -122,6 +122,19 @@ export function DemoGrid({ left, right }: { left: ReactNode; right: ReactNode })
   );
 }
 
+/** "D1A got this wrong" on the result of a known-miss example: one whose answer a blind expert label disagrees with
+ * (scored on the served build, d1a docs/FEATURE_TESTS.md). The examples stay as they are; a miss is shown, never hidden
+ * or swapped. Each demo lists its own misses and passes the note only when the example ran unchanged. */
+export function KnownMiss({ children, compact }: { children?: ReactNode; compact?: boolean }) {
+  const label = useText({ en: "D1A got this wrong", ja: "D1A の誤り" });
+  if (!children) return null;
+  return (
+    <p role="note" className={`rounded-lg border border-amber-500/60 bg-amber-500/10 ${compact ? "mt-1.5 px-2 py-1 text-[11px] leading-4" : "px-3 py-2 text-[12px] leading-5"}`}>
+      <span className="font-medium">{label}:</span> {children}
+    </p>
+  );
+}
+
 export function ResultCard({ title, children }: { title: ReactNode; children: ReactNode }) {
   return (
     <section className="rounded-xl border border-border bg-card px-4 py-3 shadow-xs">

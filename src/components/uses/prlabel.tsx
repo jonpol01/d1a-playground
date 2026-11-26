@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import type { Question } from "@/lib/d1a";
-import { useText } from "@/lib/i18n";
-import { AnswerBars, DemoGrid, Empty, ErrorNote, Field, inputCls, Latency, Presets, ResultCard, RunBar, textareaCls, Verdict } from "@/components/uses/shared";
+import { useLang, useText, type Lang } from "@/lib/i18n";
+import { AnswerBars, DemoGrid, Empty, ErrorNote, Field, inputCls, Latency, Presets, ResultCard, RunBar, textareaCls, Verdict, KnownMiss } from "@/components/uses/shared";
 import { useModelRequest } from "@/components/uses/use-request";
 import { Shimmer } from "@/components/uses/visuals";
 
@@ -87,6 +87,23 @@ export const PRESETS: { name: string; pr: PR }[] = [
     files: "added .env +28/-0\nadded .github/workflows/test.yml +38/-0\nadded src/lib.rs +204/-0\nadded tests/integration_test.rs +91/-0" } },
 ];
 
+// The examples whose answer a blind expert label disagrees with (scored on the served build, 2026-11-26; d1a
+// docs/FEATURE_TESTS.md): kept as they are, never swapped, and marked when one runs unchanged.
+const MISSES: Record<string, Record<Lang, string>> = {
+  "Dependency security fix": {
+    en: "severity P3, but this bump fixes a remote-code-execution advisory (GHSA in the description): P0.",
+    ja: "深刻度を P3 としましたが、この更新は説明にあるリモートコード実行の脆弱性（GHSA）を直すもので、P0 です。",
+  },
+  "CI change": {
+    en: "severity P3, but a change to every test and release job is P2.",
+    ja: "深刻度を P3 としましたが、すべてのテストとリリースのジョブに関わる変更で、P2 です。",
+  },
+  "Commits a .env": {
+    en: "blast radius moderate, but a committed .env can leak every secret in it: massive.",
+    ja: "影響範囲を moderate としましたが、コミットされた .env はその中のすべての秘密情報を漏らしうるので、massive です。",
+  },
+};
+
 const TEXT = {
   en: {
     names: PRESETS.map((p) => p.name), url: "Or load a public GitHub PR", load: "Load", loading: "Loading…",
@@ -95,7 +112,7 @@ const TEXT = {
     needsHuman: "needs a human", confident: "confident", flagNote: (q: string) => `An answer below p ${CONFIDENT} (${q}) adds review:needs-human, as the labeling job does.`,
     rule: "Rule: a committed .env forces type/security and at least P1 (D1A's own answers are kept below).",
     labels: "Labels the job would apply", qType: "Change type", qBlast: "Blast radius", qSev: "Severity",
-    note: "The same document and questions as the CTO bot's labeling job, which asks D1A on the serving Mac every few minutes. On 17 real PRs it got 63% of labels right vs 51% for Gemma 4 chat of the same size.",
+    note: "A first-pass labeler a person reviews: the same document and questions as the CTO bot's labeling job, which asks D1A on the serving Mac every few minutes. On 17 real PRs it got 63% of labels right vs 51% for Gemma 4 chat of the same size; on this page's examples, 7 of 12 answers match a blind expert label on the served build, and the misses are marked.",
   },
   ja: {
     names: ["依存関係のセキュリティ修正", "ドキュメントのみ", "新機能", "CI の変更", ".env をコミット"], url: "または公開リポジトリの PR を GitHub から読み込む", load: "読み込む", loading: "読み込み中…",
@@ -104,22 +121,24 @@ const TEXT = {
     needsHuman: "人が確認", confident: "確信あり", flagNote: (q: string) => `p ${CONFIDENT} 未満の答え（${q}）があるので、ラベル付けジョブと同じく review:needs-human を付けます。`,
     rule: "ルール: .env のコミットは type/security と P1 以上に強制します（D1A 自身の答えは下に表示）。",
     labels: "ジョブが付けるラベル", qType: "変更の種類", qBlast: "影響範囲", qSev: "深刻度",
-    note: "CTO ボットのラベル付けジョブと同じ文書・同じ質問です。ジョブは数分ごとに、常時稼働の Mac で動く D1A に問い合わせます。実際の 17 件の PR では、正しいラベルの割合が D1A 63%、同じサイズの Gemma 4 チャットは 51% でした。",
+    note: "人が確認する前提の一次ラベル付けです。CTO ボットのラベル付けジョブと同じ文書・同じ質問で、ジョブは数分ごとに、常時稼働の Mac で動く D1A に問い合わせます。実際の 17 件の PR では、正しいラベルの割合が D1A 63%、同じサイズの Gemma 4 チャットは 51% でした。このページの例では、提供中のビルドの 12 件の答えのうち 7 件が専門家のブラインドラベルと一致し、外れたものには印を付けています。",
   },
 };
 
 export function PRLabelDemo() {
   const t = useText(TEXT);
+  const lang = useLang();
   const [pi, setPi] = useState(0);
   const [pr, setPR] = useState<PR>(PRESETS[0].pr);
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
+  const [ranMiss, setRanMiss] = useState<string | null>(null);   // the known miss of the example the shown answer is for
   const req = useModelRequest();
   const set = (k: keyof PR) => (e: { target: { value: string } }) => setPR({ ...pr, [k]: e.target.value });
 
   async function load() {
     setLoading(true); req.reset();
-    try { setPR(await fetchPR(url.trim())); setPi(-1); } catch (e) { req.fail(e); } finally { setLoading(false); }
+    try { setPR(await fetchPR(url.trim())); setPi(-1); setRanMiss(null); } catch (e) { req.fail(e); } finally { setLoading(false); }
   }
 
   const a = req.result?.answers;
@@ -138,7 +157,7 @@ export function PRLabelDemo() {
   return (
     <DemoGrid
       left={<>
-        <Presets presets={t.names.map((name) => ({ name }))} current={pi} onPick={(i) => { setPi(i); setPR(PRESETS[i].pr); req.reset(); }} />
+        <Presets presets={t.names.map((name) => ({ name }))} current={pi} onPick={(i) => { setPi(i); setPR(PRESETS[i].pr); setRanMiss(null); req.reset(); }} />
         <Field label={t.url} htmlFor="pr-url">
           <div className="flex gap-2">
             <input id="pr-url" className={inputCls} placeholder="https://github.com/owner/repo/pull/123" value={url} onChange={(e) => setUrl(e.target.value)} />
@@ -151,13 +170,14 @@ export function PRLabelDemo() {
         </div>
         <Field label={t.body} htmlFor="pr-body"><textarea id="pr-body" className={`${textareaCls} min-h-24`} value={pr.body} onChange={set("body")} /></Field>
         <Field label={t.files} hint={t.filesHint} htmlFor="pr-files"><textarea id="pr-files" className={`${textareaCls} min-h-24`} value={pr.files} onChange={set("files")} /></Field>
-        <RunBar onRun={() => req.run(prState(pr), PR_Q)} busy={req.busy} disabled={!pr.title.trim()} label={t.run} busyLabel={t.busy} />
+        <RunBar onRun={() => { const p = PRESETS[pi]; setRanMiss(p && JSON.stringify(p.pr) === JSON.stringify(pr) ? MISSES[p.name]?.[lang] ?? null : null); req.run(prState(pr), PR_Q); }} busy={req.busy} disabled={!pr.title.trim()} label={t.run} busyLabel={t.busy} />
         <ErrorNote error={req.error} />
       </>}
       right={req.result && a ? <>
         <Verdict label={unsure.length ? t.needsHuman.toUpperCase() : t.confident.toUpperCase()} tone={unsure.length ? "wait" : "go"}>
           {unsure.length ? t.flagNote(unsure.map((q) => qName[q]).join(", ")) : null}
         </Verdict>
+        <KnownMiss>{ranMiss}</KnownMiss>
         <ResultCard title={<>{t.labels} · <Latency r={req.result} /></>}>
           <div className="flex flex-wrap gap-2">
             {labels.map((l) => <span key={l} className={`rounded-full border px-2.5 py-0.5 font-mono text-[12px] ${l === "review:needs-human" ? "border-amber-500/60 bg-amber-500/10" : "border-(--demo-line) bg-(--demo-soft)"}`}>{l}</span>)}

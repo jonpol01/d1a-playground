@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Question } from "@/lib/d1a";
 import { Button } from "@/components/ui/button";
 import { Archive, Clock, Reply } from "lucide-react";
-import { accentButton, ask, DemoGrid, Empty, ErrorNote, Field, inputCls, pool, textareaCls } from "@/components/uses/shared";
+import { accentButton, ask, DemoGrid, Empty, ErrorNote, Field, inputCls, pool, textareaCls, KnownMiss } from "@/components/uses/shared";
 import { Confetti, CountUp, ProgressRing } from "@/components/uses/visuals";
 import { useText, type Lang } from "@/lib/i18n";
 
@@ -115,7 +115,10 @@ From: Airline Deals
 Subject: Flash sale: 40% off flights to Lisbon
 Only 48 hours left! Book now and save on flights to Lisbon, Porto and Madeira.`;
 
+// The emails whose answer a blind expert label disagrees with on the served build (2026-11-26; d1a docs/FEATURE_TESTS.md),
+// by subject: kept as they are, never swapped, and marked when one runs unchanged.
 const INBOX_EN = {
+  misses: { "Flash sale: 40% off flights to Lisbon": "an ad's 48-hour deadline, read as urgent: it is not." } as Record<string, string>,
   emails: EMAILS_EN, unit: "emails",
   field: "Inbox", hint: "emails separated by a line with ---", run: "Sort my inbox", busy: "Sorting", stop: "Stop",
   how: <>Each email is its own request (state = the email), two in flight at a time. Each request asks two questions: the three-way triage and &ldquo;is this urgent, needing a reply today?&rdquo;. An email goes to reply_now when either says so.</>,
@@ -127,6 +130,10 @@ const INBOX_EN = {
 export const INBOX_TEXT: Record<Lang, typeof INBOX_EN> = {
   en: INBOX_EN,
   ja: {
+    misses: {
+      "タイムセール: リスボン行き航空券が40%オフ": "広告の「残り48時間」を急ぎと読みましたが、急ぎではありません。",
+      "年次セキュリティ研修を来週金曜日までに受講してください": "期限のある研修のリマインダーを archive にしました。正しくは later です。",
+    },
     emails: `From: 佐藤部長
 Subject: 【至急】取締役会資料の数字を今日中に
 今日の15時までに第3四半期の解約率の数字を送ってください。取締役会の資料は今夜送付で、そのスライドがまだ空欄のままです。返信待っています。
@@ -199,6 +206,7 @@ export function InboxDemo() {
       const g = TRIAGE_ORDER.indexOf(a.r.choice) - TRIAGE_ORDER.indexOf(b.r.choice);
       return g !== 0 ? g : b.r.p - a.r.p;
     });
+  const asGiven = splitBlocks(t.emails);   // a miss is marked only on an email as the demo gives it
   const header = (e: string) => {
     const from = /^From:\s*(.*)$/m.exec(e)?.[1] ?? "";
     const subject = /^Subject:\s*(.*)$/m.exec(e)?.[1] ?? e.split("\n")[0];
@@ -240,6 +248,7 @@ export function InboxDemo() {
                       <p className="mt-0.5 flex items-baseline justify-between gap-2 text-[11px] text-muted-foreground">
                         <span className="truncate">{h.from}</span><span className="shrink-0 font-mono tabular-nums">{r!.p.toFixed(2)}</span>
                       </p>
+                      <KnownMiss compact>{asGiven.includes(e) ? t.misses[h.subject] : null}</KnownMiss>
                     </article>
                   );
                 })}

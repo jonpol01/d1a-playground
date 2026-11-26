@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { Question } from "@/lib/d1a";
 import { useText, type Lang } from "@/lib/i18n";
-import { AnswerBars, DemoGrid, Empty, ErrorNote, Field, inputCls, Latency, pretty, Presets, ResultCard, RunBar, textareaCls, Verdict } from "@/components/uses/shared";
+import { AnswerBars, DemoGrid, Empty, ErrorNote, Field, inputCls, KnownMiss, Latency, Presets, pretty, ResultCard, RunBar, textareaCls, Verdict } from "@/components/uses/shared";
 import { useModelRequest } from "@/components/uses/use-request";
 import { CountUp, GateTrack, RouteViz, Shimmer, ShieldViz, StarsViz, TrafficLight, VizFrame } from "@/components/uses/visuals";
 
@@ -29,7 +29,7 @@ const COST: Record<string, number> = { small: 0.1, medium: 1, large: 10 };
 const ROUTE_EN = {
   presets: [
     { name: "Quick fact", prompt: "What's the capital of Australia?" },
-    { name: "Summary", prompt: "Summarize this for my manager in three bullet points:\n\nWe moved the launch from May 3 to May 17 because the payment provider's sandbox was down for four days. QA found two blocker bugs in checkout, both fixed. Marketing wants the extra two weeks for a partner email. Budget unchanged." },
+    { name: "Summary", miss: "it picks small, but a summary is medium by the route question's own definition (\"Moderate: a summary, an ordinary email…\").", prompt: "Summarize this for my manager in three bullet points:\n\nWe moved the launch from May 3 to May 17 because the payment provider's sandbox was down for four days. QA found two blocker bugs in checkout, both fixed. Marketing wants the extra two weeks for a partner email. Budget unchanged." },
     { name: "Hard reasoning", prompt: "Our Postgres primary shows replication lag spikes to 40 s every night at 02:10, only on Tuesdays and Fridays, and only since we added a second read replica in another region. Walk through the likely causes, how you would confirm each from pg_stat views and logs, and a fix that does not require downtime." },
   ],
   field: "User prompt", run: "Pick", busy: "Picking",
@@ -61,8 +61,10 @@ export function RoutingDemo() {
   const ROUTE_PRESETS = t.presets;
   const [pi, setPi] = useState(0);
   const [prompt, setPrompt] = useState(ROUTE_PRESETS[0].prompt);
+  const [ran, setRan] = useState("");   // the prompt the shown answer is for
   const req = useModelRequest();
   const a = req.result?.answers.route;
+  const miss = ROUTE_PRESETS[pi]?.miss && ran === ROUTE_PRESETS[pi].prompt ? ROUTE_PRESETS[pi].miss : null;
   const routed = a?.type === "choice" ? a.choice : null;
   const tiers = Object.keys(COST);
   const up = routed ? tiers[tiers.indexOf(routed) + 1] : undefined;   // the next tier up, if any
@@ -75,12 +77,13 @@ export function RoutingDemo() {
         <Field label={t.field} htmlFor="route-prompt">
           <textarea id="route-prompt" className={`${textareaCls} min-h-40`} value={prompt} onChange={(e) => setPrompt(e.target.value)} />
         </Field>
-        <RunBar onRun={() => req.run(prompt, ROUTE_Q, ROUTE_USE_CASE)} busy={req.busy} disabled={!prompt.trim()} label={t.run} busyLabel={t.busy} />
+        <RunBar onRun={() => { setRan(prompt); req.run(prompt, ROUTE_Q, ROUTE_USE_CASE); }} busy={req.busy} disabled={!prompt.trim()} label={t.run} busyLabel={t.busy} />
         <ErrorNote error={req.error} />
       </>}
       right={a && routed && req.result ? <>
         <VizFrame><RouteViz probs={a.type === "choice" ? a.probabilities : {}} chosen={routed} costs={COST} /></VizFrame>
         <Verdict label={t.verdict(routed)} tone="plain">p = {a.type === "choice" ? a.probabilities[a.choice].toFixed(2) : ""} · <CountUp value={COST[routed]} format={(v) => `$${v.toFixed(2)}`} /> {t.per1k}</Verdict>
+        <KnownMiss>{miss}</KnownMiss>
         <ResultCard title={<>route · choice · <Latency r={req.result} /></>}><AnswerBars answer={a} /></ResultCard>
         <ResultCard title={t.costTitle}>
           <table className="w-full text-[13px] tabular-nums">
@@ -414,6 +417,7 @@ const GATE_EN = {
     },
     {
       name: "Ambiguous case",
+      miss: "its top pick (deny) is wrong: the policy covers a manufacturing defect for a year with repair or replacement, so the answer is replace. At p 0.39 it stays under the default 0.50 threshold, so the lane still sends it to a person, as designed.",
       text: "Order A-0931, delivered 41 days ago.\nCustomer: \"Worn twice and the sole is already peeling off. I want a refund, or a new pair, whatever.\"\nPolicy: unworn items can be returned within 30 days for a full refund. Manufacturing defects are covered for one year (repair or replacement).",
     },
   ],
@@ -432,7 +436,7 @@ export const GATE_TEXT: Record<Lang, typeof GATE_EN> = {
   ja: {
     presets: [
       { name: "明確なケース", text: "注文 A-1182、Trail Runner 2、3日前に配達済み。\nお客様:「小さすぎました。未使用で、タグも付いたまま箱に入っています。返金をお願いします。」\nポリシー: 未使用の商品は配達から30日以内であれば全額返金で返品できます。" },
-      { name: "あいまいなケース", text: "注文 A-0931、41日前に配達済み。\nお客様:「2回履いただけで、もう靴底がはがれてきました。返金でも新しいものでも、どちらでもいいです。」\nポリシー: 未使用の商品は30日以内であれば全額返金で返品できます。製造上の欠陥は1年間保証します（修理または交換）。" },
+      { name: "あいまいなケース", miss: "一番上の選択（refund）は誤りです。ポリシーでは製造上の欠陥は1年間（修理または交換）保証されるので、正解は replace です。p 0.48 で既定の人へのしきい値 0.50 を下回るため、レーンは設計どおり人に回します。ただし差は 0.02 で、際どいところです。", text: "注文 A-0931、41日前に配達済み。\nお客様:「2回履いただけで、もう靴底がはがれてきました。返金でも新しいものでも、どちらでもいいです。」\nポリシー: 未使用の商品は30日以内であれば全額返金で返品できます。製造上の欠陥は1年間保証します（修理または交換）。" },
     ],
     instructions: "サポート担当者はこの依頼にどう対応すべきですか？",
     options: "refund: 全額返金する\nreplace: 交換品を送る\ndeny: ポリシーに基づいて依頼を断る\nexchange: 別のサイズを提案する",
@@ -467,14 +471,19 @@ export function GateDemo() {
   const [options, setOptions] = useState(t.options);
   const [act, setAct] = useState(0.9);
   const [human, setHuman] = useState(0.5);
+  const [ran, setRan] = useState("");   // the inputs the shown answer is for
   const req = useModelRequest();
   const a = req.result?.answers.action;
+  const asSent = (x: string, i: string, o: string) => JSON.stringify([x, i, o]);
+  const preset = GATE_PRESETS[pi];
+  const miss = preset && "miss" in preset && preset.miss && ran === asSent(preset.text, t.instructions, t.options) ? preset.miss : null;
   const opts = parseOptions(options);
   const p = a?.type === "choice" ? a.probabilities[a.choice] : null;   // the top option's probability; the API's "confidence" rescales it so 0 means uniform, which is not what the thresholds are about
   const lane = p === null ? null : p > act ? "act" : p >= human ? "confirm" : "human";
 
   function run() {
     if (Object.keys(opts).length < 2) { req.fail(new Error(t.tooFew)); return; }
+    setRan(asSent(text, instructions, options));
     req.run(text, { action: { type: "choice", instructions, criteria: opts } });
   }
   const LANES = [
@@ -505,6 +514,7 @@ export function GateDemo() {
         <Verdict label={`${a.choice.toUpperCase()} · p ${p.toFixed(2)}`} tone={lane === "act" ? "go" : lane === "confirm" ? "wait" : "stop"}>
           {LANES.find((l) => l.id === lane)?.label}
         </Verdict>
+        <KnownMiss>{miss}</KnownMiss>
         <VizFrame><GateTrack p={p} act={act} human={human} /></VizFrame>
         <div className="flex flex-col gap-2" role="list" aria-label={t.lanesAria}>
           {LANES.map((l) => (
