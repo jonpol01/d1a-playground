@@ -5,6 +5,7 @@ import type { Question } from "@/lib/d1a";
 import { useText, type Lang } from "@/lib/i18n";
 import { AnswerBars, DemoGrid, Empty, ErrorNote, Field, inputCls, KnownMiss, Latency, Presets, pretty, ResultCard, RunBar, textareaCls, Verdict } from "@/components/uses/shared";
 import { useModelRequest } from "@/components/uses/use-request";
+import { RouteSend } from "@/components/uses/route-send";
 import { CountUp, GateTrack, RouteViz, Shimmer, ShieldViz, StarsViz, TrafficLight, VizFrame } from "@/components/uses/visuals";
 
 /* ---------------------------------------------------------------- 1. Model routing */
@@ -79,6 +80,7 @@ export function RoutingDemo() {
         </Field>
         <RunBar onRun={() => { setRan(prompt); req.run(prompt, ROUTE_Q, ROUTE_USE_CASE); }} busy={req.busy} disabled={!prompt.trim()} label={t.run} busyLabel={t.busy} />
         <ErrorNote error={req.error} />
+        <RouteSend prompt={prompt} />
       </>}
       right={a && routed && req.result ? <>
         <VizFrame><RouteViz probs={a.type === "choice" ? a.probabilities : {}} chosen={routed} costs={COST} /></VizFrame>

@@ -2,7 +2,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { readdirSync, readFileSync } from "node:fs";
-import { agentLabRewrites, crossSiteRefusal, modelApiUrl, proxyRewrites, shogiRewrites, tokenRefusal, writeRefusal } from "../src/lib/guard.ts";
+import { agentLabRewrites, crossSiteRefusal, DEMO_POSTS, demoRefusal, modelApiUrl, proxyRewrites, shogiRewrites, tokenRefusal, writeRefusal } from "../src/lib/guard.ts";
 
 const MODEL_ROUTES = ["v1/models", "v1/systemone", "v1/systemone/permute", "v1/systemone/separate"];
 const rules = () => proxyRewrites("http://127.0.0.1:8009", "http://127.0.0.1:8010");
@@ -98,6 +98,14 @@ function uncheckedWrites(src) {
   return out;
 }
 
+test("a demo POST refuses another site's request and asks for no token", () => {
+  const demoPost = (headers) => new Request("http://mini.local/d1a/api/route-chat", { method: "POST", headers, body: "{}" });
+  assert.equal(demoRefusal(demoPost({ "content-type": "application/json" })), null);
+  assert.equal(demoRefusal(demoPost({ "content-type": "application/json", "sec-fetch-site": "cross-site" }))?.status, 403);
+  assert.equal(demoRefusal(demoPost({ "content-type": "text/plain" }))?.status, 415);
+  assert.deepEqual([...DEMO_POSTS], ["route-chat"]);
+});
+
 test("the route check catches a write handler in any form that skips writeRefusal", () => {
   const body = "{\n  const refused = writeRefusal(req);\n  if (refused) return refused;\n  return Response.json({});\n}\n";
   assert.deepEqual(uncheckedWrites(`export async function POST(req: Request) ${body}export async function PATCH(req: Request) ${body}`), []);
@@ -115,7 +123,15 @@ test("every write route checks writeRefusal, and the label check's sample checks
   walk(new URL("../src/app/api", import.meta.url).pathname);
   const writes = routes.filter((f) => new RegExp(String.raw`export\s+(?:async\s+)?(?:function|const)\s+(?:${WRITE})\b`).test(readFileSync(f, "utf8")));
   assert.ok(writes.length >= 2, writes.join(", "));
-  for (const f of routes) assert.deepEqual(uncheckedWrites(readFileSync(f, "utf8")), [], `${f}: a write handler does not start with writeRefusal`);
+  const demo = (f) => DEMO_POSTS.some((d) => f.endsWith(`/api/${d}/route.ts`));
+  for (const f of routes.filter((f) => !demo(f))) assert.deepEqual(uncheckedWrites(readFileSync(f, "utf8")), [], `${f}: a write handler does not start with writeRefusal`);
+  // a demo route (src/lib/guard.ts DEMO_POSTS) starts its POST with the cross-site check instead, and calls no write path
+  for (const d of DEMO_POSTS) {
+    const f = routes.find((r) => r.endsWith(`/api/${d}/route.ts`)); assert.ok(f, `no route for the demo ${d}`);
+    const src = readFileSync(f, "utf8"), post = src.split(/export async function POST\b/)[1] ?? "";
+    assert.match(post, /^\(req: Request\) \{\n\s*const refused = demoRefusal\(req\);\n\s*if \(refused\) return refused;/, `${f}: POST does not start with demoRefusal`);
+    assert.doesNotMatch(src, /v1\/feedback|writeFile|appendFile/, `${f}: a demo route writes`);
+  }
   const review = readFileSync(routes.find((f) => f.endsWith("/api/review/route.ts")), "utf8").split(/export async function GET\b/)[1].split(/export async function/)[0];
   assert.match(review, /= tokenRefusal\(req\);[^\n]*\n\s*if \(refused\) return refused;/, "GET /api/review does not check the token");
 });
