@@ -44,6 +44,8 @@
 #   link; the build bakes it in, like D1A_BASE_PATH. Unset: no /shogi route and no link)
 #   AGENT_LAB_URL= (e.g. http://127.0.0.1:8037: an agent lab served by its own server, shown under /agent-lab with a header
 #   link to its warehouse page; baked into the build like SHOGI_URL. Unset: no /agent-lab route and no link)
+#   ROUTE_DEMO=0 (1: the routing demo's "Send it" sends the prompt through the model server's chat routes, POST
+#   /api/route-chat, src/lib/route-chat.ts; offered only when ROUTES gives a large model. Read at run time, not baked in)
 #   EMBED_REF= (reference vectors, {"texts": [...], "vectors": [...]}, e.g. LM Studio's for the same GGUF: the smoke test's
 #   OpenAI check then requires the served embeddings to match them, cosine >= 0.999)
 # The old names of three settings, KEV_PORT, KEV_PREFIX_CACHE and KEV_PREFIX_MAX_TOKENS, still work: install, reinstall and
@@ -78,7 +80,7 @@ die() { printf '\033[31m[mini] error:\033[0m %s\n' "$*" >&2; exit 1; }
 # the settings .demo/mini.env holds, in the order save_env writes them
 ENV_KEYS="MODEL_RUN MODEL_PORT PORT HOST D1A_BASE_PATH PYTORCH_MPS_HIGH_WATERMARK_RATIO PYTORCH_MPS_LOW_WATERMARK_RATIO MODEL_PREFIX_CACHE
 MODEL_PREFIX_MAX_TOKENS MEDIA IDLE_UNLOAD FEEDBACK_LOG OUTCOME_CALIBRATOR LABEL_OUTCOMES OPENAI_PORT OPENAI_HOST EMBED_GGUF EMBED_REF CHAT_CONTEXT
-ROUTES DATE_FACTS JA_DATES LOG_REWRITE WRITE_TOKEN SHOGI_URL AGENT_LAB_URL"
+ROUTES DATE_FACTS JA_DATES LOG_REWRITE WRITE_TOKEN SHOGI_URL AGENT_LAB_URL ROUTE_DEMO"
 
 # the settings' old names, from when the model server was Kev's: still read, and mini.env's lines are renamed (migrate_env)
 OLD_NAMES="KEV_PORT:MODEL_PORT KEV_PREFIX_CACHE:MODEL_PREFIX_CACHE KEV_PREFIX_MAX_TOKENS:MODEL_PREFIX_MAX_TOKENS"
@@ -144,7 +146,7 @@ load_env() {
   MODEL_PREFIX_CACHE="${MODEL_PREFIX_CACHE:-4}"; MODEL_PREFIX_MAX_TOKENS="${MODEL_PREFIX_MAX_TOKENS:-65536}"
   MEDIA="${MEDIA:-0}"; IDLE_UNLOAD="${IDLE_UNLOAD:-600}"
   OPENAI_PORT="${OPENAI_PORT:-}"; OPENAI_HOST="${OPENAI_HOST:-::}"; EMBED_GGUF="${EMBED_GGUF:-}"; EMBED_REF="${EMBED_REF:-}"
-  CHAT_CONTEXT="${CHAT_CONTEXT:-}"; ROUTES="${ROUTES:-}"; DATE_FACTS="${DATE_FACTS:-0}"; JA_DATES="${JA_DATES:-0}"
+  CHAT_CONTEXT="${CHAT_CONTEXT:-}"; ROUTES="${ROUTES:-}"; DATE_FACTS="${DATE_FACTS:-0}"; JA_DATES="${JA_DATES:-0}"; ROUTE_DEMO="${ROUTE_DEMO:-0}"
   FEEDBACK_LOG="${FEEDBACK_LOG:-}"; OUTCOME_CALIBRATOR="${OUTCOME_CALIBRATOR:-}"; LABEL_OUTCOMES="${LABEL_OUTCOMES:-0}"
   LOG_REWRITE="${LOG_REWRITE:-}"; WRITE_TOKEN="${WRITE_TOKEN:-}"; SHOGI_URL="${SHOGI_URL:-}"; AGENT_LAB_URL="${AGENT_LAB_URL:-}"
   LEARNING="$STATE/learning.json"; TRAINED_DIR="$STATE/trained"   # the self-learning settings and the trained manifests (d1a#233)
@@ -306,6 +308,10 @@ write_agents() {
     <key>SHOGI_URL</key><string>$SHOGI_URL</string>
     <key>AGENT_LAB_URL</key><string>$AGENT_LAB_URL</string>
 "   # next start reads next.config.ts again, so the base path must match the build's
+  # the routing demo's "Send it" (src/lib/route-chat.ts): off unless set to 1
+  case "$ROUTE_DEMO" in 0|1) ;; *) die "ROUTE_DEMO is 0 or 1 (ROUTE_DEMO=$ROUTE_DEMO)" ;; esac
+  [ "$ROUTE_DEMO" = 1 ] && ENV_XML+="    <key>ROUTE_DEMO</key><string>1</string>
+"
   # the PR label check (/review, d1a-playground#29) reads the decision log; off unless the labeler's outcomes are on
   [ "$LABEL_OUTCOMES" = 1 ] && [ -n "$FEEDBACK_LOG" ] && ENV_XML+="    <key>REVIEW_FEEDBACK_LOG</key><string>$FEEDBACK_LOG</string>
 "

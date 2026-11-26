@@ -71,3 +71,11 @@ export function tokenRefusal(req: Request, token: string = process.env.WRITE_TOK
 export function writeRefusal(req: Request, token?: string): Response | null {
   return crossSiteRefusal(req) ?? tokenRefusal(req, token);
 }
+
+// The POST routes that change nothing and are meant for anyone who opens the playground (a demo, not a write): they take no
+// write token, only the cross-site check, and keep their own limits. scripts/test_guard.mjs holds every other POST to
+// writeRefusal and these to demoRefusal.
+export const DEMO_POSTS = ["route-chat"] as const;
+export function demoRefusal(req: Request): Response | null {
+  return crossSiteRefusal(req);
+}

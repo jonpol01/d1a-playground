@@ -14,6 +14,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- `ROUTE_DEMO=1` (mini.sh setting, off by default): the routing demo's "Send it" sends the prompt through the model server's
+  chat routes (`POST /api/route-chat`) and shows the answer and the model that wrote it. One prompt only (no tools, no
+  system prompt, no history), up to 2,000 characters, nothing that could reach the review route; 5 sends per client per 10
+  minutes, 30 an hour and one at a time for everyone. A demo route takes no write token (`demoRefusal`, named in
+  `src/lib/guard.ts`); every other POST still checks it.
 - `DATE_FACTS` and `JA_DATES` (mini.sh settings, 0 or 1, off by default): pass d1a's `D1A_DATE_FACTS` and `D1A_JA_DATES` to
   the model server, so date preprocessing survives `./mini.sh update` and `reinstall`, which rewrite the model server's
   agent.

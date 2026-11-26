@@ -39,6 +39,8 @@ jobs:
       - run: node --test scripts/test_write_token.mjs
       # the OpenAI port passes only chat, embeddings and the model list, and streams as they come (scripts/openai_port.mjs)
       - run: node --test scripts/test_openai_port.mjs
+      # the routing demo's "Send it": only a prompt, no tools or review-route bait, the limits, and what the page may say (src/lib/route-chat.ts)
+      - run: node --test scripts/test_route_chat.mjs
       # the live OpenAI check passes a stand-in that answers as D1A does and fails each kind of broken one (scripts/openai_smoke.mjs)
       - run: node --test scripts/test_openai_smoke.mjs
       # demo_smoke.mjs: exit 3 when every demo answers but answers differ from the baseline, 1 when a demo fails (mini.sh)
