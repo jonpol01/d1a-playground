@@ -29,6 +29,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **Wording matches what the demos do:**
+  - The model-routing demo says it shows the model D1A picks ("Pick", "← D1A's pick") and that it sends the prompt
+    nowhere. Before, it read "← routed here".
+  - The guardrails demo says it flags prompt injection as a second opinion (D1A catches about 60% of public
+    injections), not a security boundary. Before, it said it stops them.
+  - README and README.ja follow. The recorded demo GIFs still show the old labels.
+
 - **D1A pinned to `c1d58fca`** (d1a#420, d1a#419): the model server can route chats (`D1A_ROUTES`, the new `ROUTES`
   setting here): reviews to a review service, chats that need a larger model to one, the rest to D1A. Off unless
   `ROUTES` is set. With it off, no answer moves. The quality gate on the D1A-E4B-it QAT build answered bit for bit the

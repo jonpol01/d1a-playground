@@ -68,7 +68,7 @@ export function VizFrame({ children, className = "" }: { children: ReactNode; cl
 
 const TIER_Y: Record<string, number> = { small: 40, medium: 100, large: 160 };
 export function RouteViz({ probs, chosen, costs }: { probs: Record<string, number>; chosen: string; costs: Record<string, number> }) {
-  const t = useText({ en: { aria: `Routed to the ${chosen} model`, prompt: "prompt" }, ja: { aria: `${chosen} モデルに振り分け`, prompt: "プロンプト" } });
+  const t = useText({ en: { aria: `D1A's pick: the ${chosen} model`, prompt: "prompt" }, ja: { aria: `D1A の選択: ${chosen} モデル`, prompt: "プロンプト" } });
   return (
     <svg viewBox="0 0 560 200" className="h-auto w-full" role="img" aria-label={t.aria}>
       <path d="M 96 100 L 196 100" stroke="var(--demo)" strokeWidth="2" fill="none" className="flow-dash" opacity="0.7" />

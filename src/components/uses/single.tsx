@@ -32,12 +32,12 @@ const ROUTE_EN = {
     { name: "Summary", prompt: "Summarize this for my manager in three bullet points:\n\nWe moved the launch from May 3 to May 17 because the payment provider's sandbox was down for four days. QA found two blocker bugs in checkout, both fixed. Marketing wants the extra two weeks for a partner email. Budget unchanged." },
     { name: "Hard reasoning", prompt: "Our Postgres primary shows replication lag spikes to 40 s every night at 02:10, only on Tuesdays and Fridays, and only since we added a second read replica in another region. Walk through the likely causes, how you would confirm each from pg_stat views and logs, and a fix that does not require downtime." },
   ],
-  field: "User prompt", run: "Route", busy: "Routing",
+  field: "User prompt", run: "Pick", busy: "Picking",
   verdict: (tier: string) => `→ ${tier.toUpperCase()} MODEL`, per1k: "per 1,000 requests",
-  costTitle: "What the route costs (illustrative prices per 1,000 requests)", routedHere: "← routed here",
-  costNote: (all: string, here: string) => `Sending everything to the large model costs ${all} per 1,000; this prompt's route costs ${here}. With the probabilities, a router can also send close calls up a tier instead of guessing.`,
+  costTitle: "What D1A's pick costs (illustrative prices per 1,000 requests)", routedHere: "← D1A's pick",
+  costNote: (all: string, here: string) => `Sending everything to the large model costs ${all} per 1,000; D1A's pick for this prompt costs ${here}. With the probabilities, a router can also send close calls up a tier instead of guessing.`,
   closeCall: (tier: string, p: string) => <>Close call: p({tier}) = {p}. A cautious router would send this one to <span className="font-mono">{tier}</span>.</>,
-  empty: "Route the prompt to see which model tier the prompt is routed to and what that costs.",
+  empty: "Press Pick to see which model tier D1A picks for the prompt and what that costs.",
 };
 export const ROUTE_TEXT: Record<Lang, typeof ROUTE_EN> = {
   en: ROUTE_EN,
@@ -47,12 +47,12 @@ export const ROUTE_TEXT: Record<Lang, typeof ROUTE_EN> = {
       { name: "要約", prompt: "次の内容を上司向けに3つの箇条書きで要約してください。\n\n決済プロバイダーのサンドボックスが4日間停止したため、ローンチを5月3日から5月17日に延期しました。QA がチェックアウトでブロッカーのバグを2件見つけ、どちらも修正済みです。マーケティングはこの2週間をパートナー向けメールに使いたいとのことです。予算に変更はありません。" },
       { name: "難しい推論", prompt: "Postgres のプライマリで、毎晩 02:10 にレプリケーション遅延が 40 秒まで跳ね上がります。火曜と金曜だけで、別リージョンに2台目のリードレプリカを追加してから起きるようになりました。考えられる原因を挙げ、それぞれを pg_stat ビューとログからどう確認するか、ダウンタイムなしで直す方法を順を追って説明してください。" },
     ],
-    field: "ユーザーのプロンプト", run: "振り分ける", busy: "振り分け中",
+    field: "ユーザーのプロンプト", run: "選ぶ", busy: "選択中",
     verdict: (tier: string) => `→ ${tier.toUpperCase()} モデル`, per1k: "（1,000 リクエストあたり）",
-    costTitle: "振り分け先のコスト（1,000 リクエストあたりの参考価格）", routedHere: "← ここに振り分け",
-    costNote: (all: string, here: string) => `すべてを large モデルに送ると 1,000 件あたり ${all}、このプロンプトの振り分け先なら ${here} です。確率が分かるので、きわどい判定は推測せずに1段上のモデルへ送ることもできます。`,
+    costTitle: "D1A が選んだモデルのコスト（1,000 リクエストあたりの参考価格）", routedHere: "← D1A の選択",
+    costNote: (all: string, here: string) => `すべてを large モデルに送ると 1,000 件あたり ${all}、D1A がこのプロンプトに選んだモデルなら ${here} です。確率が分かるので、きわどい判定は推測せずに1段上のモデルへ送ることもできます。`,
     closeCall: (tier: string, p: string) => <>きわどい判定です: p({tier}) = {p}。慎重なルーターなら <span className="font-mono">{tier}</span> に送ります。</>,
-    empty: "「振り分ける」を押すと、プロンプトの振り分け先のモデルとそのコストが表示されます。",
+    empty: "「選ぶ」を押すと、D1A がプロンプトに選ぶモデルとそのコストが表示されます。",
   },
 };
 
