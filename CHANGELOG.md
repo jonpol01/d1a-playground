@@ -19,6 +19,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- Dev dependencies, for two advisories in tools the app never serves:
+  - minimatch 11.0.9 under ts-morph (the shadcn CLI) and typescript-estree (lint), through npm `overrides`
+    (GHSA-g3hv-75wg-m249: a glob pattern can make minimatch before 11.0.1 take excessive time). Both packages' latest
+    releases already require it.
+  - shadcn 4.21.0 → 4.23.0, which takes zod 4.6.6 (GHSA-mrhx-c7xc-m3w5: zod before 4.6.6 can exhaust memory validating
+    oversized constrained collections). shadcn 4.21 declares zod 3, which has no fixed release, and fails to start with
+    zod 4 forced on it. 4.23 drops its old MCP SDK and that SDK's HTTP server packages (71 packages fewer) and takes
+    newer browser-support data (caniuse-lite, baseline-browser-mapping). Versions resolved from before 2026-11-13.
 - `./mini.sh update` no longer fails, and rolls back, where the model server routes chats (`ROUTES`, #147). The OpenAI
   smoke test's cut-off tool call asked to write a file, which the router sends to the large model. Every smoke chat is now
   one the router keeps on D1A, and a chat answered with an `x-d1a-route` other than `none`, or with an
