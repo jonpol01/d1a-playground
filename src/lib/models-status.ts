@@ -47,16 +47,22 @@ export function chipsFrom(c: unknown, minute: number, window: string | undefined
 }
 
 let cached: { at: number; value: Status } | null = null;
+let reading: Promise<Status> | null = null;   // callers that arrive while the card is read share that one read
 
-/** GET: the chips, from D1A's card at most every CACHE_MS. */
+/** GET: the chips, from D1A's card at most every CACHE_MS, and only where the routing demo is on (ROUTE_DEMO=1), the one
+ * card that shows them; elsewhere no chips and no read. */
 export async function status(readCard: CardReader, env: Record<string, string | undefined>, now: () => number = Date.now): Promise<Status> {
+  if (env.ROUTE_DEMO !== "1") return { chips: [] };
   const t = now();
   if (cached && t - cached.at < CACHE_MS) return cached.value;
-  const d = new Date(t);
-  const value = { chips: chipsFrom(await readCard(), d.getHours() * 60 + d.getMinutes(), env.PLAYGROUND_LARGE_OFFLINE_WINDOW) };
-  cached = { at: t, value };
-  return value;
+  reading ??= (async () => {
+    const d = new Date(t);
+    const value = { chips: chipsFrom(await readCard(), d.getHours() * 60 + d.getMinutes(), env.PLAYGROUND_LARGE_OFFLINE_WINDOW) };
+    cached = { at: t, value };
+    return value;
+  })().finally(() => { reading = null; });
+  return reading;
 }
 
 /** For tests: forget the cached status. */
-export function resetCache() { cached = null; }
+export function resetCache() { cached = null; reading = null; }

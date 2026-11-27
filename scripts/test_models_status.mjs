@@ -46,7 +46,7 @@ const pick = (c) => Object.fromEntries(Object.entries(c).filter(([k]) => k === "
 test("the status path reads only the card, never a chat, and at most once per CACHE_MS", async () => {
   resetCache();
   const calls = []; let t = 1_000_000;
-  const deps = { env: { MODEL_API: "http://m" }, readKey: async () => "k", fetch: async (url, init) => { calls.push([url, init?.method ?? "GET"]); return Response.json({ models: [card()] }); } };
+  const deps = { env: { MODEL_API: "http://m", ROUTE_DEMO: "1" }, readKey: async () => "k", fetch: async (url, init) => { calls.push([url, init?.method ?? "GET"]); return Response.json({ models: [card()] }); } };
   const go = () => status(() => readCard(deps), deps.env, () => t);
   const a = await go();
   t += CACHE_MS - 1; await go();
@@ -64,4 +64,18 @@ test("D1A's decision is the fail-up tier, with the card's thresholds", () => {
   const fallback = ruleFrom({ temperature: 1.78, use_case_temperatures: { routing: 0.85 } });
   assert.ok(Math.abs(fallback.small - carried(0.7, 1.78 / 0.85)) < 1e-12 && fallback.medium === 0.5, "a card without route_rule: d1a's defaults at its routing temperature");
   assert.deepEqual(ruleFrom(null), { small: 0.7, medium: 0.5 });
+});
+
+test("only where the routing demo is on, and callers arriving together share one read of the card", async () => {
+  resetCache();
+  let reads = 0, release;
+  const gate = new Promise((r) => { release = r; });
+  const readCard = async () => { reads++; await gate; return card(); };
+  assert.deepEqual(await status(readCard, {}), { chips: [] });
+  assert.equal(reads, 0, "ROUTE_DEMO off: the card is not read");
+  const many = Array.from({ length: 20 }, () => status(readCard, { ROUTE_DEMO: "1" }));
+  release();
+  const out = await Promise.all(many);
+  assert.equal(reads, 1, "20 callers at once: one read");
+  assert.ok(out.every((o) => o.chips[2].model === "gemma-4-31b"));
 });
