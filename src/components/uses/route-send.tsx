@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { BASE_PATH } from "@/lib/d1a";
 import { useText } from "@/lib/i18n";
-import { differs, outcome, type Outcome } from "@/lib/route-chat";
+import { outcome, type Outcome } from "@/lib/route-chat";
 import { ResultCard } from "@/components/uses/shared";
 
 // The routing demo's Ask, its chat half (POST /api/route-chat, src/lib/route-chat.ts): one chat call through the model
@@ -19,13 +19,11 @@ const EN = {
   limits: "Up to 2,000 characters; no pull-request links, #numbers or code blocks. Each visitor: 20 sends per 10 minutes, at most 5 of them forwarded or failed (a prompt D1A answers itself does not count; when the 5 are used up, Ask waits until they come back). Everyone together: 120 sends an hour, at most 30 forwarded or failed.",
   title: "The chat call",
   deciding: "D1A is deciding…",
-  d1a: "D1A answered this itself (not forwarded).",
-  large: (m: string) => `D1A forwarded this to ${m} automatically — answer below.`,
+  d1a: "D1A answered this itself.",
+  large: (m: string) => `D1A sent this to ${m}.`,
   fallback: "The large model was busy or could not be reached, so D1A answered in its place.",
   noAnswer: "No answer came back.",
   notShown: "This prompt took another route; the demo shows no answer for it.",
-  up: (tier: string) => `D1A's top pick was ${tier}, but the router sends close calls up a tier, so it forwarded this one.`,
-  down: (tier: string) => `The route differs from D1A's top pick (${tier}): the router decides from all three probabilities.`,
   notSent: "No answer sent: ",
   failed: "No answer came back: ",
   off: "this playground sends no chats through a router (its routing demo is off, or its model server has no large model).",
@@ -45,13 +43,11 @@ const TEXT = {
     limits: "2,000 文字まで。プルリクエストのリンク、#番号、コードブロックは送れません。1 人 10 分に 20 回まで、そのうち転送されたか失敗したものは 5 回まで（D1A が自分で答えたものは数えません。5 回に達すると、戻るまで送信できません）。全員で 1 時間 120 回まで、そのうち転送されたか失敗したものは 30 回まで。",
     title: "チャット呼び出し",
     deciding: "D1A が判断中…",
-    d1a: "D1A が自分で答えました（転送なし）。",
-    large: (m: string) => `D1A がこのプロンプトを自動で ${m} に転送しました。答えは下にあります。`,
+    d1a: "D1A が自分で答えました。",
+    large: (m: string) => `D1A がこのプロンプトを ${m} に送りました。`,
     fallback: "大きいモデルが混んでいるか接続できなかったため、代わりに D1A が回答しました。",
     noAnswer: "回答が返ってきませんでした。",
     notShown: "このプロンプトは別のルートに送られたため、このデモでは回答を表示しません。",
-    up: (tier: string) => `D1A の第一候補は ${tier} でしたが、ルーターはきわどい判定を1段上に送るため、このプロンプトを転送しました。`,
-    down: (tier: string) => `実際のルートは D1A の第一候補（${tier}）と違います。ルーターは 3 つの確率すべてから判断します。`,
     notSent: "チャットは送信していません: ",
     failed: "回答が返ってきませんでした: ",
     off: "このプレイグラウンドはチャットをルーターに送りません（振り分けデモがオフか、モデルサーバーに大きいモデルがありません）。",
@@ -122,7 +118,7 @@ export function RouteIntro({ on }: { on: boolean }) {
 }
 
 /** The headline: the route the reply took, never one guessed from the pick, and the answer. */
-export function RouteAnswer({ chat, pick, large }: { chat: Chat; pick: string | null; large: string | null }) {
+export function RouteAnswer({ chat, large }: { chat: Chat; large: string | null }) {
   const t = useText(TEXT);
   if (chat.phase === "idle") return null;
   const reply = chat.phase === "answered" ? chat.reply : null;
@@ -140,7 +136,6 @@ export function RouteAnswer({ chat, pick, large }: { chat: Chat; pick: string | 
   return (
     <ResultCard title={<>{t.title}{reply?.ms !== undefined ? <> · {t.seconds(reply.ms)}</> : null}</>}>
       <p role="status" aria-live="polite" className={`text-[13px] ${reply && (reply.who !== "none") ? "font-medium" : "text-muted-foreground"}`}>{headline}</p>
-      {reply && pick && differs(pick, reply) && <p className="mt-1 text-[12px] leading-5">{differs(pick, reply) === "up" ? t.up(pick) : t.down(pick)}</p>}
       {reply?.answer && <pre className="mt-2 max-h-80 overflow-auto whitespace-pre-wrap text-[12px] leading-5">{reply.answer}</pre>}
     </ResultCard>
   );

@@ -46,6 +46,8 @@
 #   link to its warehouse page; baked into the build like SHOGI_URL. Unset: no /agent-lab route and no link)
 #   ROUTE_DEMO=0 (1: the routing demo's Ask also sends the prompt through the model server's chat routes, POST
 #   /api/route-chat, src/lib/route-chat.ts; offered only when ROUTES gives a large model. Read at run time, not baked in)
+#   LARGE_OFFLINE_WINDOW= (e.g. 20:30-03:30: when the large model is offline inside this window, the routing demo's model
+#   chips say it is away for nightly training and when it is back; HH:MM-HH:MM in this host's time. Unset: just "offline")
 #   EMBED_REF= (reference vectors, {"texts": [...], "vectors": [...]}, e.g. LM Studio's for the same GGUF: the smoke test's
 #   OpenAI check then requires the served embeddings to match them, cosine >= 0.999)
 # The old names of three settings, KEV_PORT, KEV_PREFIX_CACHE and KEV_PREFIX_MAX_TOKENS, still work: install, reinstall and
@@ -80,7 +82,7 @@ die() { printf '\033[31m[mini] error:\033[0m %s\n' "$*" >&2; exit 1; }
 # the settings .demo/mini.env holds, in the order save_env writes them
 ENV_KEYS="MODEL_RUN MODEL_PORT PORT HOST D1A_BASE_PATH PYTORCH_MPS_HIGH_WATERMARK_RATIO PYTORCH_MPS_LOW_WATERMARK_RATIO MODEL_PREFIX_CACHE
 MODEL_PREFIX_MAX_TOKENS MEDIA IDLE_UNLOAD FEEDBACK_LOG OUTCOME_CALIBRATOR LABEL_OUTCOMES OPENAI_PORT OPENAI_HOST EMBED_GGUF EMBED_REF CHAT_CONTEXT
-ROUTES DATE_FACTS JA_DATES LOG_REWRITE WRITE_TOKEN SHOGI_URL AGENT_LAB_URL ROUTE_DEMO"
+ROUTES DATE_FACTS JA_DATES LOG_REWRITE WRITE_TOKEN SHOGI_URL AGENT_LAB_URL ROUTE_DEMO LARGE_OFFLINE_WINDOW"
 
 # the settings' old names, from when the model server was Kev's: still read, and mini.env's lines are renamed (migrate_env)
 OLD_NAMES="KEV_PORT:MODEL_PORT KEV_PREFIX_CACHE:MODEL_PREFIX_CACHE KEV_PREFIX_MAX_TOKENS:MODEL_PREFIX_MAX_TOKENS"
@@ -147,6 +149,7 @@ load_env() {
   MEDIA="${MEDIA:-0}"; IDLE_UNLOAD="${IDLE_UNLOAD:-600}"
   OPENAI_PORT="${OPENAI_PORT:-}"; OPENAI_HOST="${OPENAI_HOST:-::}"; EMBED_GGUF="${EMBED_GGUF:-}"; EMBED_REF="${EMBED_REF:-}"
   CHAT_CONTEXT="${CHAT_CONTEXT:-}"; ROUTES="${ROUTES:-}"; DATE_FACTS="${DATE_FACTS:-0}"; JA_DATES="${JA_DATES:-0}"; ROUTE_DEMO="${ROUTE_DEMO:-0}"
+  LARGE_OFFLINE_WINDOW="${LARGE_OFFLINE_WINDOW:-}"
   FEEDBACK_LOG="${FEEDBACK_LOG:-}"; OUTCOME_CALIBRATOR="${OUTCOME_CALIBRATOR:-}"; LABEL_OUTCOMES="${LABEL_OUTCOMES:-0}"
   LOG_REWRITE="${LOG_REWRITE:-}"; WRITE_TOKEN="${WRITE_TOKEN:-}"; SHOGI_URL="${SHOGI_URL:-}"; AGENT_LAB_URL="${AGENT_LAB_URL:-}"
   LEARNING="$STATE/learning.json"; TRAINED_DIR="$STATE/trained"   # the self-learning settings and the trained manifests (d1a#233)
@@ -315,6 +318,10 @@ write_agents() {
   # its per-client limit reads X-Forwarded-For only when the app listens on 127.0.0.1, so every caller comes through a proxy
   # that appends the address it saw; with the app on the LAN the header is the caller's own word and all share one limit
   [ "$ROUTE_DEMO" = 1 ] && [ "$HOST" = 127.0.0.1 ] && ENV_XML+="    <key>TRUST_FORWARDED_FOR</key><string>1</string>
+"
+  # the model chips' nightly window (src/lib/models-status.ts): HH:MM-HH:MM or unset
+  case "$LARGE_OFFLINE_WINDOW" in ""|[0-2][0-9]:[0-5][0-9]-[0-2][0-9]:[0-5][0-9]) ;; *) die "LARGE_OFFLINE_WINDOW is HH:MM-HH:MM (LARGE_OFFLINE_WINDOW=$LARGE_OFFLINE_WINDOW)" ;; esac
+  [ -n "$LARGE_OFFLINE_WINDOW" ] && ENV_XML+="    <key>PLAYGROUND_LARGE_OFFLINE_WINDOW</key><string>$LARGE_OFFLINE_WINDOW</string>
 "
   # the PR label check (/review, d1a-playground#29) reads the decision log; off unless the labeler's outcomes are on
   [ "$LABEL_OUTCOMES" = 1 ] && [ -n "$FEEDBACK_LOG" ] && ENV_XML+="    <key>REVIEW_FEEDBACK_LOG</key><string>$FEEDBACK_LOG</string>

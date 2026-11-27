@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
-import type { Question } from "@/lib/d1a";
+import { useEffect, useState } from "react";
+import { BASE_PATH, type Question } from "@/lib/d1a";
 import { useText, type Lang } from "@/lib/i18n";
 import { AnswerBars, DemoGrid, Empty, ErrorNote, Field, inputCls, KnownMiss, Latency, Presets, pretty, ResultCard, RunBar, textareaCls, Verdict } from "@/components/uses/shared";
 import { useModelRequest } from "@/components/uses/use-request";
 import { RouteAnswer, RouteIntro, useRouteChat } from "@/components/uses/route-send";
+import { ModelChips } from "@/components/uses/model-chips";
+import { decide, ruleFrom, type Rule } from "@/lib/route-rule";
 import { CountUp, GateTrack, RouteViz, Shimmer, ShieldViz, StarsViz, TrafficLight, VizFrame } from "@/components/uses/visuals";
 
 /* ---------------------------------------------------------------- 1. Model routing */
@@ -30,16 +32,14 @@ const COST: Record<string, number> = { small: 0.1, medium: 1, large: 10 };
 const ROUTE_EN = {
   presets: [
     { name: "Quick fact", prompt: "What's the capital of Australia?" },
-    { name: "Summary", miss: "it picks small, but a summary is medium by the route question's own definition (\"Moderate: a summary, an ordinary email…\").", prompt: "Summarize this for my manager in three bullet points:\n\nWe moved the launch from May 3 to May 17 because the payment provider's sandbox was down for four days. QA found two blocker bugs in checkout, both fixed. Marketing wants the extra two weeks for a partner email. Budget unchanged." },
+    { name: "Summary", prompt: "Summarize this for my manager in three bullet points:\n\nWe moved the launch from May 3 to May 17 because the payment provider's sandbox was down for four days. QA found two blocker bugs in checkout, both fixed. Marketing wants the extra two weeks for a partner email. Budget unchanged." },
     { name: "Hard reasoning", prompt: "Our Postgres primary shows replication lag spikes to 40 s every night at 02:10, only on Tuesdays and Fridays, and only since we added a second read replica in another region. Walk through the likely causes, how you would confirm each from pg_stat views and logs, and a fix that does not require downtime." },
   ],
   field: "User prompt", run: "Ask", busy: "Asking",
-  reasoning: "D1A's reasoning",
-  verdict: (tier: string) => `pick → ${tier.toUpperCase()} MODEL`, per1k: "per 1,000 requests",
-  costTitle: "What D1A's pick costs (illustrative prices per 1,000 requests)", routedHere: "← D1A's pick",
-  costNote: (all: string, here: string) => `Sending everything to the large model costs ${all} per 1,000; D1A's pick for this prompt costs ${here}. With the probabilities, a router can also send close calls up a tier instead of guessing.`,
-  closeCall: (tier: string, p: string) => <>Close call: p({tier}) = {p}. A cautious router would send this one to <span className="font-mono">{tier}</span>.</>,
-  empty: "Press Ask to send the prompt: D1A's pick of a model tier and what it costs show here, and, where this playground sends chats, the answer and who wrote it.",
+  decision: (tier: string) => `D1A's decision → ${tier.toUpperCase()} MODEL`, per1k: "per 1,000 requests (illustrative price)",
+  why: "Why?",
+  rule: (small: string, medium: string) => `Small needs p(small) ≥ ${small}; otherwise medium needs p(small) + p(medium) ≥ ${medium}; otherwise large.`,
+  empty: "Press Ask: D1A decides which model tier the prompt needs and, where this playground sends chats, the chosen model answers it.",
 };
 export const ROUTE_TEXT: Record<Lang, typeof ROUTE_EN> = {
   en: ROUTE_EN,
@@ -50,12 +50,10 @@ export const ROUTE_TEXT: Record<Lang, typeof ROUTE_EN> = {
       { name: "難しい推論", prompt: "Postgres のプライマリで、毎晩 02:10 にレプリケーション遅延が 40 秒まで跳ね上がります。火曜と金曜だけで、別リージョンに2台目のリードレプリカを追加してから起きるようになりました。考えられる原因を挙げ、それぞれを pg_stat ビューとログからどう確認するか、ダウンタイムなしで直す方法を順を追って説明してください。" },
     ],
     field: "ユーザーのプロンプト", run: "送信", busy: "送信中",
-    reasoning: "D1A の判断の根拠",
-    verdict: (tier: string) => `選択 → ${tier.toUpperCase()} モデル`, per1k: "（1,000 リクエストあたり）",
-    costTitle: "D1A が選んだモデルのコスト（1,000 リクエストあたりの参考価格）", routedHere: "← D1A の選択",
-    costNote: (all: string, here: string) => `すべてを large モデルに送ると 1,000 件あたり ${all}、D1A がこのプロンプトに選んだモデルなら ${here} です。確率が分かるので、きわどい判定は推測せずに1段上のモデルへ送ることもできます。`,
-    closeCall: (tier: string, p: string) => <>きわどい判定です: p({tier}) = {p}。慎重なルーターなら <span className="font-mono">{tier}</span> に送ります。</>,
-    empty: "「送信」を押すとプロンプトを送ります。D1A が選ぶモデルとそのコスト、このプレイグラウンドがチャットを送る場合は答えと答えたモデルがここに表示されます。",
+    decision: (tier: string) => `D1A の判断 → ${tier.toUpperCase()} モデル`, per1k: "（1,000 リクエストあたりの参考価格）",
+    why: "なぜ？",
+    rule: (small: string, medium: string) => `small には p(small) ≥ ${small} が必要。そうでなければ p(small) + p(medium) ≥ ${medium} で medium、それ以外は large。`,
+    empty: "「送信」を押すと、D1A がプロンプトに必要なモデルの段階を判断し、このプレイグラウンドがチャットを送る場合は選ばれたモデルが答えます。",
   },
 };
 
@@ -64,15 +62,16 @@ export function RoutingDemo() {
   const ROUTE_PRESETS = t.presets;
   const [pi, setPi] = useState(0);
   const [prompt, setPrompt] = useState(ROUTE_PRESETS[0].prompt);
-  const [ran, setRan] = useState("");   // the prompt the shown answer is for
+  const [rule, setRule] = useState<Rule>(() => ruleFrom(null));
   const req = useModelRequest();
   const chat = useRouteChat();
+  useEffect(() => {   // the rule D1A routes by, from its card (route_rule, at the routing temperature)
+    fetch(`${BASE_PATH}/model/v1/models`, { cache: "no-store" }).then((r) => (r.ok ? r.json() : null))
+      .then((j: { models?: unknown[] } | null) => { if (j?.models?.[0]) setRule(ruleFrom(j.models[0])); }).catch(() => {});
+  }, []);
   const a = req.result?.answers.route;
-  const miss = ROUTE_PRESETS[pi]?.miss && ran === ROUTE_PRESETS[pi].prompt ? ROUTE_PRESETS[pi].miss : null;
-  const routed = a?.type === "choice" ? a.choice : null;
-  const tiers = Object.keys(COST);
-  const up = routed ? tiers[tiers.indexOf(routed) + 1] : undefined;   // the next tier up, if any
-  const closeCall = a?.type === "choice" && routed && up && a.probabilities[routed] < 0.6 && a.probabilities[up] >= 0.3 ? { tier: up, p: a.probabilities[up] } : null;
+  const probs = a?.type === "choice" ? a.probabilities : null;
+  const final = probs ? decide(probs, rule) : null;   // D1A's decision: the tier it routes on, not the most likely tier alone
 
   return (
     <DemoGrid
@@ -81,36 +80,25 @@ export function RoutingDemo() {
         <Field label={t.field} htmlFor="route-prompt">
           <textarea id="route-prompt" className={`${textareaCls} min-h-40`} value={prompt} onChange={(e) => { setPrompt(e.target.value); req.reset(); chat.reset(); }} />
         </Field>
-        {/* One button, one chat call: the pick and the chat go out together, and the pick shows while the chat runs. The
-            button stays busy until a sent chat settles, even after an edit, since the call holds its slot until then. */}
-        <RunBar onRun={() => { setRan(prompt); req.reset(); req.run(prompt, ROUTE_Q, ROUTE_USE_CASE); chat.send(prompt); }} busy={req.busy || chat.chat.phase === "waiting" || chat.pending} disabled={!prompt.trim()} label={t.run} busyLabel={t.busy} />
+        {/* One button, one chat call: the decision and the chat go out together. The button stays busy until a sent chat
+            settles, even after an edit, since the call holds its slot until then. */}
+        <RunBar onRun={() => { req.reset(); req.run(prompt, ROUTE_Q, ROUTE_USE_CASE); chat.send(prompt); }} busy={req.busy || chat.chat.phase === "waiting" || chat.pending} disabled={!prompt.trim()} label={t.run} busyLabel={t.busy} />
         <ErrorNote error={req.error} />
         <RouteIntro on={chat.on} />
+        {chat.on && <ModelChips />}
       </>}
       right={chat.chat.phase !== "idle" || req.busy || req.result ? <>
-        <RouteAnswer chat={chat.chat} pick={routed} large={chat.status?.large ?? null} />
-        {a && routed && req.result ? <>
-        <h4 className="text-[12px] font-medium text-muted-foreground">{t.reasoning}</h4>
-        <VizFrame><RouteViz probs={a.type === "choice" ? a.probabilities : {}} chosen={routed} costs={COST} /></VizFrame>
-        <Verdict label={t.verdict(routed)} tone="plain">p = {a.type === "choice" ? a.probabilities[a.choice].toFixed(2) : ""} · <CountUp value={COST[routed]} format={(v) => `$${v.toFixed(2)}`} /> {t.per1k}</Verdict>
-        <KnownMiss>{miss}</KnownMiss>
-        <ResultCard title={<>route · choice · <Latency r={req.result} /></>}><AnswerBars answer={a} /></ResultCard>
-        <ResultCard title={t.costTitle}>
-          <table className="w-full text-[13px] tabular-nums">
-            <tbody>
-              {Object.entries(COST).map(([k, c]) => (
-                <tr key={k} className={k === routed ? "font-medium" : "text-muted-foreground"}>
-                  <td className="py-0.5 font-mono">{k}</td><td className="py-0.5 text-right">${c.toFixed(2)}</td>
-                  <td className="py-0.5 pl-3 text-[12px]">{k === routed ? t.routedHere : ""}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <p className="mt-2 text-[12px] leading-5 text-muted-foreground">
-            {t.costNote(`$${COST.large.toFixed(2)}`, `$${COST[routed].toFixed(2)}`)}
-          </p>
-          {closeCall && <p className="mt-2 text-[12px] leading-5">{t.closeCall(closeCall.tier, closeCall.p.toFixed(2))}</p>}
-        </ResultCard>
+        <RouteAnswer chat={chat.chat} large={chat.status?.large ?? null} />
+        {final && probs && a && req.result ? <>
+          <VizFrame><RouteViz probs={{ [final]: 1 }} chosen={final} costs={COST} /></VizFrame>
+          <Verdict label={t.decision(final)} tone="plain"><CountUp value={COST[final]} format={(v) => `$${v.toFixed(2)}`} /> {t.per1k}</Verdict>
+          <details className="rounded-xl border border-border bg-card px-4 py-2 text-[12px]">
+            <summary className="cursor-pointer text-muted-foreground">{t.why}</summary>
+            <p className="mt-2 font-mono leading-5">{Object.keys(COST).map((k) => `${k} ${(probs[k] ?? 0).toFixed(2)}`).join(" · ")}</p>
+            <p className="mt-1 leading-5 text-muted-foreground">{t.rule(rule.small.toFixed(2), rule.medium.toFixed(2))}</p>
+            <div className="mt-2"><AnswerBars answer={a} /></div>
+            <p className="mt-1 text-[11px] text-muted-foreground">route · choice · <Latency r={req.result} /></p>
+          </details>
         </> : req.busy ? <Shimmer tall /> : null}
       </> : <Empty>{t.empty}</Empty>}
     />

@@ -43,7 +43,7 @@ const HAS_MEDIA = DEMOS.some((d) => MEDIA_DEMO_IDS.includes(d.id));
 
 const DEMO_TEXT: Record<Lang, Record<string, DemoText>> = {
   en: {
-    routing: { title: "Model routing", input: "prompt", caption: "Which model should answer each prompt? D1A picks the cheapest one that can handle it. Ask shows the pick; where this playground's model server routes chats, the same click is one chat call through the router: D1A answers easy prompts itself and forwards harder ones on its own, and the page shows which happened.",
+    routing: { title: "Model routing", input: "prompt", caption: "Which model should answer each prompt? D1A picks the cheapest one that can handle it. Ask shows D1A's decision; where this playground's model server routes chats, the same click is one chat call: D1A answers easy prompts itself and sends harder ones to the large model on its own, and the page shows which happened.",
       line: "The model reads the user's prompt and rates how hard it is, which picks the model tier; the probabilities show when a call is close enough to send up a tier." },
     guardrails: { title: "Guardrails", input: "message", caption: "Flag prompt injection and abuse before they reach the LLM: a second opinion (about 60% of public injections caught), not a security boundary.",
       line: "The model labels an incoming message and says whether it should reach the LLM at all; a probability lets you block only when the model is sure and log the rest." },
@@ -75,7 +75,7 @@ const DEMO_TEXT: Record<Lang, Record<string, DemoText>> = {
       line: "A scripted agent works a 3PL warehouse's tickets with real commands, twice: unchecked, and with each command first decided by D1A's Claude Code hook, the code Claude Code runs. Routine actions the client's runbook allows go ahead, risky ones wait for you as the supervisor, and harmful ones are stopped." },
   },
   ja: {
-    routing: { title: "モデルの振り分け", input: "プロンプト", caption: "各プロンプトにどのモデルが答えるべきか。D1A は処理できる一番安いモデルを選びます。「送信」で選択を示します。このプレイグラウンドのモデルサーバーがチャットを振り分けている場合は、同じ操作が 1 回のチャット呼び出しになります。D1A は簡単なプロンプトには自分で答え、難しいものは自分の判断で大きいモデルに転送し、どちらになったかを示します。",
+    routing: { title: "モデルの振り分け", input: "プロンプト", caption: "各プロンプトにどのモデルが答えるべきか。D1A は処理できる一番安いモデルを選びます。「送信」で D1A の判断を示します。このプレイグラウンドのモデルサーバーがチャットを振り分けている場合は、同じ操作が 1 回のチャット呼び出しになります。D1A は簡単なプロンプトには自分で答え、難しいものは自分の判断で大きいモデルに送り、どちらになったかを示します。",
       line: "モデルがユーザーのプロンプトを読んで難しさを判定し、送り先のモデルの段階を決めます。確率を見れば、1段上に送るべききわどい判定かどうかが分かります。" },
     guardrails: { title: "ガードレール", input: "メッセージ", caption: "プロンプトインジェクションや暴言を、LLM に届く前に見分けます。公開されているインジェクションの約 60% を検出するセカンドオピニオンで、セキュリティ境界ではありません。",
       line: "モデルが受信メッセージを分類し、そもそも LLM に渡すべきかを答えます。確率があるので、確信が高いときだけブロックし、それ以外は記録に回せます。" },

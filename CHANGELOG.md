@@ -14,6 +14,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **The routing demo shows D1A's decision only.** The result is the tier D1A routes on (its fail-up rule on the three
+  probabilities, with the threshold from the model server's card), the diagram and cost for that tier, and the answer:
+  "D1A sent this to <model>" or "D1A answered this itself". The most likely tier on its own, the probability bars, the
+  pick-vs-route line and the labelled-example box are gone from the default view; the probabilities and the rule are
+  under "Why?". The Summary example no longer reads as a miss: D1A routes it to medium.
+- **Model chips on the routing demo**: small · D1A, medium and large · the large route's model, each ready, busy (with
+  slots in use and chats waiting) or offline, from D1A's card (`GET /api/models-status`: an allow-list of the card's
+  fields, cached 5 s, never a chat). `LARGE_OFFLINE_WINDOW` (mini.env) names the nightly window in which "offline" says
+  when the model is back.
 - **D1A pinned to `6d303303`** (d1a#439): with chat routes on, a hard chat over the large route's `max_in_flight` waits
   for a free slot (up to 30 s, as many waiting as `max_in_flight`) instead of being answered by D1A at once; the notes
   say what happened (at capacity, did not answer in time, starting up), and an agent's chat gets a retryable 503 while
