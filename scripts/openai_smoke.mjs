@@ -11,6 +11,8 @@
 // Each check sends real requests and judges the answers, not only the status: a chat must say the word or the sum it was
 // asked for, a stream must arrive in pieces and end with [DONE], a tool call must name the tool and the city, similar
 // sentences must embed closer than unrelated ones, and the System One and feedback routes must not answer on this port.
+// Every chat must be D1A's own answer: where the model server routes chats (d1a's D1A_ROUTES), a chat it forwarded to another
+// model (`x-d1a-route` other than "none") fails its check, so the checks' prompts are ones the router keeps (#147).
 // Exits 1 when a check fails.
 import { readFileSync, realpathSync } from "node:fs";
 import { pathToFileURL } from "node:url";
@@ -33,7 +35,14 @@ async function post(url, body, headers = {}) {
   const r = await fetch(url, { method: "POST", headers: { "content-type": "application/json", ...headers }, body: JSON.stringify(body) });
   const text = await r.text();
   let json; try { json = JSON.parse(text); } catch { json = undefined; }
-  return { status: r.status, type: r.headers.get("content-type") || "", text, json };
+  return { status: r.status, type: r.headers.get("content-type") || "", route: r.headers.get("x-d1a-route"), routeError: r.headers.get("x-d1a-route-error"), text, json };
+}
+
+// "none": the router kept the chat; no header: the model server does not route chats. A route error with "none" means the
+// router's own pass failed: D1A answered, but the router is broken, so that fails too.
+function byD1A(route, routeError) {
+  must(route === null || route === "none", `forwarded to the "${route}" route: not D1A's answer`);
+  must(!routeError, `x-d1a-route-error: ${routeError}`);
 }
 
 export async function run(base, { decide, embedRef, waitLimitMs = 30000, log = console.log } = {}) {
@@ -46,9 +55,10 @@ export async function run(base, { decide, embedRef, waitLimitMs = 30000, log = c
   const complete = async (body) => {
     const r = await post(`${base}/v1/chat/completions`, { ...chat, temperature: 0, ...body });
     must(r.status === 200 && r.json?.object === "chat.completion", `HTTP ${r.status}: ${r.text.slice(0, 200)}`);
-    return r.json.choices[0];
+    byD1A(r.route, r.routeError);
+    return { ...r.json.choices[0], usage: r.json.usage };
   };
-  let before, embedId;
+  let before, embedId, callTokens;
 
   if (decide) await check("decision on the model server", async () => {
     const r = await post(`${decide}/v1/systemone`, DECISION, NO_LOG);
@@ -89,6 +99,7 @@ export async function run(base, { decide, embedRef, waitLimitMs = 30000, log = c
     const r = await fetch(`${base}/v1/chat/completions`, { method: "POST", headers: { "content-type": "application/json" },
       body: JSON.stringify({ ...chat, temperature: 0, stream: true, max_tokens: 40, messages: [{ role: "user", content: "Count from 1 to 5, separated by spaces." }] }) });
     must(r.status === 200 && (r.headers.get("content-type") || "").startsWith("text/event-stream"), `HTTP ${r.status} ${r.headers.get("content-type")}`);
+    byD1A(r.headers.get("x-d1a-route"), r.headers.get("x-d1a-route-error"));
     const events = (await r.text()).split("\n").filter((l) => l.startsWith("data: ")).map((l) => l.slice(6));
     must(events.at(-1) === "[DONE]", "no [DONE] at the end");
     const chunks = events.slice(0, -1).map((e) => JSON.parse(e)), text = chunks.map((c) => c.choices[0].delta.content || "").join("");
@@ -101,6 +112,7 @@ export async function run(base, { decide, embedRef, waitLimitMs = 30000, log = c
     const call = c.message.tool_calls?.[0];
     must(c.finish_reason === "tool_calls" && call?.function?.name === "get_weather" && /tokyo/i.test(JSON.parse(call.function.arguments).city || ""),
       `finish ${c.finish_reason}, ${JSON.stringify(c.message)}`.slice(0, 300));
+    callTokens = c.usage?.completion_tokens;
     return `${call.function.name}(${call.function.arguments})`;
   });
   await check("JSON mode", async () => {
@@ -111,13 +123,16 @@ export async function run(base, { decide, embedRef, waitLimitMs = 30000, log = c
     return JSON.stringify(j);
   });
   await check("tool call cut off by max_tokens", async () => {   // d1a#278: no half-written Gemma markup in the text
-    const write = [{ type: "function", function: { name: "write_file", description: "Write a file", parameters: { type: "object",
-      properties: { path: { type: "string" }, content: { type: "string" } }, required: ["path", "content"] } } }];
-    const c = await complete({ messages: [{ role: "user", content: "Save a file /tmp/notes.md containing a 200-word essay about tea in Japan." }], tools: write, max_tokens: 20 });
+    // the tool call check's request, cut short: at temperature 0 its first CUT tokens are the start of that call (14 tokens on
+    // D1A-E4B-it; a cut after its closing "}", at 13, would parse as a complete call). A request to write a file was the old
+    // prompt; the router sends it to the large model (#147).
+    const CUT = 8;
+    must(callTokens > CUT, `the tool call is ${callTokens ?? "an unknown number of"} tokens, so ${CUT} may not cut it`);
+    const c = await complete({ messages: [{ role: "user", content: "What's the weather in Tokyo right now?" }], tools: WEATHER, tool_choice: "auto", max_tokens: CUT });
     const text = c.message.content || "";
     must(!text.includes("<|tool_call>") && !text.includes("call:") && !(c.message.tool_calls || []).length && c.finish_reason === "length",
       `finish ${c.finish_reason}, ${JSON.stringify(c.message)}`.slice(0, 300));
-    return `finish length, no markup, no partial call`;
+    return `finish length at ${CUT} of the call's ${callTokens ?? "?"} tokens, no markup, no partial call`;
   });
   const SENTENCES = ["The cat sat on the mat.", "A cat is sitting on a mat.", "Quarterly revenue grew by eight percent."];
   await check("embeddings", async () => {
@@ -145,12 +160,17 @@ export async function run(base, { decide, embedRef, waitLimitMs = 30000, log = c
     return `${vecs[0].length}-d, equal to the float vectors`;
   });
   if (decide) await check("a decision during a chat still answers", async () => {   // one model thread: answered between the chat's tokens (d1a#289) or after it, never forever, and never different
-    const chatting = complete({ messages: [{ role: "user", content: "Write a short paragraph about tea in Japan." }], max_tokens: 120 });
+    // a chat of about 80 tokens that the router keeps (#147: it forwards a paragraph to write, and then nothing runs beside the decision)
+    let chatEnd;
+    const chatting = complete({ messages: [{ role: "user", content: "Count from 1 to 30, separated by spaces." }], max_tokens: 120 })
+      .then(() => { chatEnd = performance.now(); return null; }, (e) => e.message);
     await new Promise((ok) => setTimeout(ok, 300));
     const t0 = performance.now();
     const r = await Promise.race([post(`${decide}/v1/systemone`, DECISION, NO_LOG), new Promise((ok) => setTimeout(() => ok(null), waitLimitMs))]);
     const waited = Math.round(performance.now() - t0);
-    await chatting.catch(() => {});
+    const chatFailed = await chatting;
+    must(!chatFailed, `the chat beside it: ${chatFailed}`);
+    must(chatEnd > t0, "the chat ended before the decision was sent");
     must(r && r.status === 200 && r.json?.answers?.sev?.choice, r ? `HTTP ${r.status}` : `no answer within ${waitLimitMs} ms`);
     must(!before || JSON.stringify(r.json.answers) === JSON.stringify(before), `before ${JSON.stringify(before)}, during the chat ${JSON.stringify(r.json.answers)}`);
     return `answered after ${waited} ms, identical to the decision before the chats`;
