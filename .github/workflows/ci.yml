@@ -41,6 +41,8 @@ jobs:
       - run: node --test scripts/test_openai_port.mjs
       # the routing demo's chat call: only a prompt, no tools or review-route bait, the limits and their refund, and what the page may say (src/lib/route-chat.ts)
       - run: node --test scripts/test_route_chat.mjs
+      # the routing demo's model chips (an allow-list of D1A's card, never a chat) and D1A's fail-up decision (src/lib/models-status.ts, route-rule.ts)
+      - run: node --test scripts/test_models_status.mjs
       # the live OpenAI check passes a stand-in that answers as D1A does and fails each kind of broken one (scripts/openai_smoke.mjs)
       - run: node --test scripts/test_openai_smoke.mjs
       # demo_smoke.mjs: exit 3 when every demo answers but answers differ from the baseline, 1 when a demo fails (mini.sh)

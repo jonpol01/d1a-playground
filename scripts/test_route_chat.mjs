@@ -2,7 +2,7 @@
 // Run: node --test scripts/test_route_chat.mjs
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { ALL_GLOBAL, ALL_PER_CLIENT, checkBody, clientKey, differs, GLOBAL, IN_FLIGHT, Limiter, largeRoute, MAX_TOKENS, outcome, PER_CLIENT, PROMPT_MAX, send, shown, status } from "../src/lib/route-chat.ts";
+import { ALL_GLOBAL, ALL_PER_CLIENT, checkBody, clientKey, GLOBAL, IN_FLIGHT, Limiter, largeRoute, MAX_TOKENS, outcome, PER_CLIENT, PROMPT_MAX, send, shown, status } from "../src/lib/route-chat.ts";
 
 const CARD = { routes: [{ name: "review", kind: "review", repos: ["o/*"], is_review_min_p: 0.8 }, { name: "large", kind: "openai", model: "gemma-4-31b", max_in_flight: 2, min_tier: "medium" }] };
 const LARGE = { name: "large", model: "gemma-4-31b", minTier: "medium" };
@@ -252,27 +252,6 @@ test("the page reads a reply as an answer, nothing sent and why, or sent with no
   assert.deepEqual(outcome(500, null, "hi"), { phase: "failed", detail: "HTTP 500" });
   for (const bad of [null, {}, { who: "someone", answer: "x" }, { who: "d1a" }])
     assert.deepEqual(outcome(200, bad, "hi"), { phase: "failed", detail: "the reply could not be read" }, JSON.stringify(bad));
-});
-
-test("the pick and the route differ: up when a pick under the large route's minTier was forwarded, down when one at or above it was kept", () => {
-  const r = (x, minTier) => ({ answer: "x", minTier, ...x });
-  const kept = { who: "d1a" }, forwarded = { who: "large" }, fallback = { who: "d1a", note: "fallback" };
-  for (const m of ["medium", undefined]) {   // undefined: d1a's default, large
-    assert.equal(differs("small", r(kept, m)), null);
-    assert.equal(differs("small", r(forwarded, m)), "up", "a close call sent up a tier");
-    assert.equal(differs("small", r(fallback, m)), "up", "the router forwarded it; the large model was busy");
-    assert.equal(differs("large", r(forwarded, m)), null);
-    assert.equal(differs("large", r(fallback, m)), null);
-    assert.equal(differs("large", r(kept, m)), "down");
-  }
-  assert.equal(differs("medium", r(forwarded, "medium")), null);
-  assert.equal(differs("medium", r(kept, "medium")), "down");
-  assert.equal(differs("medium", r(kept, "large")), null, "min_tier large keeps a medium pick");
-  assert.equal(differs("medium", r(forwarded, "large")), "up");
-  assert.equal(differs("large", r({ who: "none", note: "no-answer" }, "medium")), null, "no route to compare");
-  assert.equal(differs("small", r({ who: "none", note: "not-shown" }, "medium")), null);
-  assert.equal(differs(null, r(forwarded, "medium")), null, "no pick yet");
-  assert.equal(differs("huge", r(forwarded, "medium")), null);
 });
 
 test("a send reports the large route's minTier", async () => {

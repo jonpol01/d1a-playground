@@ -128,14 +128,16 @@ const json = (body: unknown, status = 200, headers: Record<string, string> = {})
 
 export const chatApi = (env: Deps["env"]) => (env.CHAT_API ?? env.MODEL_API ?? env.KEV_API ?? "http://127.0.0.1:8009").replace(/\/+$/, "");
 
-async function headers(deps: Deps): Promise<Record<string, string>> {
+export type CardDeps = Pick<Deps, "env" | "fetch" | "readKey">;
+
+async function headers(deps: CardDeps): Promise<Record<string, string>> {
   const h: Record<string, string> = { "Content-Type": "application/json" };
   if (deps.env.CHAT_KEY_FILE) h.Authorization = `Bearer ${(await deps.readKey(deps.env.CHAT_KEY_FILE)).trim()}`;
   return h;
 }
 
 /** The model server's card, for its large route; null when it cannot be read. */
-export async function card(deps: Deps): Promise<unknown> {
+export async function card(deps: CardDeps): Promise<unknown> {
   try {
     const r = await deps.fetch(`${chatApi(deps.env)}/v1/models`, { headers: await headers(deps), signal: AbortSignal.timeout(10_000) });
     if (!r.ok) return null;
@@ -209,18 +211,4 @@ export function outcome(status: number, body: unknown, prompt: string): Outcome 
   if (status === 400) return REVIEW_TRAP.test(prompt) ? { phase: "not-sent", why: "trap" } : { phase: "not-sent", why: "invalid", detail: error };
   if (status === 429) return { phase: "not-sent", why: (LIMITS.includes(error) ? error : "busy") as Why, retryAfterS: typeof j.retryAfterS === "number" ? j.retryAfterS : 60 };
   return { phase: "failed", detail: error };
-}
-
-const TIERS = ["small", "medium", "large"];
-
-/** How the route the reply took differs from D1A's top pick, read the router's way: a pick at the large route's minTier
- * or above is forwarded, a lower one kept. "up": a lower pick was forwarded (the router sends close calls up a tier);
- * "down": a pick at minTier or above was kept; null: they agree, or the reply was neither kept (D1A answered, no fallback)
- * nor forwarded (the large model answered, or its fallback). */
-export function differs(pick: string | null | undefined, reply: Reply): "up" | "down" | null {
-  const forwarded = reply.who === "large" || reply.note === "fallback";
-  const kept = reply.who === "d1a" && !reply.note;
-  if (!pick || !TIERS.includes(pick) || !(forwarded || kept)) return null;
-  const goesUp = TIERS.indexOf(pick) >= TIERS.indexOf(reply.minTier === "medium" ? "medium" : "large");
-  return forwarded && !goesUp ? "up" : kept && goesUp ? "down" : null;
 }
