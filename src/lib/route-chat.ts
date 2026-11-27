@@ -1,13 +1,18 @@
-// The routing demo's "Send it" (POST /api/route-chat): one prompt sent through the model server's chat routes (d1a
-// D1A_ROUTES), answered by D1A or forwarded to the large model it routes to. Anyone who opens the playground can use it, and a
-// forwarded chat spends a large model shared with other work, so everything about the call is fixed here: one user message,
-// no tools, no system prompt, no history, a size cap, and limits per client and for everyone together.
+// The routing demo's Ask (POST /api/route-chat): one chat call through the model server's chat routes (d1a D1A_ROUTES),
+// the same call an app makes: D1A answers it itself or forwards it to the large model it routes to, in the same reply. Anyone
+// who opens the playground can use it, and a forwarded chat spends a large model shared with other work, so everything about
+// the call is fixed here: one user message, no tools, no system prompt, no history, a size cap, and limits per client and for
+// everyone together.
 
 export const PROMPT_MAX = 2000;        // characters, after trimming
 export const MAX_TOKENS = 512;         // the answer's cap, D1A's or the large model's
 export const TIMEOUT_MS = 100_000;     // under the serving host's port-80 proxy cut (130 s)
+// Two buckets. The tight one counts the sends that reach past D1A: a send D1A answered itself, with no fallback, is given
+// back, so easy prompts do not use it up. The outer one counts every send and is never given back.
 export const PER_CLIENT = { n: 5, ms: 10 * 60_000 };
 export const GLOBAL = { n: 30, ms: 60 * 60_000 };
+export const ALL_PER_CLIENT = { n: 20, ms: 10 * 60_000 };
+export const ALL_GLOBAL = { n: 120, ms: 60 * 60_000 };
 export const IN_FLIGHT = 1;
 
 // A pull-request link, an issue or PR number, or a fenced block can send a chat to the review route (d1a routes.review_request),
@@ -39,28 +44,46 @@ export function clientKey(req: Request, trustForwarded = false): string {
   return hops.at(-1) ?? "unknown";
 }
 
-export type Taken = { ok: true; release: () => void } | { ok: false; retryAfterS: number; why: "client" | "everyone" | "busy" };
+export type Window = { n: number; ms: number };
+export type Limits = { client: Window; global: Window; allClient: Window; allGlobal: Window; inFlight: number };
+export type Why = "client" | "everyone" | "client-all" | "everyone-all" | "busy";
+export type Taken = { ok: true; release: () => void; refund: () => void } | { ok: false; retryAfterS: number; why: Why };
 
-/** Sliding-window limits in this process's memory: PER_CLIENT for one client, GLOBAL for everyone, IN_FLIGHT at once. */
+/** Sliding-window limits in this process's memory: the tight bucket (PER_CLIENT, GLOBAL), the outer bucket for every send
+ * (ALL_PER_CLIENT, ALL_GLOBAL), and IN_FLIGHT at once. Without a trusted proxy every caller is one client (clientKey), so the
+ * per-client windows then hold for everyone together. refund() gives back the tight bucket's entries only. */
 export class Limiter {
-  private seen = new Map<string, number[]>();
-  private all: number[] = [];
+  private tight = new Map<string, number[]>();
+  private tightAll: number[] = [];
+  private outer = new Map<string, number[]>();
+  private outerAll: number[] = [];
   private flying = 0;
   private now: () => number;
-  private limits: { client: typeof PER_CLIENT; global: typeof GLOBAL; inFlight: number };
-  constructor(now: () => number = Date.now, limits = { client: PER_CLIENT, global: GLOBAL, inFlight: IN_FLIGHT }) {
+  private limits: Limits;
+  constructor(now: () => number = Date.now, limits: Limits = { client: PER_CLIENT, global: GLOBAL, allClient: ALL_PER_CLIENT, allGlobal: ALL_GLOBAL, inFlight: IN_FLIGHT }) {
     this.now = now; this.limits = limits;
   }
   take(client: string): Taken {
-    const t = this.now();
-    const mine = (this.seen.get(client) ?? []).filter((x) => t - x < this.limits.client.ms);
-    this.all = this.all.filter((x) => t - x < this.limits.global.ms);
-    if (this.flying >= this.limits.inFlight) return { ok: false, retryAfterS: 15, why: "busy" };
-    if (mine.length >= this.limits.client.n) return { ok: false, retryAfterS: Math.ceil((mine[0] + this.limits.client.ms - t) / 1000), why: "client" };
-    if (this.all.length >= this.limits.global.n) return { ok: false, retryAfterS: Math.ceil((this.all[0] + this.limits.global.ms - t) / 1000), why: "everyone" };
-    mine.push(t); this.seen.set(client, mine); this.all.push(t); this.flying++;
-    let done = false;
-    return { ok: true, release: () => { if (!done) { done = true; this.flying--; } } };
+    const t = this.now(), L = this.limits;
+    const live = (xs: number[], w: Window) => xs.filter((x) => t - x < w.ms);
+    const wait = (xs: number[], w: Window) => Math.ceil((xs[0] + w.ms - t) / 1000);
+    const mine = live(this.tight.get(client) ?? [], L.client), mineAll = live(this.outer.get(client) ?? [], L.allClient);
+    this.tightAll = live(this.tightAll, L.global); this.outerAll = live(this.outerAll, L.allGlobal);
+    if (this.flying >= L.inFlight) return { ok: false, retryAfterS: 15, why: "busy" };
+    if (mineAll.length >= L.allClient.n) return { ok: false, retryAfterS: wait(mineAll, L.allClient), why: "client-all" };
+    if (this.outerAll.length >= L.allGlobal.n) return { ok: false, retryAfterS: wait(this.outerAll, L.allGlobal), why: "everyone-all" };
+    if (mine.length >= L.client.n) return { ok: false, retryAfterS: wait(mine, L.client), why: "client" };
+    if (this.tightAll.length >= L.global.n) return { ok: false, retryAfterS: wait(this.tightAll, L.global), why: "everyone" };
+    mine.push(t); this.tight.set(client, mine); this.tightAll.push(t);
+    mineAll.push(t); this.outer.set(client, mineAll); this.outerAll.push(t);
+    this.flying++;
+    let released = false, refunded = false;
+    const drop = (xs: number[]) => { const i = xs.lastIndexOf(t); if (i >= 0) xs.splice(i, 1); };
+    return {
+      ok: true,
+      release: () => { if (!released) { released = true; this.flying--; } },
+      refund: () => { if (!refunded) { refunded = true; drop(this.tight.get(client) ?? []); drop(this.tightAll); } },
+    };
   }
 }
 
@@ -117,14 +140,16 @@ export async function card(deps: Deps): Promise<unknown> {
   } catch { return null; }
 }
 
-/** GET: whether "Send it" is offered: the demo is on (ROUTE_DEMO=1) and the model server has a large route. */
+/** GET: whether Ask sends the chat: the demo is on (ROUTE_DEMO=1) and the model server has a large route. */
 export async function status(deps: Deps): Promise<Response> {
   if (deps.env.ROUTE_DEMO !== "1") return json({ on: false });
   const large = largeRoute(await card(deps));
-  return json({ on: Boolean(large), large: large?.model ?? null, limits: { prompt: PROMPT_MAX, perClient: PER_CLIENT, everyone: GLOBAL } });
+  return json({ on: Boolean(large), large: large?.model ?? null, limits: { prompt: PROMPT_MAX, perClient: PER_CLIENT, everyone: GLOBAL, allPerClient: ALL_PER_CLIENT, allEveryone: ALL_GLOBAL } });
 }
 
-/** POST, after the cross-site check: validate, take a slot, one chat through the routes, and what the page may show. */
+/** POST, after the cross-site check: validate, take a slot, one chat through the routes, and what the page may show. The
+ * tight slot is given back only when D1A answered the chat itself with no fallback; never on a forward, a fallback, another
+ * route, an error or a timeout. The in-flight slot is released on every path. */
 export async function send(req: Request, deps: Deps): Promise<Response> {
   if (deps.env.ROUTE_DEMO !== "1") return json({ error: "the routing demo is off on this playground" }, 404);
   let posted: unknown;
@@ -145,6 +170,7 @@ export async function send(req: Request, deps: Deps): Promise<Response> {
     const body = await r.json().catch(() => null) as { model?: unknown; choices?: { message?: { content?: unknown } }[] } | null;
     if (!r.ok) return json({ error: `model server: HTTP ${r.status}`, route }, 502);
     const s = shown(route, routeError, body?.model, body?.choices?.[0]?.message?.content, large);
+    if (s.who === "d1a" && !s.note) slot.refund();
     return json({ ...s, route, routeError, model: typeof body?.model === "string" ? body.model : null, large: large.model, ms: now() - t });
   } catch (e) {
     const timedOut = (e as Error)?.name === "TimeoutError";
@@ -152,4 +178,37 @@ export async function send(req: Request, deps: Deps): Promise<Response> {
   } finally {
     slot.release();
   }
+}
+
+/** A reply to POST /api/route-chat with status 200: what the page may show, the route headers and the time taken. */
+export type Reply = Shown & { route?: string | null; routeError?: string | null; model?: string | null; large?: string; ms?: number };
+export type NotSent = "off" | "trap" | "long" | "invalid" | Why;
+/** The page's reading of one Ask: an answer; nothing sent, and why; or sent with no answer back. */
+export type Outcome =
+  | { phase: "answered"; reply: Reply }
+  | { phase: "not-sent"; why: NotSent; retryAfterS?: number; detail?: string }
+  | { phase: "failed"; detail: string };
+
+const LIMITS: readonly string[] = ["client", "everyone", "client-all", "everyone-all", "busy"];
+
+/** Reads POST /api/route-chat's status and body. 404 and 503 mean this playground sends no chat; 400, 413 and 429 mean this
+ * one was not sent; 502 and 504 mean it was sent and no answer came back. */
+export function outcome(status: number, body: unknown, prompt: string): Outcome {
+  const j = (body && typeof body === "object" ? body : {}) as { error?: unknown; retryAfterS?: unknown };
+  const error = typeof j.error === "string" ? j.error : `HTTP ${status}`;
+  if (status === 200) return { phase: "answered", reply: body as Reply };
+  if (status === 404 || status === 503) return { phase: "not-sent", why: "off" };
+  if (status === 413) return { phase: "not-sent", why: "long" };
+  if (status === 400) return REVIEW_TRAP.test(prompt) ? { phase: "not-sent", why: "trap" } : { phase: "not-sent", why: "invalid", detail: error };
+  if (status === 429) return { phase: "not-sent", why: (LIMITS.includes(error) ? error : "busy") as Why, retryAfterS: typeof j.retryAfterS === "number" ? j.retryAfterS : 60 };
+  return { phase: "failed", detail: error };
+}
+
+/** Whether the route the reply took differs from D1A's top pick, read as small → D1A keeps it, medium or large → forwarded.
+ * Only a reply that was kept (D1A answered, no fallback) or forwarded (the large model answered, or its fallback) counts. */
+export function differs(pick: string | null | undefined, reply: Reply): boolean {
+  const forwarded = reply.who === "large" || reply.note === "fallback";
+  const kept = reply.who === "d1a" && !reply.note;
+  if (!pick || !(forwarded || kept)) return false;
+  return (pick !== "small") !== forwarded;
 }

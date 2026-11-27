@@ -5,7 +5,7 @@ import type { Question } from "@/lib/d1a";
 import { useText, type Lang } from "@/lib/i18n";
 import { AnswerBars, DemoGrid, Empty, ErrorNote, Field, inputCls, KnownMiss, Latency, Presets, pretty, ResultCard, RunBar, textareaCls, Verdict } from "@/components/uses/shared";
 import { useModelRequest } from "@/components/uses/use-request";
-import { RouteSend } from "@/components/uses/route-send";
+import { RouteAnswer, RouteIntro, useRouteChat } from "@/components/uses/route-send";
 import { CountUp, GateTrack, RouteViz, Shimmer, ShieldViz, StarsViz, TrafficLight, VizFrame } from "@/components/uses/visuals";
 
 /* ---------------------------------------------------------------- 1. Model routing */
@@ -33,12 +33,13 @@ const ROUTE_EN = {
     { name: "Summary", miss: "it picks small, but a summary is medium by the route question's own definition (\"Moderate: a summary, an ordinary email…\").", prompt: "Summarize this for my manager in three bullet points:\n\nWe moved the launch from May 3 to May 17 because the payment provider's sandbox was down for four days. QA found two blocker bugs in checkout, both fixed. Marketing wants the extra two weeks for a partner email. Budget unchanged." },
     { name: "Hard reasoning", prompt: "Our Postgres primary shows replication lag spikes to 40 s every night at 02:10, only on Tuesdays and Fridays, and only since we added a second read replica in another region. Walk through the likely causes, how you would confirm each from pg_stat views and logs, and a fix that does not require downtime." },
   ],
-  field: "User prompt", run: "Pick", busy: "Picking",
-  verdict: (tier: string) => `→ ${tier.toUpperCase()} MODEL`, per1k: "per 1,000 requests",
+  field: "User prompt", run: "Ask", busy: "Asking",
+  reasoning: "D1A's reasoning",
+  verdict: (tier: string) => `pick → ${tier.toUpperCase()} MODEL`, per1k: "per 1,000 requests",
   costTitle: "What D1A's pick costs (illustrative prices per 1,000 requests)", routedHere: "← D1A's pick",
   costNote: (all: string, here: string) => `Sending everything to the large model costs ${all} per 1,000; D1A's pick for this prompt costs ${here}. With the probabilities, a router can also send close calls up a tier instead of guessing.`,
   closeCall: (tier: string, p: string) => <>Close call: p({tier}) = {p}. A cautious router would send this one to <span className="font-mono">{tier}</span>.</>,
-  empty: "Press Pick to see which model tier D1A picks for the prompt and what that costs.",
+  empty: "Press Ask to send the prompt: D1A's pick of a model tier and what it costs show here, and, where this playground sends chats, the answer and who wrote it.",
 };
 export const ROUTE_TEXT: Record<Lang, typeof ROUTE_EN> = {
   en: ROUTE_EN,
@@ -48,12 +49,13 @@ export const ROUTE_TEXT: Record<Lang, typeof ROUTE_EN> = {
       { name: "要約", prompt: "次の内容を上司向けに3つの箇条書きで要約してください。\n\n決済プロバイダーのサンドボックスが4日間停止したため、ローンチを5月3日から5月17日に延期しました。QA がチェックアウトでブロッカーのバグを2件見つけ、どちらも修正済みです。マーケティングはこの2週間をパートナー向けメールに使いたいとのことです。予算に変更はありません。" },
       { name: "難しい推論", prompt: "Postgres のプライマリで、毎晩 02:10 にレプリケーション遅延が 40 秒まで跳ね上がります。火曜と金曜だけで、別リージョンに2台目のリードレプリカを追加してから起きるようになりました。考えられる原因を挙げ、それぞれを pg_stat ビューとログからどう確認するか、ダウンタイムなしで直す方法を順を追って説明してください。" },
     ],
-    field: "ユーザーのプロンプト", run: "選ぶ", busy: "選択中",
-    verdict: (tier: string) => `→ ${tier.toUpperCase()} モデル`, per1k: "（1,000 リクエストあたり）",
+    field: "ユーザーのプロンプト", run: "送信", busy: "送信中",
+    reasoning: "D1A の判断の根拠",
+    verdict: (tier: string) => `選択 → ${tier.toUpperCase()} モデル`, per1k: "（1,000 リクエストあたり）",
     costTitle: "D1A が選んだモデルのコスト（1,000 リクエストあたりの参考価格）", routedHere: "← D1A の選択",
     costNote: (all: string, here: string) => `すべてを large モデルに送ると 1,000 件あたり ${all}、D1A がこのプロンプトに選んだモデルなら ${here} です。確率が分かるので、きわどい判定は推測せずに1段上のモデルへ送ることもできます。`,
     closeCall: (tier: string, p: string) => <>きわどい判定です: p({tier}) = {p}。慎重なルーターなら <span className="font-mono">{tier}</span> に送ります。</>,
-    empty: "「選ぶ」を押すと、D1A がプロンプトに選ぶモデルとそのコストが表示されます。",
+    empty: "「送信」を押すとプロンプトを送ります。D1A が選ぶモデルとそのコスト、このプレイグラウンドがチャットを送る場合は答えと答えたモデルがここに表示されます。",
   },
 };
 
@@ -64,6 +66,7 @@ export function RoutingDemo() {
   const [prompt, setPrompt] = useState(ROUTE_PRESETS[0].prompt);
   const [ran, setRan] = useState("");   // the prompt the shown answer is for
   const req = useModelRequest();
+  const chat = useRouteChat();
   const a = req.result?.answers.route;
   const miss = ROUTE_PRESETS[pi]?.miss && ran === ROUTE_PRESETS[pi].prompt ? ROUTE_PRESETS[pi].miss : null;
   const routed = a?.type === "choice" ? a.choice : null;
@@ -74,15 +77,19 @@ export function RoutingDemo() {
   return (
     <DemoGrid
       left={<>
-        <Presets presets={ROUTE_PRESETS} current={pi} onPick={(i) => { setPi(i); setPrompt(ROUTE_PRESETS[i].prompt); req.reset(); }} />
+        <Presets presets={ROUTE_PRESETS} current={pi} onPick={(i) => { setPi(i); setPrompt(ROUTE_PRESETS[i].prompt); req.reset(); chat.reset(); }} />
         <Field label={t.field} htmlFor="route-prompt">
-          <textarea id="route-prompt" className={`${textareaCls} min-h-40`} value={prompt} onChange={(e) => setPrompt(e.target.value)} />
+          <textarea id="route-prompt" className={`${textareaCls} min-h-40`} value={prompt} onChange={(e) => { setPrompt(e.target.value); chat.reset(); }} />
         </Field>
-        <RunBar onRun={() => { setRan(prompt); req.run(prompt, ROUTE_Q, ROUTE_USE_CASE); }} busy={req.busy} disabled={!prompt.trim()} label={t.run} busyLabel={t.busy} />
+        {/* One button, one chat call: the pick and the chat go out together, and the pick shows while the chat runs. */}
+        <RunBar onRun={() => { setRan(prompt); req.run(prompt, ROUTE_Q, ROUTE_USE_CASE); chat.send(prompt); }} busy={req.busy || chat.chat.phase === "waiting"} disabled={!prompt.trim()} label={t.run} busyLabel={t.busy} />
         <ErrorNote error={req.error} />
-        <RouteSend prompt={prompt} />
+        <RouteIntro on={chat.on} />
       </>}
-      right={a && routed && req.result ? <>
+      right={chat.chat.phase !== "idle" || req.busy || req.result ? <>
+        <RouteAnswer chat={chat.chat} pick={routed} large={chat.status?.large ?? null} />
+        {a && routed && req.result ? <>
+        <h4 className="text-[12px] font-medium text-muted-foreground">{t.reasoning}</h4>
         <VizFrame><RouteViz probs={a.type === "choice" ? a.probabilities : {}} chosen={routed} costs={COST} /></VizFrame>
         <Verdict label={t.verdict(routed)} tone="plain">p = {a.type === "choice" ? a.probabilities[a.choice].toFixed(2) : ""} · <CountUp value={COST[routed]} format={(v) => `$${v.toFixed(2)}`} /> {t.per1k}</Verdict>
         <KnownMiss>{miss}</KnownMiss>
@@ -103,7 +110,8 @@ export function RoutingDemo() {
           </p>
           {closeCall && <p className="mt-2 text-[12px] leading-5">{t.closeCall(closeCall.tier, closeCall.p.toFixed(2))}</p>}
         </ResultCard>
-      </> : req.busy ? <Shimmer tall /> : <Empty>{t.empty}</Empty>}
+        </> : req.busy ? <Shimmer tall /> : null}
+      </> : <Empty>{t.empty}</Empty>}
     />
   );
 }

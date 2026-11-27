@@ -44,7 +44,7 @@
 #   link; the build bakes it in, like D1A_BASE_PATH. Unset: no /shogi route and no link)
 #   AGENT_LAB_URL= (e.g. http://127.0.0.1:8037: an agent lab served by its own server, shown under /agent-lab with a header
 #   link to its warehouse page; baked into the build like SHOGI_URL. Unset: no /agent-lab route and no link)
-#   ROUTE_DEMO=0 (1: the routing demo's "Send it" sends the prompt through the model server's chat routes, POST
+#   ROUTE_DEMO=0 (1: the routing demo's Ask also sends the prompt through the model server's chat routes, POST
 #   /api/route-chat, src/lib/route-chat.ts; offered only when ROUTES gives a large model. Read at run time, not baked in)
 #   EMBED_REF= (reference vectors, {"texts": [...], "vectors": [...]}, e.g. LM Studio's for the same GGUF: the smoke test's
 #   OpenAI check then requires the served embeddings to match them, cosine >= 0.999)
@@ -308,7 +308,7 @@ write_agents() {
     <key>SHOGI_URL</key><string>$SHOGI_URL</string>
     <key>AGENT_LAB_URL</key><string>$AGENT_LAB_URL</string>
 "   # next start reads next.config.ts again, so the base path must match the build's
-  # the routing demo's "Send it" (src/lib/route-chat.ts): off unless set to 1
+  # the routing demo's chat call (src/lib/route-chat.ts): off unless set to 1
   case "$ROUTE_DEMO" in 0|1) ;; *) die "ROUTE_DEMO is 0 or 1 (ROUTE_DEMO=$ROUTE_DEMO)" ;; esac
   [ "$ROUTE_DEMO" = 1 ] && ENV_XML+="    <key>ROUTE_DEMO</key><string>1</string>
 "
