@@ -2,10 +2,10 @@
 // Run: node --test scripts/test_route_chat.mjs
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { ALL_GLOBAL, ALL_PER_CLIENT, checkBody, clientKey, differs, GLOBAL, Limiter, largeRoute, MAX_TOKENS, outcome, PER_CLIENT, PROMPT_MAX, send, shown, status } from "../src/lib/route-chat.ts";
+import { ALL_GLOBAL, ALL_PER_CLIENT, checkBody, clientKey, differs, GLOBAL, IN_FLIGHT, Limiter, largeRoute, MAX_TOKENS, outcome, PER_CLIENT, PROMPT_MAX, send, shown, status } from "../src/lib/route-chat.ts";
 
 const CARD = { routes: [{ name: "review", kind: "review", repos: ["o/*"], is_review_min_p: 0.8 }, { name: "large", kind: "openai", model: "gemma-4-31b", max_in_flight: 2, min_tier: "medium" }] };
-const LARGE = { name: "large", model: "gemma-4-31b" };
+const LARGE = { name: "large", model: "gemma-4-31b", minTier: "medium" };
 
 test("only {prompt} is taken: no tools, messages or other fields, nothing empty or too long", () => {
   assert.deepEqual(checkBody({ prompt: "  What's the capital of Australia? " }), { ok: true, prompt: "What's the capital of Australia?" });
@@ -50,7 +50,7 @@ test("every way of naming a pull request or a code block the review route reads 
     assert.equal(checkBody({ prompt: p }).status, 400, p);
 });
 
-test("limits: 5 per client per 10 minutes, 30 for everyone per hour, one at a time", () => {
+test("limits: 5 per client per 10 minutes, 30 for everyone per hour, IN_FLIGHT at a time", () => {
   let t = 0; const L = new Limiter(() => t);
   for (let i = 0; i < PER_CLIENT.n; i++) { const s = L.take("a"); assert.ok(s.ok); s.release(); }
   const sixth = L.take("a"); assert.equal(sixth.ok, false); assert.equal(sixth.why, "client"); assert.equal(sixth.retryAfterS, PER_CLIENT.ms / 1000);
@@ -60,13 +60,18 @@ test("limits: 5 per client per 10 minutes, 30 for everyone per hour, one at a ti
   for (let c = 0; n < GLOBAL.n; c++) { const s = L.take(`c${c}`); assert.ok(s.ok, `client c${c}`); s.release(); n++; }
   const over = L.take("fresh"); assert.equal(over.ok, false); assert.equal(over.why, "everyone");
   t += GLOBAL.ms; const ok = L.take("fresh"); assert.ok(ok.ok);
-  const second = L.take("other"); assert.equal(second.ok, false); assert.equal(second.why, "busy", "one in flight");
+  assert.equal(IN_FLIGHT, 3);
+  const more = Array.from({ length: IN_FLIGHT - 1 }, (_, i) => L.take(`other${i}`)); assert.ok(more.every((m) => m.ok));
+  const full = L.take("other"); assert.equal(full.ok, false); assert.equal(full.why, "busy", `${IN_FLIGHT} in flight`);
   ok.release(); ok.release();   // a second release changes nothing
-  const third = L.take("other"); assert.ok(third.ok); third.release();
+  const next = L.take("other"); assert.ok(next.ok);
+  const still = L.take("another"); assert.equal(still.why, "busy", "the double release gave back only one slot");
+  next.release(); more.forEach((m) => m.release());
 });
 
 test("the large route is read from the card", () => {
   assert.deepEqual(largeRoute(CARD), LARGE);
+  assert.equal(largeRoute({ routes: [{ name: "large", kind: "openai", model: "m" }] }).minTier, "large", "d1a's default");
   assert.equal(largeRoute({ routes: [CARD.routes[0]] }), null);
   assert.equal(largeRoute({}), null);
   assert.equal(largeRoute(null), null);
@@ -145,12 +150,12 @@ test("the slot is released on every path, and a timeout or a dead server is an e
 });
 
 test("over a limit: 429 with Retry-After, and no chat is sent", async () => {
-  const L = new Limiter(); const held = L.take("someone");
+  const L = new Limiter(); const held = Array.from({ length: IN_FLIGHT }, (_, i) => L.take(`someone${i}`));
   const s = server();
   const r = await send(post({ prompt: "hi" }, { "x-forwarded-for": "9.9.9.9" }), deps(s, undefined, L));
   assert.equal(r.status, 429); assert.equal(r.headers.get("retry-after"), "15"); assert.equal((await r.json()).error, "busy");
   assert.ok(!s.calls.some((c) => c.url.endsWith("/chat/completions")));
-  held.release();
+  held.forEach((h) => h.release());
 });
 
 test("a model server with no large route: 503, and GET says the demo is not on", async () => {
@@ -202,6 +207,19 @@ test("a flood of easy prompts stops at the outer bucket, which is never given ba
   t += ALL_GLOBAL.ms; const ok = G.take("fresh"); assert.ok(ok.ok); ok.release();
 });
 
+test("a refund after its window ran out, or after a later send replaced the client's list, still gives back only its own entry", () => {
+  const w = { n: 2, ms: 1000 }, roomy = { n: 99, ms: 1000 };
+  let t = 0; const L = new Limiter(() => t, { client: w, global: roomy, allClient: roomy, allGlobal: roomy, inFlight: 9 });
+  const a = L.take("a"); a.release();
+  t = 500; const b = L.take("a"); b.release();   // b's take rebuilt a's list
+  a.refund();                                     // a's entry is found in the new list
+  t = 600; const c = L.take("a"); assert.ok(c.ok, "a's slot came back"); c.release();
+  t = 700; const d = L.take("a"); assert.equal(d.why, "client", "b and c fill it");
+  t = 1550; b.refund();                           // b's entry (500) has expired; c's (600) has not: nothing of c's is removed
+  const e = L.take("a"); assert.ok(e.ok); e.release();
+  const f = L.take("a"); assert.equal(f.why, "client", "c and e fill it: the late refund removed nothing of theirs");
+});
+
 test("a refund gives back one tight entry, once, and never the outer one", () => {
   const tight = { n: 2, ms: 1000 }, outer = { n: 3, ms: 1000 };
   let t = 0; const L = new Limiter(() => t, { client: tight, global: { n: 99, ms: 1000 }, allClient: outer, allGlobal: { n: 99, ms: 1000 }, inFlight: 1 });
@@ -232,18 +250,32 @@ test("the page reads a reply as an answer, nothing sent and why, or sent with no
   assert.deepEqual(outcome(502, { error: "model server: HTTP 500" }, "hi"), { phase: "failed", detail: "model server: HTTP 500" });
   assert.deepEqual(outcome(504, { error: "no answer within 100 s" }, "hi"), { phase: "failed", detail: "no answer within 100 s" });
   assert.deepEqual(outcome(500, null, "hi"), { phase: "failed", detail: "HTTP 500" });
+  for (const bad of [null, {}, { who: "someone", answer: "x" }, { who: "d1a" }])
+    assert.deepEqual(outcome(200, bad, "hi"), { phase: "failed", detail: "the reply could not be read" }, JSON.stringify(bad));
 });
 
-test("the pick and the route differ only when small goes up or medium/large stays with D1A", () => {
-  const kept = { who: "d1a", answer: "x" }, forwarded = { who: "large", answer: "x" }, fallback = { who: "d1a", answer: "x", note: "fallback" };
-  assert.equal(differs("small", kept), false);
-  assert.equal(differs("small", forwarded), true, "a close call sent up a tier");
-  assert.equal(differs("small", fallback), true, "the router forwarded it; the large model was busy");
-  assert.equal(differs("medium", forwarded), false);
-  assert.equal(differs("large", forwarded), false);
-  assert.equal(differs("large", fallback), false);
-  assert.equal(differs("medium", kept), true);
-  assert.equal(differs("large", { who: "none", answer: "", note: "no-answer" }), false, "no route to compare");
-  assert.equal(differs("small", { who: "none", answer: "", note: "not-shown" }), false);
-  assert.equal(differs(null, forwarded), false, "no pick yet");
+test("the pick and the route differ: up when a pick under the large route's minTier was forwarded, down when one at or above it was kept", () => {
+  const r = (x, minTier) => ({ answer: "x", minTier, ...x });
+  const kept = { who: "d1a" }, forwarded = { who: "large" }, fallback = { who: "d1a", note: "fallback" };
+  for (const m of ["medium", undefined]) {   // undefined: d1a's default, large
+    assert.equal(differs("small", r(kept, m)), null);
+    assert.equal(differs("small", r(forwarded, m)), "up", "a close call sent up a tier");
+    assert.equal(differs("small", r(fallback, m)), "up", "the router forwarded it; the large model was busy");
+    assert.equal(differs("large", r(forwarded, m)), null);
+    assert.equal(differs("large", r(fallback, m)), null);
+    assert.equal(differs("large", r(kept, m)), "down");
+  }
+  assert.equal(differs("medium", r(forwarded, "medium")), null);
+  assert.equal(differs("medium", r(kept, "medium")), "down");
+  assert.equal(differs("medium", r(kept, "large")), null, "min_tier large keeps a medium pick");
+  assert.equal(differs("medium", r(forwarded, "large")), "up");
+  assert.equal(differs("large", r({ who: "none", note: "no-answer" }, "medium")), null, "no route to compare");
+  assert.equal(differs("small", r({ who: "none", note: "not-shown" }, "medium")), null);
+  assert.equal(differs(null, r(forwarded, "medium")), null, "no pick yet");
+  assert.equal(differs("huge", r(forwarded, "medium")), null);
+});
+
+test("a send reports the large route's minTier", async () => {
+  const j = await (await send(post({ prompt: "hi" }), deps(server()))).json();
+  assert.equal(j.minTier, "medium");
 });

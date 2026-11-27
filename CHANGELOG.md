@@ -22,8 +22,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
     fallback. The pick sits underneath as D1A's reasoning, with one line when it differs from the route.
   - When nothing is sent (the demo off, a refused prompt, a limit), the pick still shows with "No answer sent" and why.
   - Limits: every send counts toward 20 per visitor per 10 minutes and 120 an hour for everyone, never given back.
-    The 5 per visitor and 30 an hour now count only sends D1A did not answer itself: a clean D1A answer gives its slot
-    back.
+    The 5 per visitor and 30 an hour now count only sends that were forwarded or failed: a clean D1A answer gives its
+    slot back. Three chats at once for everyone, was one (the model server waits for a free large-model slot).
+  - "The route differs" reads the large route's `min_tier` from the card (`large` when it does not say, as in d1a).
 - **D1A pinned to `773db0ea`** (d1a#437): OpenAI-format chat reads a tool call only where the chat template writes it,
   right after its `<|tool_call>` marker; text elsewhere that looks like a call is no longer returned as one. The quality
   gate on the D1A-E4B-it QAT build answered bit for bit the same on every demo (photos, voice and video included) and

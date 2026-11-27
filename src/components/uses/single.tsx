@@ -79,10 +79,11 @@ export function RoutingDemo() {
       left={<>
         <Presets presets={ROUTE_PRESETS} current={pi} onPick={(i) => { setPi(i); setPrompt(ROUTE_PRESETS[i].prompt); req.reset(); chat.reset(); }} />
         <Field label={t.field} htmlFor="route-prompt">
-          <textarea id="route-prompt" className={`${textareaCls} min-h-40`} value={prompt} onChange={(e) => { setPrompt(e.target.value); chat.reset(); }} />
+          <textarea id="route-prompt" className={`${textareaCls} min-h-40`} value={prompt} onChange={(e) => { setPrompt(e.target.value); req.reset(); chat.reset(); }} />
         </Field>
-        {/* One button, one chat call: the pick and the chat go out together, and the pick shows while the chat runs. */}
-        <RunBar onRun={() => { setRan(prompt); req.run(prompt, ROUTE_Q, ROUTE_USE_CASE); chat.send(prompt); }} busy={req.busy || chat.chat.phase === "waiting"} disabled={!prompt.trim()} label={t.run} busyLabel={t.busy} />
+        {/* One button, one chat call: the pick and the chat go out together, and the pick shows while the chat runs. The
+            button stays busy until a sent chat settles, even after an edit, since the call holds its slot until then. */}
+        <RunBar onRun={() => { setRan(prompt); req.reset(); req.run(prompt, ROUTE_Q, ROUTE_USE_CASE); chat.send(prompt); }} busy={req.busy || chat.chat.phase === "waiting" || chat.pending} disabled={!prompt.trim()} label={t.run} busyLabel={t.busy} />
         <ErrorNote error={req.error} />
         <RouteIntro on={chat.on} />
       </>}

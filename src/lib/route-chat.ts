@@ -13,7 +13,7 @@ export const PER_CLIENT = { n: 5, ms: 10 * 60_000 };
 export const GLOBAL = { n: 30, ms: 60 * 60_000 };
 export const ALL_PER_CLIENT = { n: 20, ms: 10 * 60_000 };
 export const ALL_GLOBAL = { n: 120, ms: 60 * 60_000 };
-export const IN_FLIGHT = 1;
+export const IN_FLIGHT = 3;           // chats at once for everyone; the model server waits for a free large-model slot
 
 // A pull-request link, an issue or PR number, or a fenced block can send a chat to the review route (d1a routes.review_request),
 // which reads a repository's pull request: this demo never sends one, so the reviewer and private review text stay out of reach.
@@ -66,6 +66,7 @@ export class Limiter {
   take(client: string): Taken {
     const t = this.now(), L = this.limits;
     const live = (xs: number[], w: Window) => xs.filter((x) => t - x < w.ms);
+    for (const [k, xs] of this.outer) if (!xs.length || t - xs[xs.length - 1] >= L.allClient.ms) { this.outer.delete(k); this.tight.delete(k); }
     const wait = (xs: number[], w: Window) => Math.ceil((xs[0] + w.ms - t) / 1000);
     const mine = live(this.tight.get(client) ?? [], L.client), mineAll = live(this.outer.get(client) ?? [], L.allClient);
     this.tightAll = live(this.tightAll, L.global); this.outerAll = live(this.outerAll, L.allGlobal);
@@ -87,14 +88,16 @@ export class Limiter {
   }
 }
 
-export type Large = { name: string; model: string } | null;
+export type Large = { name: string; model: string; minTier: string } | null;
 
-/** The card's large route ({name, model}), or null when the model server routes nothing to a large model. */
+/** The card's large route ({name, model, minTier}: the smallest tier it forwards, "large" when the card does not say, as in
+ * d1a), or null when the model server routes nothing to a large model. */
 export function largeRoute(card: unknown): Large {
   const routes = (card as { routes?: unknown })?.routes;
   if (!Array.isArray(routes)) return null;
-  const r = routes.find((x) => x && typeof x === "object" && (x as { kind?: unknown }).kind === "openai") as { name?: unknown; model?: unknown } | undefined;
-  return r && typeof r.name === "string" && typeof r.model === "string" ? { name: r.name, model: r.model } : null;
+  const r = routes.find((x) => x && typeof x === "object" && (x as { kind?: unknown }).kind === "openai") as { name?: unknown; model?: unknown; min_tier?: unknown } | undefined;
+  if (!r || typeof r.name !== "string" || typeof r.model !== "string") return null;
+  return { name: r.name, model: r.model, minTier: r.min_tier === "medium" ? "medium" : "large" };
 }
 
 export type Shown = { who: "d1a" | "large" | "none"; answer: string; note?: "fallback" | "no-answer" | "not-shown" };
@@ -171,7 +174,7 @@ export async function send(req: Request, deps: Deps): Promise<Response> {
     if (!r.ok) return json({ error: `model server: HTTP ${r.status}`, route }, 502);
     const s = shown(route, routeError, body?.model, body?.choices?.[0]?.message?.content, large);
     if (s.who === "d1a" && !s.note) slot.refund();
-    return json({ ...s, route, routeError, model: typeof body?.model === "string" ? body.model : null, large: large.model, ms: now() - t });
+    return json({ ...s, route, routeError, model: typeof body?.model === "string" ? body.model : null, large: large.model, minTier: large.minTier, ms: now() - t });
   } catch (e) {
     const timedOut = (e as Error)?.name === "TimeoutError";
     return json({ error: timedOut ? `no answer within ${TIMEOUT_MS / 1000} s` : "the model server cannot be reached" }, 504);
@@ -181,7 +184,7 @@ export async function send(req: Request, deps: Deps): Promise<Response> {
 }
 
 /** A reply to POST /api/route-chat with status 200: what the page may show, the route headers and the time taken. */
-export type Reply = Shown & { route?: string | null; routeError?: string | null; model?: string | null; large?: string; ms?: number };
+export type Reply = Shown & { route?: string | null; routeError?: string | null; model?: string | null; large?: string; minTier?: string; ms?: number };
 export type NotSent = "off" | "trap" | "long" | "invalid" | Why;
 /** The page's reading of one Ask: an answer; nothing sent, and why; or sent with no answer back. */
 export type Outcome =
@@ -196,7 +199,11 @@ const LIMITS: readonly string[] = ["client", "everyone", "client-all", "everyone
 export function outcome(status: number, body: unknown, prompt: string): Outcome {
   const j = (body && typeof body === "object" ? body : {}) as { error?: unknown; retryAfterS?: unknown };
   const error = typeof j.error === "string" ? j.error : `HTTP ${status}`;
-  if (status === 200) return { phase: "answered", reply: body as Reply };
+  if (status === 200) {
+    const r = body as Partial<Reply> | null;
+    const ok = r && ["d1a", "large", "none"].includes(r.who as string) && typeof r.answer === "string";
+    return ok ? { phase: "answered", reply: r as Reply } : { phase: "failed", detail: "the reply could not be read" };
+  }
   if (status === 404 || status === 503) return { phase: "not-sent", why: "off" };
   if (status === 413) return { phase: "not-sent", why: "long" };
   if (status === 400) return REVIEW_TRAP.test(prompt) ? { phase: "not-sent", why: "trap" } : { phase: "not-sent", why: "invalid", detail: error };
@@ -204,11 +211,16 @@ export function outcome(status: number, body: unknown, prompt: string): Outcome 
   return { phase: "failed", detail: error };
 }
 
-/** Whether the route the reply took differs from D1A's top pick, read as small → D1A keeps it, medium or large → forwarded.
- * Only a reply that was kept (D1A answered, no fallback) or forwarded (the large model answered, or its fallback) counts. */
-export function differs(pick: string | null | undefined, reply: Reply): boolean {
+const TIERS = ["small", "medium", "large"];
+
+/** How the route the reply took differs from D1A's top pick, read the router's way: a pick at the large route's minTier
+ * or above is forwarded, a lower one kept. "up": a lower pick was forwarded (the router sends close calls up a tier);
+ * "down": a pick at minTier or above was kept; null: they agree, or the reply was neither kept (D1A answered, no fallback)
+ * nor forwarded (the large model answered, or its fallback). */
+export function differs(pick: string | null | undefined, reply: Reply): "up" | "down" | null {
   const forwarded = reply.who === "large" || reply.note === "fallback";
   const kept = reply.who === "d1a" && !reply.note;
-  if (!pick || !(forwarded || kept)) return false;
-  return (pick !== "small") !== forwarded;
+  if (!pick || !TIERS.includes(pick) || !(forwarded || kept)) return null;
+  const goesUp = TIERS.indexOf(pick) >= TIERS.indexOf(reply.minTier === "medium" ? "medium" : "large");
+  return forwarded && !goesUp ? "up" : kept && goesUp ? "down" : null;
 }
