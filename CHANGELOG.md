@@ -14,6 +14,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- The media demos' loading note says a cold load takes up to about 3 minutes on a GPU server (it said 2): a cold photo
+  request there took 189 s once its weights had left the page cache.
 - **The routing demo shows D1A's decision only.** The result is the tier D1A routes on (its fail-up rule on the three
   probabilities, with the threshold from the model server's card), the diagram and cost for that tier, and the answer:
   "D1A sent this to <model>" or "D1A answered this itself". The most likely tier on its own, the probability bars, the
