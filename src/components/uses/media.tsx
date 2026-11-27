@@ -95,8 +95,8 @@ function MediaError({ error }: { error: unknown }) {
 
 function WakingNote({ show }: { show: boolean }) {
   const t = useText({
-    en: "Waking up the model: it is freed after an idle spell and loads again on demand, which takes a few seconds (up to 30 s on a PyTorch machine). The next requests take a second or two.",
-    ja: "モデルを起動しています。しばらく使われないと解放され、必要なときに読み込み直すため、数秒かかります（PyTorch のマシンでは最大 30 秒）。次からは1〜2秒です。",
+    en: "Loading the model: it is freed after an idle spell and loads again on demand. That takes a few seconds on a Mac and up to about 2 minutes on a GPU server; this request waits for it. The next requests take a second or two.",
+    ja: "モデルを読み込んでいます。しばらく使われないと解放され、必要なときに読み込み直します。Mac では数秒、GPU サーバーでは最大 2 分ほどかかり、このリクエストはそれを待ちます。次からは1〜2秒です。",
   });
   return show ? <p role="status" className="text-[12px] leading-5 text-muted-foreground">{t}</p> : null;
 }

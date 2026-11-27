@@ -22,9 +22,9 @@ const nextConfig: NextConfig = {
   // MEDIA_DEMOS=0: hide the photo, voice and video demos (a model server that cannot answer them)
   env: { NEXT_PUBLIC_BASE_PATH: basePath, NEXT_PUBLIC_SHOGI: SHOGI_URL ? "1" : "", NEXT_PUBLIC_AGENT_LAB: AGENT_LAB_URL ? "1" : "", NEXT_PUBLIC_MEDIA_DEMOS: process.env.MEDIA_DEMOS ?? "" },
   reactCompiler: true,
-  // d1a.media loads its model on the first photo/voice request after an idle spell (15-30 s); the default 30 s proxy
-  // timeout would cut that request off
-  experimental: { proxyTimeout: 120_000 },
+  // d1a.media loads its model on the first photo/voice request after an idle spell: about 95 s on a GPU server whose page
+  // cache has lost the weights, and the answer comes on top; the default 30 s proxy timeout would cut that request off
+  experimental: { proxyTimeout: 240_000 },
   devIndicators: false,
   // Next dev only trusts the hostname it was started with (localhost); without this,
   // opening the app via 127.0.0.1 renders the SSR HTML but never hydrates (no errors, buttons dead).
