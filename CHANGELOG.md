@@ -17,6 +17,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - The routing demo's caption and README section say what Send it does where the model server routes chats; the old
   caption said the demo sends the prompt nowhere.
 
+### Fixed
+
+- `./mini.sh update` no longer fails, and rolls back, where the model server routes chats (`ROUTES`, #147). The OpenAI
+  smoke test's cut-off tool call asked to write a file, which the router sends to the large model. Every smoke chat is now
+  one the router keeps on D1A, and a chat answered with an `x-d1a-route` other than `none`, or with an
+  `x-d1a-route-error`, fails its check. So the checks still test D1A itself with routes on, and a forwarded chat can no
+  longer pass a check in its place:
+  - the cut-off check is the tool call check's own request, cut at 8 tokens, inside the call;
+  - the chat beside the decision counts to 30, still running when the decision is sent. The paragraph it asked for before
+    was forwarded, so with routes on nothing ran beside the decision and the check passed without testing anything.
+
 ### Added
 
 - `ROUTE_DEMO=1` (mini.sh setting, off by default): the routing demo's "Send it" sends the prompt through the model server's
