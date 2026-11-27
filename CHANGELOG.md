@@ -14,6 +14,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **D1A pinned to `6d303303`** (d1a#439): with chat routes on, a hard chat over the large route's `max_in_flight` waits
+  for a free slot (up to 30 s, as many waiting as `max_in_flight`) instead of being answered by D1A at once; the notes
+  say what happened (at capacity, did not answer in time, starting up), and an agent's chat gets a retryable 503 while
+  the large model starts. Without routes nothing changes: the quality gate on the D1A-E4B-it QAT build answered bit for
+  bit the same on every demo (photos, voice and video included) and on the labeler replay, 0 flips, max |dp| 0, 271
+  requests; all-text latency 1.0008 against a base/base floor of 1.0050. No dependency changes.
 - The media demos wait out a cold model load: the proxy timeout for the model and media routes is 240 s (was 120 s),
   and the note shown while waiting says a load takes up to about 2 minutes on a GPU server (it said 30 s). A cold load
   there took about 95 s, and the first photo after an idle spell failed at the proxy.
