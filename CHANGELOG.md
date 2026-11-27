@@ -14,6 +14,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **D1A pinned to `1cc8a129`** (d1a#440): `GET /v1/models` shows each chat route's state (ready, busy or
+  offline, with slots in use and chats waiting) and `route_rule`, the routing rule's thresholds at the routing
+  temperature, which the routing demo's chips and decision read. Answers are unchanged: the quality gate on the
+  D1A-E4B-it QAT build answered bit for bit the same on every demo (photos, voice and video included) and on the
+  labeler replay, 0 flips, max |dp| 0, 271 requests; all-text latency 1.0067 against a base/base floor of 1.0057. No
+  dependency changes.
 - The media demos' loading note says a cold load takes up to about 3 minutes on a GPU server (it said 2): a cold photo
   request there took 189 s once its weights had left the page cache.
 - **The routing demo shows D1A's decision only.** The result is the tier D1A routes on (its fail-up rule on the three
