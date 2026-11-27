@@ -14,6 +14,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- The media demos wait out a cold model load: the proxy timeout for the model and media routes is 240 s (was 120 s),
+  and the note shown while waiting says a load takes up to about 2 minutes on a GPU server (it said 30 s). A cold load
+  there took about 95 s, and the first photo after an idle spell failed at the proxy.
 - **The routing demo has one button, Ask** (JA 送信), in place of Pick and Send it (#152). A second button read as if
   a person had to press it before a prompt was forwarded; in use it is one chat call that decides, forwards and answers.
   - One click sends the pick request and, where `ROUTE_DEMO=1`, the chat call together; the pick shows while the chat
