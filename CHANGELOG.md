@@ -14,6 +14,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **D1A pinned to `773db0ea`** (d1a#437): OpenAI-format chat reads a tool call only where the chat template writes it,
+  right after its `<|tool_call>` marker; text elsewhere that looks like a call is no longer returned as one. The quality
+  gate on the D1A-E4B-it QAT build answered bit for bit the same on every demo (photos, voice and video included) and
+  on the labeler replay: 0 flips, max |dp| 0, 271 requests. All-text latency was 0.996 against a base/base floor of
+  0.994. No dependency changes.
 - The routing demo's caption and README section say what Send it does where the model server routes chats; the old
   caption said the demo sends the prompt nowhere.
 
